@@ -1,0 +1,331 @@
+goal: >
+  Build the My Petmate MVP with a Spring Boot and PostgreSQL API and a
+  React Native/Expo app, enabling pet guardians to register one or more dogs,
+  receive safety- and compatibility-based nearby walking/playmate
+  recommendations, mutually like matches, chat in real time, and coordinate
+  walk/play appointments.
+
+constraints:
+  - Backend must use Spring Boot.
+  - Backend must use Java 21 LTS, Spring Boot 3.x, and Gradle Kotlin DSL.
+  - Backend formatting must use Spotless with Google Java Format, and
+    `./gradlew check` must include formatting verification.
+  - Commit messages must follow Conventional Commits in English.
+  - Branch names must follow `<type>/<short-kebab-summary>`.
+  - Pull requests must use the repository PR template with Summary, Changes,
+    Verification, and Checklist sections.
+  - AI agents must read `AGENTS.md` and `docs/development-conventions.md`
+    before code or build changes.
+  - Primary database must be PostgreSQL only for MVP.
+  - Mobile app must use React Native with Expo for Android and iOS development.
+  - MVP authentication must use email/password with JWT access token, refresh
+    token, password hashing, token refresh, and logout.
+  - Social login, phone verification, device/session management, push
+    notifications, map exploration, calendar integration, payment,
+    reviews/ratings, group walks, admin web UI, and document proof review are
+    out of scope for MVP.
+  - Exact real-time location must not be shown to users; only approximate
+    distance and primary activity area may be displayed.
+  - One guardian account may register multiple dogs, but recommendation, like,
+    match, chat, and appointment flows operate on one selected dog pair at a
+    time.
+  - Matching recommendations are calculated on request, not precomputed by batch
+    jobs.
+
+acceptance_criteria:
+  - A guardian can sign up, log in, log out, refresh tokens, and access
+    protected API/app screens only with valid JWT authentication.
+  - A guardian can create and edit dog profiles containing required safety and
+    compatibility fields, including dog identity, photo, breed/mix status, age,
+    sex, weight/size, neuter status, activity area, available time slots,
+    vaccination status, animal registration status, sociability, aggression
+    level, preferred walk intensity, reaction to unfamiliar dogs, and
+    self-introduction.
+  - The app shows a recommendation list and detail screen for the selected dog,
+    excluding unsafe or clearly incompatible candidates and displaying
+    compatibility grade plus human-readable reasons instead of numeric
+    percentage scores.
+  - A guardian can like or pass recommended dogs, and a match is created only
+    when both sides like each other for the relevant dog pair.
+  - Matched guardians can use a WebSocket-based 1:1 chat room and exchange
+    normal text messages plus appointment proposal cards.
+  - In a chat room, a guardian can propose an appointment with date, time slot,
+    and place text; the other guardian can accept or reject it; an accepted
+    appointment can later be canceled with a reason.
+  - A guardian can block or report another guardian, and reported or blocked
+    users are excluded from relevant matching/chat interactions; accumulated or
+    severe reports can temporarily restrict matching/chat access.
+
+ontology_schema:
+  name: MyPetmateMvp
+  description: Domain model for the My Petmate compatibility-based dog
+    walking/playmate MVP.
+  entities:
+    - name: Guardian
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: email
+          type: string
+          required: true
+        - name: password_hash
+          type: string
+          required: true
+        - name: gender
+          type: enum
+          values: [female, male, non_binary, prefer_not_to_say, other]
+          required: true
+        - name: status
+          type: enum
+          values: [active, temporarily_restricted, withdrawn]
+          required: true
+
+    - name: Dog
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: guardian_id
+          type: uuid
+          required: true
+        - name: name
+          type: string
+          required: true
+        - name: photo_url
+          type: string
+          required: true
+        - name: breed
+          type: string
+          required: true
+        - name: is_mixed_breed
+          type: boolean
+          required: true
+        - name: birth_month_or_age
+          type: string
+          required: true
+        - name: sex
+          type: enum
+          values: [female, male]
+          required: true
+        - name: weight_kg
+          type: number
+          required: true
+        - name: size_group
+          type: enum
+          values: [small, medium, large]
+          required: true
+        - name: neutered
+          type: boolean
+          required: true
+        - name: primary_activity_area
+          type: string
+          required: true
+        - name: approximate_location
+          type: geo_point
+          required: true
+        - name: available_time_slots
+          type: array
+          required: true
+        - name: vaccinated
+          type: boolean
+          required: true
+        - name: animal_registered
+          type: boolean
+          required: true
+        - name: sociability
+          type: enum
+          values: [low, medium, high]
+          required: true
+        - name: aggression_level
+          type: enum
+          values: [none, low, medium, high]
+          required: true
+        - name: preferred_walk_intensity
+          type: enum
+          values: [slow, moderate, active]
+          required: true
+        - name: unfamiliar_dog_reaction
+          type: enum
+          values: [calm, cautious, excited, reactive]
+          required: true
+        - name: self_introduction
+          type: string
+          required: true
+
+    - name: Recommendation
+      fields:
+        - name: source_dog_id
+          type: uuid
+          required: true
+        - name: candidate_dog_id
+          type: uuid
+          required: true
+        - name: compatibility_grade
+          type: enum
+          values: [excellent, good, check_conditions]
+          required: true
+        - name: reasons
+          type: array
+          required: true
+        - name: approximate_distance_km
+          type: number
+          required: true
+
+    - name: Like
+      fields:
+        - name: from_dog_id
+          type: uuid
+          required: true
+        - name: to_dog_id
+          type: uuid
+          required: true
+        - name: status
+          type: enum
+          values: [liked, passed]
+          required: true
+
+    - name: Match
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: dog_a_id
+          type: uuid
+          required: true
+        - name: dog_b_id
+          type: uuid
+          required: true
+        - name: status
+          type: enum
+          values: [active, blocked, closed]
+          required: true
+
+    - name: ChatMessage
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: match_id
+          type: uuid
+          required: true
+        - name: sender_guardian_id
+          type: uuid
+          required: true
+        - name: message_type
+          type: enum
+          values: [text, appointment_proposal]
+          required: true
+        - name: body
+          type: string
+          required: false
+
+    - name: AppointmentProposal
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: match_id
+          type: uuid
+          required: true
+        - name: proposed_by_guardian_id
+          type: uuid
+          required: true
+        - name: date
+          type: date
+          required: true
+        - name: time_slot
+          type: string
+          required: true
+        - name: place_text
+          type: string
+          required: true
+        - name: status
+          type: enum
+          values: [proposed, accepted, rejected, canceled]
+          required: true
+        - name: cancellation_reason
+          type: string
+          required: false
+
+    - name: SafetyAction
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: reporter_guardian_id
+          type: uuid
+          required: true
+        - name: target_guardian_id
+          type: uuid
+          required: true
+        - name: type
+          type: enum
+          values: [block, report]
+          required: true
+        - name: reason
+          type: string
+          required: false
+        - name: severity
+          type: enum
+          values: [normal, severe]
+          required: false
+
+evaluation_principles:
+  - name: safety_first
+    description: Unsafe or clearly incompatible dog pairings must be excluded
+      before ranking.
+    weight: 1.0
+  - name: mvp_scope_control
+    description: Implement only the agreed MVP and avoid excluded features.
+    weight: 0.9
+  - name: appointment_validation
+    description: Success is measured by actual accepted appointment proposals,
+      not only matches.
+    weight: 0.9
+  - name: privacy
+    description: Location exposure must stay approximate and never reveal exact
+      live location.
+    weight: 0.8
+  - name: simplicity
+    description: Prefer request-time recommendation and PostgreSQL-only
+      persistence until real scale requires more.
+    weight: 0.7
+
+success_metrics:
+  - profile_completion_rate
+  - recommendation_to_like_rate
+  - mutual_match_rate
+  - chat_start_rate
+  - appointment_acceptance_rate
+  - report_rate
+  - block_rate
+  - temporary_restriction_rate
+
+exit_conditions:
+  - name: mvp_scope_satisfied
+    description: All acceptance criteria are implemented without adding
+      explicitly excluded features.
+    criteria: 100% of acceptance criteria are satisfied.
+  - name: core_flow_observed
+    description: A test guardian can complete signup, dog profile creation,
+      recommendation, mutual like, chat, appointment proposal, acceptance, and
+      cancellation.
+    criteria: The full core flow is manually verified in the app against the
+      Spring Boot API.
+  - name: safety_flow_observed
+    description: Blocking, reporting, and temporary restriction behavior are
+      verified.
+    criteria: Blocked/restricted users are excluded from relevant match/chat
+      flows.
+  - name: build_and_tests_green
+    description: Backend and mobile app checks pass.
+    criteria: Required build, test, lint, and type checks exit successfully.
+
+metadata:
+  version: 1
+  generated_at: "2026-07-08T11:03:50Z"
+  project: my-petmate
+  ambiguity_score: 0.12
+  interview_mode: fallback_conversation
+  source_pm_path: docs/pm.md

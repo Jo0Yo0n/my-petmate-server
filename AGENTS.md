@@ -1,6 +1,12 @@
 Core Rule:
 The human developer must write most production code.
 
+Before changing code or build configuration or commit, you must read and follow
+`docs/development-conventions.md`.
+
+Before starting milestone work, you must check the current milestone in
+`docs/backend-mvp-plan.md`.
+
 AI may:
 - ask clarifying questions
 - propose architecture alternatives
