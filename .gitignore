@@ -38,3 +38,4 @@ out/
 
 ### Codex agents ###
 .agents/
+/.codegraph
