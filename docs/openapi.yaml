@@ -1,0 +1,2606 @@
+openapi: 3.1.0
+info:
+  title: My Petmate MVP API
+  version: 1.0.0
+  description: |
+    My Petmate MVP의 REST API 계약이다. 모든 날짜/시간 기반 약속 규칙은
+    `Asia/Seoul` 기준이며, 다른 사용자에게 정확한 위치나 비공개 평가를 반환하지 않는다.
+
+    추천 후보 처리 순서는 `안전·차단·신고 제외 → 공개 상호성 → 선호 조건 → 궁합 정렬`이다.
+    공개 여부 변경은 다음 추천 요청부터 적용되며 기존 match/chat에는 영향을 주지 않는다.
+  x-time-zone: Asia/Seoul
+  x-token-policy:
+    accessTokenTtlSeconds: 900
+    refreshTokenTtlSeconds: 2592000
+    refreshTokenRotation: rotate-on-every-refresh
+    concurrent401Handling: refresh-once-and-retry-each-request-once
+  x-privacy-policy:
+    exactLocationReturned: false
+    rawReviewsReturned: false
+    aggregateReviewScoresReturned: false
+  x-websocket-protocol: ./websocket-protocol.md
+  x-error-response-contract: ./error-response.md
+servers:
+  - url: http://localhost:8080
+    description: Local development
+tags:
+  - name: Auth
+  - name: Guardians
+  - name: Dogs
+  - name: Recommendations
+  - name: Likes
+  - name: Matches
+  - name: Chat
+  - name: Appointments
+  - name: Safety
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/signup:
+    post:
+      tags: [Auth]
+      operationId: signUp
+      summary: 보호자 계정 생성
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+            examples:
+              individual:
+                value:
+                  email: yuna@example.com
+                  password: StrongPass123!
+                  profileType: individual
+                  gender: female
+                  identityVisibility: public
+              couple:
+                value:
+                  email: couple@example.com
+                  password: StrongPass123!
+                  profileType: couple
+                  identityVisibility: private
+              family:
+                value:
+                  email: family@example.com
+                  password: StrongPass123!
+                  profileType: family
+                  identityVisibility: public
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "201":
+          description: 계정과 토큰 생성 완료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+              example:
+                accessToken: eyJhbGciOiJIUzI1NiJ9.access.signature
+                refreshToken: eyJhbGciOiJIUzI1NiJ9.refresh.signature
+                tokenType: Bearer
+                expiresIn: 900
+                refreshExpiresIn: 2592000
+                guardian:
+                  id: 1c29bceb-6e56-4c55-a62d-f0b6a0612b59
+                  email: yuna@example.com
+                  profileType: individual
+                  gender: female
+                  identityVisibility: public
+                  status: active
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/EmailAlreadyExistsError"
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: 이메일과 비밀번호로 로그인
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: yuna@example.com
+              password: StrongPass123!
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/InvalidCredentialsError"
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshTokens
+      summary: 토큰 갱신
+      description: |
+        유효한 refresh token을 한 번 사용하면 기존 token을 폐기하고 새 access/refresh token 쌍을 발급한다.
+        만료·폐기·재사용된 refresh token은 `AUTH_REFRESH_INVALID`를 반환한다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+            example:
+              refreshToken: eyJhbGciOiJIUzI1NiJ9.refresh.signature
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 토큰 회전 완료
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+              example:
+                accessToken: eyJhbGciOiJIUzI1NiJ9.new-access.signature
+                refreshToken: eyJhbGciOiJIUzI1NiJ9.new-refresh.signature
+                tokenType: Bearer
+                expiresIn: 900
+                refreshExpiresIn: 2592000
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/RefreshTokenError"
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: refresh token 폐기
+      description: 이미 폐기된 token으로 재요청해도 성공하는 멱등 연산이다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+            example:
+              refreshToken: eyJhbGciOiJIUzI1NiJ9.refresh.signature
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "204":
+          description: 로그아웃 완료
+        "400":
+          $ref: "#/components/responses/ValidationError"
+  /api/guardians/me:
+    get:
+      tags: [Guardians]
+      operationId: getCurrentGuardian
+      summary: 현재 보호자 조회
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 현재 보호자
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guardian"
+              example:
+                id: 1c29bceb-6e56-4c55-a62d-f0b6a0612b59
+                email: yuna@example.com
+                profileType: individual
+                gender: female
+                identityVisibility: public
+                status: active
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+    patch:
+      tags: [Guardians]
+      operationId: updateCurrentGuardian
+      summary: 보호자 유형과 공개 설정 수정
+      description: |
+        `profileType=individual`이면 `gender`가 필수이고 `couple` 또는 `family`이면 `gender`가 금지된다.
+        비공개를 원하는 보호자는 `identityVisibility=private`을 사용한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuardianUpdateRequest"
+            example:
+              profileType: couple
+              identityVisibility: private
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 수정된 보호자
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Guardian"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /api/dogs:
+    post:
+      tags: [Dogs]
+      operationId: createDog
+      summary: 반려견 프로필과 초기 사진 생성
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [profile, photo]
+              properties:
+                profile:
+                  $ref: "#/components/schemas/DogProfileInput"
+                photo:
+                  $ref: "#/components/schemas/DogPhoto"
+            encoding:
+              profile:
+                contentType: application/json
+              photo:
+                contentType: image/jpeg, image/png, image/webp
+            example:
+              profile:
+                name: 보리
+                breed: mixed_breed
+                age: 4
+                sex: female
+                weightKg: 8.4
+                sizeGroup: small
+                neutered: true
+                primaryActivityArea: 서울특별시 마포구 연남동
+                approximateLocation:
+                  latitude: 37.56
+                  longitude: 126.92
+                availableTimeSlots:
+                  - dayOfWeek: saturday
+                    startTime: "09:00"
+                    endTime: "11:00"
+                vaccinated: true
+                animalRegistered: true
+                sociability: high
+                aggressionLevel: none
+                preferredWalkIntensity: moderate
+                unfamiliarDogReaction: calm
+                selfIntroduction: 천천히 인사하고 함께 걷는 것을 좋아해요.
+              photo: (binary JPEG)
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaTypeError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "201":
+          description: 생성된 반려견
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+    get:
+      tags: [Dogs]
+      operationId: listMyDogs
+      summary: 내 반려견 목록
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 내 반려견 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 100
+                    items:
+                      $ref: "#/components/schemas/Dog"
+              example:
+                items:
+                  - id: 70f7bb4f-d399-469f-b5a5-31b229ec4500
+                    name: 보리
+                    photoUrl: https://cdn.example.com/private/bori.jpg?expires=...
+                    breed: mixed_breed
+                    age: 4
+                    sex: female
+                    weightKg: 8.4
+                    sizeGroup: small
+                    neutered: true
+                    primaryActivityArea: 서울특별시 마포구 연남동
+                    availableTimeSlots:
+                      - dayOfWeek: saturday
+                        startTime: "09:00"
+                        endTime: "11:00"
+                    vaccinated: true
+                    animalRegistered: true
+                    sociability: high
+                    aggressionLevel: none
+                    preferredWalkIntensity: moderate
+                    unfamiliarDogReaction: calm
+                    selfIntroduction: 천천히 인사하고 함께 걷는 것을 좋아해요.
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /api/dogs/{dogId}:
+    parameters:
+      - $ref: "#/components/parameters/DogId"
+    get:
+      tags: [Dogs]
+      operationId: getMyDog
+      summary: 내 반려견 단건 조회
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 내 반려견
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+    patch:
+      tags: [Dogs]
+      operationId: updateMyDog
+      summary: 내 반려견 프로필 수정
+      description: 사진은 이 endpoint가 아니라 `/photos`에서 교체한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DogProfileInput"
+            example:
+              name: 보리
+              breed: mixed_breed
+              age: 4
+              sex: female
+              weightKg: 8.8
+              sizeGroup: small
+              neutered: true
+              primaryActivityArea: 서울특별시 마포구 연남동
+              approximateLocation:
+                latitude: 37.56
+                longitude: 126.92
+              availableTimeSlots:
+                - dayOfWeek: sunday
+                  startTime: "10:00"
+                  endTime: "12:00"
+              vaccinated: true
+              animalRegistered: true
+              sociability: high
+              aggressionLevel: none
+              preferredWalkIntensity: active
+              unfamiliarDogReaction: calm
+              selfIntroduction: 주말 오전 산책 친구를 찾아요.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 수정된 반려견
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /api/dogs/{dogId}/photos:
+    parameters:
+      - $ref: "#/components/parameters/DogId"
+    post:
+      tags: [Dogs]
+      operationId: replaceDogPhoto
+      summary: 반려견 사진 교체
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  $ref: "#/components/schemas/DogPhoto"
+            encoding:
+              photo:
+                contentType: image/jpeg, image/png, image/webp
+            example:
+              photo: (binary JPEG)
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLargeError"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaTypeError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 사진이 교체된 반려견
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /api/dogs/{dogId}/recommendations:
+    parameters:
+      - $ref: "#/components/parameters/DogId"
+    get:
+      tags: [Recommendations]
+      operationId: listDogRecommendations
+      summary: 요청 시점 추천 목록 계산
+      parameters:
+        - $ref: "#/components/parameters/SizeGroups"
+        - $ref: "#/components/parameters/WalkIntensities"
+        - $ref: "#/components/parameters/SociabilityLevels"
+        - $ref: "#/components/parameters/AvailableDays"
+        - $ref: "#/components/parameters/MaxDistanceKm"
+        - $ref: "#/components/parameters/GuardianIdentities"
+      description: |
+        안전·차단·신고 제외, 공개 상호성, 명시된 선호 조건, 궁합 정렬 순서로 처리한다.
+        공개 요청자는 공개 후보만 받고 guardianIdentities를 사용할 수 있다.
+        비공개 요청자는 공개·비공개 후보를 받을 수 있지만 모든 guardianIdentity가 null이며,
+        guardianIdentities를 보내면 `IDENTITY_DISCLOSURE_REQUIRED`가 반환된다.
+        정확한 좌표는 반환하지 않는다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 추천 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationList"
+              example:
+                items:
+                  - dog:
+                      id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                      name: 구름
+                      photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
+                      breed: poodle
+                      age: 3
+                      sex: male
+                      weightKg: 7.1
+                      sizeGroup: small
+                      neutered: true
+                      primaryActivityArea: 서울특별시 마포구 망원동
+                      availableTimeSlots:
+                        - dayOfWeek: saturday
+                          startTime: "10:00"
+                          endTime: "12:00"
+                      vaccinated: true
+                      animalRegistered: true
+                      sociability: high
+                      aggressionLevel: none
+                      preferredWalkIntensity: moderate
+                      unfamiliarDogReaction: calm
+                      selfIntroduction: 친구와 나란히 걷는 걸 좋아해요.
+                    guardianIdentity: male
+                    compatibilityGrade: excellent
+                    reasons:
+                      - 산책 강도와 사회성이 잘 맞아요.
+                      - 토요일 가능 시간이 겹쳐요.
+                    approximateDistanceKm: 1.8
+                appliedFilters:
+                  sizeGroups: [small]
+                  walkIntensities: [moderate]
+                  sociabilityLevels: []
+                  availableDays: [saturday]
+                  maxDistanceKm: 5
+                  guardianIdentities: [male]
+        "400":
+          $ref: "#/components/responses/RecommendationValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /api/dogs/{dogId}/likes:
+    parameters:
+      - $ref: "#/components/parameters/DogId"
+    post:
+      tags: [Likes]
+      operationId: createDogInteraction
+      summary: 추천 반려견에 like 또는 pass
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DogInteractionRequest"
+            examples:
+              like:
+                value:
+                  targetDogId: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                  status: liked
+              pass:
+                value:
+                  targetDogId: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                  status: passed
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: interaction 저장 결과. 상호 like이면 match가 생성된다.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DogInteractionResponse"
+              example:
+                status: liked
+                matched: true
+                match:
+                  id: 45dd6b51-5924-4b2d-aab8-697f09a12bbb
+                  status: active
+                  myDog:
+                    id: 70f7bb4f-d399-469f-b5a5-31b229ec4500
+                    name: 보리
+                    photoUrl: https://cdn.example.com/private/bori.jpg?expires=...
+                  otherDog:
+                    id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                    name: 구름
+                    photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
+                  createdAt: "2026-07-23T10:15:30+09:00"
+                  closedAt: null
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /api/matches:
+    get:
+      tags: [Matches]
+      operationId: listActiveMatches
+      summary: 최근 메시지와 unreadCount가 포함된 활성 매칭 목록
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 활성 매칭 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 500
+                    items:
+                      $ref: "#/components/schemas/MatchListItem"
+              example:
+                items:
+                  - id: 45dd6b51-5924-4b2d-aab8-697f09a12bbb
+                    status: active
+                    myDog:
+                      id: 70f7bb4f-d399-469f-b5a5-31b229ec4500
+                      name: 보리
+                      photoUrl: https://cdn.example.com/private/bori.jpg?expires=...
+                    otherDog:
+                      id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                      name: 구름
+                      photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
+                    latestMessagePreview: 토요일 오전은 어떠세요?
+                    latestMessageAt: "2026-07-23T11:02:00+09:00"
+                    unreadCount: 2
+                    createdAt: "2026-07-22T19:30:00+09:00"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+  /api/matches/{matchId}:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    get:
+      tags: [Matches]
+      operationId: getMatch
+      summary: 매칭 상세 조회
+      description: |
+        매칭 목록 선택 후 화면 전환 자체는 즉시 수행한다. 채팅 화면은 이 API로 헤더의 반려견 정보와
+        현재 match 상태를 최신화하며, 딥 링크·앱 복원·재연결로 목록 데이터 없이 진입할 때도 사용한다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 매칭 상세
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/MatchUnavailableError"
+  /api/matches/{matchId}/close:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Matches]
+      operationId: closeMatch
+      summary: 차단·신고 없이 매칭 종료
+      description: 이미 closed인 match를 다시 닫아도 같은 결과를 반환한다. 재개는 지원하지 않는다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 종료된 매칭
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchDetail"
+              example:
+                id: 45dd6b51-5924-4b2d-aab8-697f09a12bbb
+                status: closed
+                myDog:
+                  id: 70f7bb4f-d399-469f-b5a5-31b229ec4500
+                  name: 보리
+                  photoUrl: https://cdn.example.com/private/bori.jpg?expires=...
+                otherDog:
+                  id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                  name: 구름
+                  photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
+                createdAt: "2026-07-22T19:30:00+09:00"
+                closedAt: "2026-07-23T12:00:00+09:00"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/ConflictError"
+  /api/matches/{matchId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+      - $ref: "#/components/parameters/BeforeCursor"
+      - $ref: "#/components/parameters/MessageLimit"
+    get:
+      tags: [Chat]
+      operationId: listMessages
+      summary: 메시지를 cursor 기준 역방향 조회
+      description: items는 오래된 메시지부터 최신 메시지 순으로 반환한다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 메시지 페이지
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagePage"
+              example:
+                items:
+                  - id: 6ffb927d-7958-493f-92e7-d14bcd30edbc
+                    matchId: 45dd6b51-5924-4b2d-aab8-697f09a12bbb
+                    senderGuardianId: 1c29bceb-6e56-4c55-a62d-f0b6a0612b59
+                    clientMessageId: 641127ff-07b4-4868-98b0-eb9a75d9d73c
+                    messageType: text
+                    body: 토요일 오전은 어떠세요?
+                    appointmentProposal: null
+                    createdAt: "2026-07-23T11:02:00+09:00"
+                nextBefore: eyJjcmVhdGVkQXQiOiIyMDI2...
+                hasMore: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/MatchUnavailableError"
+  /api/matches/{matchId}/read:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Chat]
+      operationId: updateReadPosition
+      summary: 마지막 읽은 메시지 갱신
+      description: 현재 match의 기존 위치보다 뒤의 메시지로만 전진하며 같은 위치 재요청은 멱등이다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReadRequest"
+            example:
+              lastReadMessageId: 6ffb927d-7958-493f-92e7-d14bcd30edbc
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 갱신된 읽음 위치
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadState"
+              example:
+                matchId: 45dd6b51-5924-4b2d-aab8-697f09a12bbb
+                lastReadMessageId: 6ffb927d-7958-493f-92e7-d14bcd30edbc
+                updatedAt: "2026-07-23T11:03:10+09:00"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/MatchUnavailableError"
+  /api/matches/{matchId}/appointment-proposals:
+    parameters:
+      - $ref: "#/components/parameters/MatchId"
+    post:
+      tags: [Appointments]
+      operationId: createAppointmentProposal
+      summary: 약속 제안
+      description: date, startTime, endTime은 Asia/Seoul 기준이며 startTime은 endTime보다 빨라야 한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentProposalRequest"
+            example:
+              date: "2026-07-25"
+              startTime: "10:00"
+              endTime: "11:30"
+              placeText: 연남동 경의선숲길 입구
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "201":
+          description: 생성된 약속과 채팅 카드
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentProposal"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/MatchUnavailableError"
+  /api/appointment-proposals/{proposalId}/accept:
+    parameters:
+      - $ref: "#/components/parameters/ProposalId"
+    post:
+      tags: [Appointments]
+      operationId: acceptAppointmentProposal
+      summary: 약속 제안 수락
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 수락된 약속
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentProposal"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/AppointmentStateConflict"
+  /api/appointment-proposals/{proposalId}/reject:
+    parameters:
+      - $ref: "#/components/parameters/ProposalId"
+    post:
+      tags: [Appointments]
+      operationId: rejectAppointmentProposal
+      summary: 약속 제안 거절
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 거절된 약속
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentProposal"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/AppointmentStateConflict"
+  /api/appointment-proposals/{proposalId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/ProposalId"
+    post:
+      tags: [Appointments]
+      operationId: cancelAppointmentProposal
+      summary: 수락된 약속 취소
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentCancelRequest"
+            example:
+              reason: 반려견 컨디션이 좋지 않아 취소합니다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 취소된 약속
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentProposal"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/AppointmentStateConflict"
+  /api/appointment-proposals/{proposalId}/review:
+    parameters:
+      - $ref: "#/components/parameters/ProposalId"
+    post:
+      tags: [Appointments]
+      operationId: reviewAppointment
+      summary: 종료된 수락 약속의 상대 보호자 비공개 평가
+      description: |
+        Asia/Seoul 기준 종료 시각이 지난 accepted 약속만 평가할 수 있고 참여자별 한 번만 가능하다.
+        응답에는 점수, 태그, 의견 또는 집계 점수를 포함하지 않는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentReviewRequest"
+            example:
+              score: 5
+              tags: [on_time, respectful_communication, safe_handling]
+              comment: 약속 시간을 잘 지키고 반려견을 세심하게 살펴주셨어요.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "201":
+          description: 평가 제출 상태만 반환
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppointmentReviewReceipt"
+              example:
+                proposalId: cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6
+                reviewSubmitted: true
+                submittedAt: "2026-07-25T12:10:00+09:00"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+        "409":
+          $ref: "#/components/responses/AppointmentStateConflict"
+  /api/guardians/{guardianId}/block:
+    parameters:
+      - $ref: "#/components/parameters/GuardianId"
+    post:
+      tags: [Safety]
+      operationId: blockGuardian
+      summary: 보호자 차단
+      description: 이후 추천과 관련 match/chat 상호작용에서 제외하며 같은 대상 재요청은 멱등이다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "200":
+          description: 차단 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockResponse"
+              example:
+                guardianId: 51c9f756-32b0-4181-8879-2f1f8d2d0ff3
+                blocked: true
+                createdAt: "2026-07-23T12:30:00+09:00"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+  /api/guardians/{guardianId}/reports:
+    parameters:
+      - $ref: "#/components/parameters/GuardianId"
+    post:
+      tags: [Safety]
+      operationId: reportGuardian
+      summary: 보호자 신고
+      description: 사용자는 정해진 신고 사유를 선택하고 필요한 경우 부연 comment를 작성한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+            example:
+              reason: threatening_behavior
+              comment: 채팅에서 반복적으로 위협적인 표현을 사용했습니다.
+      responses:
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "406":
+          $ref: "#/components/responses/NotAcceptableError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "201":
+          description: 신고 접수 결과
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportResponse"
+              example:
+                reportId: 7bf86f1f-a0c6-45eb-8317-a5721022f884
+                guardianId: 51c9f756-32b0-4181-8879-2f1f8d2d0ff3
+                submittedAt: "2026-07-23T12:35:00+09:00"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "404":
+          $ref: "#/components/responses/NotFoundError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Authorization 헤더에 `Bearer {accessToken}`을 전달한다.
+  parameters:
+    DogId:
+      name: dogId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProposalId:
+      name: proposalId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    GuardianId:
+      name: guardianId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SizeGroups:
+      name: sizeGroups
+      in: query
+      required: false
+      description: 쉼표로 구분한 복수 선택. 생략하면 이 차원을 제한하지 않는다.
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 3
+        uniqueItems: true
+        items:
+          $ref: "#/components/schemas/SizeGroup"
+    WalkIntensities:
+      name: walkIntensities
+      in: query
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 3
+        uniqueItems: true
+        items:
+          $ref: "#/components/schemas/WalkIntensity"
+    SociabilityLevels:
+      name: sociabilityLevels
+      in: query
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 3
+        uniqueItems: true
+        items:
+          $ref: "#/components/schemas/Sociability"
+    AvailableDays:
+      name: availableDays
+      in: query
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 7
+        uniqueItems: true
+        items:
+          $ref: "#/components/schemas/DayOfWeek"
+    MaxDistanceKm:
+      name: maxDistanceKm
+      in: query
+      required: false
+      schema:
+        type: number
+        format: double
+        minimum: 0.5
+        maximum: 50
+        multipleOf: 0.1
+      example: 5
+    GuardianIdentities:
+      name: guardianIdentities
+      in: query
+      required: false
+      description: 공개 요청자만 사용할 수 있다.
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 4
+        uniqueItems: true
+        items:
+          $ref: "#/components/schemas/GuardianIdentity"
+    BeforeCursor:
+      name: before
+      in: query
+      required: false
+      description: 이전 응답의 nextBefore opaque cursor. 첫 페이지에서는 생략한다.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 512
+        pattern: "^[A-Za-z0-9_-]+={0,2}$"
+    MessageLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 30
+  schemas:
+    ProfileType:
+      type: string
+      enum: [individual, couple, family]
+    Gender:
+      type: string
+      enum: [female, male]
+    IdentityVisibility:
+      type: string
+      enum: [public, private]
+    GuardianStatus:
+      type: string
+      enum: [active, temporarily_restricted, withdrawn]
+    GuardianIdentity:
+      type: string
+      enum: [female, male, couple, family]
+      description: |
+        추천에 공개하는 파생 값이다. individual 보호자는 gender를 사용하고,
+        couple과 family 보호자는 각각 couple과 family를 사용한다.
+        identityVisibility가 private이면 이 값 대신 null을 반환한다.
+    BreedCode:
+      type: string
+      enum:
+        - mixed_breed
+        - maltese
+        - poodle
+        - pomeranian
+        - shih_tzu
+        - bichon_frise
+        - chihuahua
+        - yorkshire_terrier
+        - dachshund
+        - beagle
+        - french_bulldog
+        - welsh_corgi
+        - golden_retriever
+        - labrador_retriever
+        - jindo
+        - other
+      description: MVP에서 서버와 프론트가 공통으로 지원하는 견종 코드.
+    Guardian:
+      oneOf:
+        - $ref: "#/components/schemas/IndividualGuardian"
+        - $ref: "#/components/schemas/CoupleGuardian"
+        - $ref: "#/components/schemas/FamilyGuardian"
+      discriminator:
+        propertyName: profileType
+        mapping:
+          individual: "#/components/schemas/IndividualGuardian"
+          couple: "#/components/schemas/CoupleGuardian"
+          family: "#/components/schemas/FamilyGuardian"
+    IndividualGuardian:
+      type: object
+      additionalProperties: false
+      required: [id, email, profileType, gender, identityVisibility, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        profileType:
+          const: individual
+        gender:
+          $ref: "#/components/schemas/Gender"
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+        status:
+          $ref: "#/components/schemas/GuardianStatus"
+    CoupleGuardian:
+      type: object
+      additionalProperties: false
+      required: [id, email, profileType, identityVisibility, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        profileType:
+          const: couple
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+        status:
+          $ref: "#/components/schemas/GuardianStatus"
+    FamilyGuardian:
+      type: object
+      additionalProperties: false
+      required: [id, email, profileType, identityVisibility, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        profileType:
+          const: family
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+        status:
+          $ref: "#/components/schemas/GuardianStatus"
+    SignupRequest:
+      oneOf:
+        - $ref: "#/components/schemas/IndividualSignupRequest"
+        - $ref: "#/components/schemas/CoupleSignupRequest"
+        - $ref: "#/components/schemas/FamilySignupRequest"
+      discriminator:
+        propertyName: profileType
+    IndividualSignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, profileType, gender, identityVisibility]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          pattern: "^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,72}$"
+          writeOnly: true
+        profileType:
+          const: individual
+        gender:
+          $ref: "#/components/schemas/Gender"
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+    CoupleSignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, profileType, identityVisibility]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          pattern: "^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,72}$"
+          writeOnly: true
+        profileType:
+          const: couple
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+    FamilySignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, profileType, identityVisibility]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          pattern: "^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\\s]).{8,72}$"
+          writeOnly: true
+        profileType:
+          const: family
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+    GuardianUpdateRequest:
+      oneOf:
+        - $ref: "#/components/schemas/IndividualGuardianUpdateRequest"
+        - $ref: "#/components/schemas/CoupleGuardianUpdateRequest"
+        - $ref: "#/components/schemas/FamilyGuardianUpdateRequest"
+      discriminator:
+        propertyName: profileType
+    IndividualGuardianUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [profileType, gender, identityVisibility]
+      properties:
+        profileType:
+          const: individual
+        gender:
+          $ref: "#/components/schemas/Gender"
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+    CoupleGuardianUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [profileType, identityVisibility]
+      properties:
+        profileType:
+          const: couple
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+        gender:
+          not: {}
+    FamilyGuardianUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [profileType, identityVisibility]
+      properties:
+        profileType:
+          const: family
+        identityVisibility:
+          $ref: "#/components/schemas/IdentityVisibility"
+        gender:
+          not: {}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 72
+          writeOnly: true
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          minLength: 20
+          maxLength: 4096
+          writeOnly: true
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, refreshToken, tokenType, expiresIn, refreshExpiresIn]
+      properties:
+        accessToken:
+          type: string
+          minLength: 20
+          maxLength: 4096
+          readOnly: true
+        refreshToken:
+          type: string
+          minLength: 20
+          maxLength: 4096
+          readOnly: true
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          const: 900
+        refreshExpiresIn:
+          type: integer
+          const: 2592000
+    AuthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+        - refreshExpiresIn
+        - guardian
+      properties:
+        accessToken:
+          type: string
+          minLength: 20
+          maxLength: 4096
+          readOnly: true
+        refreshToken:
+          type: string
+          minLength: 20
+          maxLength: 4096
+          readOnly: true
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          const: 900
+        refreshExpiresIn:
+          type: integer
+          const: 2592000
+        guardian:
+          $ref: "#/components/schemas/Guardian"
+    SizeGroup:
+      type: string
+      enum: [small, medium, large]
+    DogSex:
+      type: string
+      enum: [female, male]
+    Sociability:
+      type: string
+      enum: [low, medium, high]
+    AggressionLevel:
+      type: string
+      enum: [none, low, medium, high]
+    WalkIntensity:
+      type: string
+      enum: [slow, moderate, active]
+    UnfamiliarDogReaction:
+      type: string
+      enum: [calm, cautious, excited, reactive]
+    DayOfWeek:
+      type: string
+      enum: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+    ApproximateLocationInput:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude]
+      description: |
+        서버는 입력 좌표를 약 1km 수준(소수점 둘째 자리)으로 낮춰 저장하고 원본 좌표를 보존하지 않는다.
+        이 객체는 소유자 쓰기 요청 전용이며 Dog 응답에는 포함되지 않는다.
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+    AvailableTimeSlot:
+      type: object
+      additionalProperties: false
+      required: [dayOfWeek, startTime, endTime]
+      description: startTime은 endTime보다 빨라야 한다.
+      properties:
+        dayOfWeek:
+          $ref: "#/components/schemas/DayOfWeek"
+        startTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          example: "09:00"
+        endTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          example: "11:00"
+    DogProfileInput:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - breed
+        - age
+        - sex
+        - weightKg
+        - sizeGroup
+        - neutered
+        - primaryActivityArea
+        - approximateLocation
+        - availableTimeSlots
+        - vaccinated
+        - animalRegistered
+        - sociability
+        - aggressionLevel
+        - preferredWalkIntensity
+        - unfamiliarDogReaction
+        - selfIntroduction
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+          pattern: ".*\\S.*"
+        breed:
+          $ref: "#/components/schemas/BreedCode"
+        age:
+          type: integer
+          minimum: 0
+          maximum: 30
+          description: 만 나이(년). 1살 미만은 0으로 전달한다.
+          example: 4
+        sex:
+          $ref: "#/components/schemas/DogSex"
+        weightKg:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          maximum: 100
+          multipleOf: 0.1
+        sizeGroup:
+          $ref: "#/components/schemas/SizeGroup"
+        neutered:
+          type: boolean
+        primaryActivityArea:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: ".*\\S.*"
+        approximateLocation:
+          $ref: "#/components/schemas/ApproximateLocationInput"
+        availableTimeSlots:
+          type: array
+          minItems: 1
+          maxItems: 21
+          items:
+            $ref: "#/components/schemas/AvailableTimeSlot"
+        vaccinated:
+          type: boolean
+        animalRegistered:
+          type: boolean
+        sociability:
+          $ref: "#/components/schemas/Sociability"
+        aggressionLevel:
+          $ref: "#/components/schemas/AggressionLevel"
+        preferredWalkIntensity:
+          $ref: "#/components/schemas/WalkIntensity"
+        unfamiliarDogReaction:
+          $ref: "#/components/schemas/UnfamiliarDogReaction"
+        selfIntroduction:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: ".*\\S.*"
+    DogPhoto:
+      type: string
+      format: binary
+      contentMediaType: image/jpeg
+      maxLength: 10485760
+      description: JPEG/PNG/WebP, 최대 10 MiB, 가로·세로 각 320~4096px.
+      x-allowed-media-types: [image/jpeg, image/png, image/webp]
+      x-image-dimensions:
+        minWidth: 320
+        minHeight: 320
+        maxWidth: 4096
+        maxHeight: 4096
+    Dog:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - photoUrl
+        - breed
+        - age
+        - sex
+        - weightKg
+        - sizeGroup
+        - neutered
+        - primaryActivityArea
+        - availableTimeSlots
+        - vaccinated
+        - animalRegistered
+        - sociability
+        - aggressionLevel
+        - preferredWalkIntensity
+        - unfamiliarDogReaction
+        - selfIntroduction
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        photoUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: 비공개 객체의 만료되는 조회 URL.
+        breed:
+          $ref: "#/components/schemas/BreedCode"
+        age:
+          type: integer
+          minimum: 0
+          maximum: 30
+        sex:
+          $ref: "#/components/schemas/DogSex"
+        weightKg:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+        sizeGroup:
+          $ref: "#/components/schemas/SizeGroup"
+        neutered:
+          type: boolean
+        primaryActivityArea:
+          type: string
+          minLength: 2
+          maxLength: 100
+        availableTimeSlots:
+          type: array
+          minItems: 1
+          maxItems: 21
+          items:
+            $ref: "#/components/schemas/AvailableTimeSlot"
+        vaccinated:
+          type: boolean
+        animalRegistered:
+          type: boolean
+        sociability:
+          $ref: "#/components/schemas/Sociability"
+        aggressionLevel:
+          $ref: "#/components/schemas/AggressionLevel"
+        preferredWalkIntensity:
+          $ref: "#/components/schemas/WalkIntensity"
+        unfamiliarDogReaction:
+          $ref: "#/components/schemas/UnfamiliarDogReaction"
+        selfIntroduction:
+          type: string
+          minLength: 1
+          maxLength: 500
+    PublicDog:
+      description: 추천·match에서 노출하는 반려견. 보호자 id와 좌표를 포함하지 않는다.
+      $ref: "#/components/schemas/Dog"
+    CompatibilityGrade:
+      type: string
+      enum: [excellent, good, check_conditions]
+    RecommendationItem:
+      type: object
+      additionalProperties: false
+      required:
+        - dog
+        - guardianIdentity
+        - compatibilityGrade
+        - reasons
+        - approximateDistanceKm
+      properties:
+        dog:
+          $ref: "#/components/schemas/PublicDog"
+        guardianIdentity:
+          oneOf:
+            - $ref: "#/components/schemas/GuardianIdentity"
+            - type: "null"
+          description: |
+            공개 상호성이 허용할 때만 공개 identity를 반환한다.
+            요청자가 private이면 모든 후보에서 null이다.
+        compatibilityGrade:
+          $ref: "#/components/schemas/CompatibilityGrade"
+        reasons:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        approximateDistanceKm:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 200
+          multipleOf: 0.1
+    AppliedRecommendationFilters:
+      type: object
+      additionalProperties: false
+      required:
+        - sizeGroups
+        - walkIntensities
+        - sociabilityLevels
+        - availableDays
+        - maxDistanceKm
+        - guardianIdentities
+      properties:
+        sizeGroups:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/SizeGroup"
+        walkIntensities:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/WalkIntensity"
+        sociabilityLevels:
+          type: array
+          maxItems: 3
+          items:
+            $ref: "#/components/schemas/Sociability"
+        availableDays:
+          type: array
+          maxItems: 7
+          items:
+            $ref: "#/components/schemas/DayOfWeek"
+        maxDistanceKm:
+          type: [number, "null"]
+          minimum: 0.5
+          maximum: 50
+        guardianIdentities:
+          type: array
+          maxItems: 4
+          items:
+            $ref: "#/components/schemas/GuardianIdentity"
+    RecommendationList:
+      type: object
+      additionalProperties: false
+      required: [items, appliedFilters]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/RecommendationItem"
+        appliedFilters:
+          $ref: "#/components/schemas/AppliedRecommendationFilters"
+    DogInteractionStatus:
+      type: string
+      enum: [liked, passed]
+    DogInteractionRequest:
+      type: object
+      additionalProperties: false
+      required: [targetDogId, status]
+      properties:
+        targetDogId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/DogInteractionStatus"
+    DogInteractionResponse:
+      type: object
+      additionalProperties: false
+      required: [status, matched, match]
+      properties:
+        status:
+          $ref: "#/components/schemas/DogInteractionStatus"
+        matched:
+          type: boolean
+        match:
+          oneOf:
+            - $ref: "#/components/schemas/MatchDetail"
+            - type: "null"
+    MatchStatus:
+      type: string
+      enum: [active, blocked, closed]
+    DogSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, photoUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+        photoUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+    MatchDetail:
+      type: object
+      additionalProperties: false
+      required: [id, status, myDog, otherDog, createdAt, closedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/MatchStatus"
+        myDog:
+          $ref: "#/components/schemas/DogSummary"
+        otherDog:
+          $ref: "#/components/schemas/DogSummary"
+        createdAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: [string, "null"]
+          format: date-time
+    MatchListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - status
+        - myDog
+        - otherDog
+        - latestMessagePreview
+        - latestMessageAt
+        - unreadCount
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          const: active
+        myDog:
+          $ref: "#/components/schemas/DogSummary"
+        otherDog:
+          $ref: "#/components/schemas/DogSummary"
+        latestMessagePreview:
+          type: [string, "null"]
+          maxLength: 100
+        latestMessageAt:
+          type: [string, "null"]
+          format: date-time
+        unreadCount:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        createdAt:
+          type: string
+          format: date-time
+    MessageType:
+      type: string
+      enum: [text, appointment_proposal]
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - matchId
+        - senderGuardianId
+        - clientMessageId
+        - messageType
+        - body
+        - appointmentProposal
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        senderGuardianId:
+          type: string
+          format: uuid
+        clientMessageId:
+          type: string
+          format: uuid
+        messageType:
+          $ref: "#/components/schemas/MessageType"
+        body:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 2000
+        appointmentProposal:
+          oneOf:
+            - $ref: "#/components/schemas/AppointmentProposal"
+            - type: "null"
+        createdAt:
+          type: string
+          format: date-time
+    MessagePage:
+      type: object
+      additionalProperties: false
+      required: [items, nextBefore, hasMore]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        nextBefore:
+          type: [string, "null"]
+          maxLength: 512
+        hasMore:
+          type: boolean
+    ReadRequest:
+      type: object
+      additionalProperties: false
+      required: [lastReadMessageId]
+      properties:
+        lastReadMessageId:
+          type: string
+          format: uuid
+    ReadState:
+      type: object
+      additionalProperties: false
+      required: [matchId, lastReadMessageId, updatedAt]
+      properties:
+        matchId:
+          type: string
+          format: uuid
+        lastReadMessageId:
+          type: string
+          format: uuid
+        updatedAt:
+          type: string
+          format: date-time
+    AppointmentStatus:
+      type: string
+      enum: [proposed, accepted, rejected, canceled]
+    AppointmentProposalRequest:
+      type: object
+      additionalProperties: false
+      required: [date, startTime, endTime, placeText]
+      properties:
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        endTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        placeText:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: ".*\\S.*"
+    AppointmentProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - matchId
+        - proposedByGuardianId
+        - date
+        - startTime
+        - endTime
+        - placeText
+        - status
+        - cancellationReason
+        - reviewEligible
+        - reviewSubmitted
+        - createdAt
+        - decidedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        matchId:
+          type: string
+          format: uuid
+        proposedByGuardianId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        startTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        endTime:
+          type: string
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+        placeText:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: "#/components/schemas/AppointmentStatus"
+        cancellationReason:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 500
+        reviewEligible:
+          type: boolean
+          description: 현재 인증 보호자 기준 파생 값.
+        reviewSubmitted:
+          type: boolean
+          description: 현재 인증 보호자 기준 파생 값.
+        createdAt:
+          type: string
+          format: date-time
+        decidedAt:
+          type: [string, "null"]
+          format: date-time
+    AppointmentCancelRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: ".*\\S.*"
+    ReviewTag:
+      type: string
+      enum:
+        - on_time
+        - respectful_communication
+        - safe_handling
+        - dog_profile_accurate
+        - would_meet_again
+    AppointmentReviewRequest:
+      type: object
+      additionalProperties: false
+      required: [score]
+      properties:
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        tags:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/ReviewTag"
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: ".*\\S.*"
+    AppointmentReviewReceipt:
+      type: object
+      additionalProperties: false
+      required: [proposalId, reviewSubmitted, submittedAt]
+      properties:
+        proposalId:
+          type: string
+          format: uuid
+        reviewSubmitted:
+          type: boolean
+          const: true
+        submittedAt:
+          type: string
+          format: date-time
+    BlockResponse:
+      type: object
+      additionalProperties: false
+      required: [guardianId, blocked, createdAt]
+      properties:
+        guardianId:
+          type: string
+          format: uuid
+        blocked:
+          type: boolean
+          const: true
+        createdAt:
+          type: string
+          format: date-time
+    ReportReason:
+      type: string
+      enum:
+        - inappropriate_language
+        - harassment
+        - threatening_behavior
+        - unsafe_dog_handling
+        - false_profile
+        - no_show
+        - other
+    ReportRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          $ref: "#/components/schemas/ReportReason"
+        comment:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: ".*\\S.*"
+    ReportResponse:
+      type: object
+      additionalProperties: false
+      required: [reportId, guardianId, submittedAt]
+      properties:
+        reportId:
+          type: string
+          format: uuid
+        guardianId:
+          type: string
+          format: uuid
+        submittedAt:
+          type: string
+          format: date-time
+    FieldError:
+      type: object
+      additionalProperties: false
+      required: [field, reason]
+      properties:
+        field:
+          type: string
+          minLength: 1
+          maxLength: 200
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_FAILED
+        - IDENTITY_DISCLOSURE_REQUIRED
+        - AUTH_TOKEN_EXPIRED
+        - AUTH_TOKEN_INVALID
+        - AUTH_INVALID_CREDENTIALS
+        - AUTH_REFRESH_INVALID
+        - FORBIDDEN
+        - ACCOUNT_RESTRICTED
+        - RESOURCE_NOT_FOUND
+        - EMAIL_ALREADY_EXISTS
+        - STATE_CONFLICT
+        - MATCH_CLOSED
+        - MATCH_BLOCKED
+        - APPOINTMENT_STATE_CONFLICT
+        - REVIEW_NOT_ELIGIBLE
+        - REVIEW_ALREADY_SUBMITTED
+        - PAYLOAD_TOO_LARGE
+        - UNSUPPORTED_MEDIA_TYPE
+        - METHOD_NOT_ALLOWED
+        - NOT_ACCEPTABLE
+        - INTERNAL_SERVER_ERROR
+      description: 앱이 오류별 동작을 결정할 때 사용하는 안정적인 기계 판독용 코드.
+    ProblemDetail:
+      type: object
+      additionalProperties: false
+      description: RFC 9457 Problem Details에 My Petmate 확장 필드를 추가한 REST 오류 응답.
+      required: [type, title, status, detail, instance, code, requestId]
+      properties:
+        type:
+          type: string
+          format: uri
+          maxLength: 200
+          description: 오류 종류의 안정적인 URI 식별자. 같은 code는 같은 type을 사용한다.
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 오류 종류를 요약하는 짧고 안정적인 제목.
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: 실제 HTTP 응답 status와 동일한 값.
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: 이번 요청이 실패한 이유를 설명하는 사용자 표시 가능 메시지.
+        instance:
+          type: string
+          format: uri-reference
+          maxLength: 2048
+          description: 오류가 발생한 요청 경로. query의 민감한 값은 포함하지 않는다.
+        code:
+          $ref: "#/components/schemas/ErrorCode"
+        fieldErrors:
+          type: array
+          maxItems: 100
+          description: 입력 validation 오류일 때만 포함하는 필드별 오류 목록.
+          items:
+            $ref: "#/components/schemas/FieldError"
+        requestId:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 서버 로그와 사용자 문의를 연결하는 요청 추적 식별자.
+  responses:
+    ValidationError:
+      description: 요청 body, query 또는 path 입력값 validation 실패
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:validation-failed
+            title: Validation failed
+            status: 400
+            detail: 요청값을 확인해 주세요.
+            instance: /api/guardians/me
+            code: VALIDATION_FAILED
+            fieldErrors:
+              - field: gender
+                reason: profileType이 individual이면 필수입니다.
+            requestId: req-01J35T3QJ4GZ
+    RecommendationValidationError:
+      description: 추천 query validation 또는 공개 상호성 규칙 위반
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            fieldValidation:
+              value:
+                type: urn:my-petmate:problem:validation-failed
+                title: Validation failed
+                status: 400
+                detail: 추천 필터 값을 확인해 주세요.
+                instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
+                code: VALIDATION_FAILED
+                fieldErrors:
+                  - field: maxDistanceKm
+                    reason: 0.5 이상 50 이하이어야 합니다.
+                requestId: req-01J35T3QJ4GY
+            identityDisclosure:
+              value:
+                type: urn:my-petmate:problem:identity-disclosure-required
+                title: Identity disclosure required
+                status: 400
+                detail: 보호자 정보 필터를 사용하려면 본인 정보도 공개해야 합니다.
+                instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
+                code: IDENTITY_DISCLOSURE_REQUIRED
+                fieldErrors:
+                  - field: guardianIdentities
+                    reason: 비공개 보호자는 사용할 수 없습니다.
+                requestId: req-01J35T3QJ4H0
+    AuthenticationError:
+      description: access token 누락, 오류 또는 만료
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            expired:
+              value:
+                type: urn:my-petmate:problem:auth-token-expired
+                title: Access token expired
+                status: 401
+                detail: access token이 만료되었습니다.
+                instance: /api/guardians/me
+                code: AUTH_TOKEN_EXPIRED
+                requestId: req-01J35T3QJ4H1
+            invalid:
+              value:
+                type: urn:my-petmate:problem:auth-token-invalid
+                title: Invalid access token
+                status: 401
+                detail: 유효한 access token이 필요합니다.
+                instance: /api/guardians/me
+                code: AUTH_TOKEN_INVALID
+                requestId: req-01J35T3QJ4H2
+    InvalidCredentialsError:
+      description: 로그인 자격 증명 오류
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:invalid-credentials
+            title: Invalid credentials
+            status: 401
+            detail: 이메일 또는 비밀번호가 올바르지 않습니다.
+            instance: /api/auth/login
+            code: AUTH_INVALID_CREDENTIALS
+            requestId: req-01J35T3QJ4H3
+    RefreshTokenError:
+      description: refresh token 만료, 폐기, 오류 또는 재사용
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:refresh-token-invalid
+            title: Invalid refresh token
+            status: 401
+            detail: refresh token이 만료되었거나 유효하지 않습니다.
+            instance: /api/auth/refresh
+            code: AUTH_REFRESH_INVALID
+            requestId: req-01J35T3QJ4H4
+    PermissionError:
+      description: 인증됐지만 리소스 또는 기능에 대한 권한 없음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            forbidden:
+              value:
+                type: urn:my-petmate:problem:forbidden
+                title: Forbidden
+                status: 403
+                detail: 이 작업을 수행할 권한이 없습니다.
+                instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
+                code: FORBIDDEN
+                requestId: req-01J35T3QJ4H5
+            accountRestricted:
+              value:
+                type: urn:my-petmate:problem:account-restricted
+                title: Account restricted
+                status: 403
+                detail: 현재 계정은 추천 또는 채팅을 사용할 수 없습니다.
+                instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
+                code: ACCOUNT_RESTRICTED
+                requestId: req-01J35T3QJ4H5A
+    NotFoundError:
+      description: 리소스 없음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:resource-not-found
+            title: Resource not found
+            status: 404
+            detail: 요청한 리소스를 찾을 수 없습니다.
+            instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
+            code: RESOURCE_NOT_FOUND
+            requestId: req-01J35T3QJ4H6
+    EmailAlreadyExistsError:
+      description: 이미 가입된 이메일과 충돌
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:email-already-exists
+            title: Email already exists
+            status: 409
+            detail: 이미 사용 중인 이메일입니다.
+            instance: /api/auth/signup
+            code: EMAIL_ALREADY_EXISTS
+            fieldErrors:
+              - field: email
+                reason: 이미 사용 중인 이메일입니다.
+            requestId: req-01J35T3QJ4H6A
+    ConflictError:
+      description: 현재 리소스 상태 또는 중복 요청과 충돌
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:state-conflict
+            title: State conflict
+            status: 409
+            detail: 현재 상태에서는 요청을 처리할 수 없습니다.
+            instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/likes
+            code: STATE_CONFLICT
+            requestId: req-01J35T3QJ4H7
+    MatchUnavailableError:
+      description: closed 또는 blocked match는 조회·전송·읽음 갱신할 수 없음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            closed:
+              value:
+                type: urn:my-petmate:problem:match-closed
+                title: Match closed
+                status: 409
+                detail: 종료된 매칭에서는 채팅을 사용할 수 없습니다.
+                instance: /api/matches/45dd6b51-5924-4b2d-aab8-697f09a12bbb/messages
+                code: MATCH_CLOSED
+                requestId: req-01J35T3QJ4H8
+            blocked:
+              value:
+                type: urn:my-petmate:problem:match-blocked
+                title: Match blocked
+                status: 409
+                detail: 차단된 매칭에서는 채팅을 사용할 수 없습니다.
+                instance: /api/matches/45dd6b51-5924-4b2d-aab8-697f09a12bbb/messages
+                code: MATCH_BLOCKED
+                requestId: req-01J35T3QJ4H9
+    AppointmentStateConflict:
+      description: 약속 상태, 종료 시각 또는 중복 평가 충돌
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            invalidState:
+              value:
+                type: urn:my-petmate:problem:appointment-state-conflict
+                title: Appointment state conflict
+                status: 409
+                detail: 현재 약속 상태에서는 요청을 처리할 수 없습니다.
+                instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/accept
+                code: APPOINTMENT_STATE_CONFLICT
+                requestId: req-01J35T3QJ4HA
+            reviewNotEligible:
+              value:
+                type: urn:my-petmate:problem:review-not-eligible
+                title: Review not eligible
+                status: 409
+                detail: 종료된 수락 약속만 평가할 수 있습니다.
+                instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/review
+                code: REVIEW_NOT_ELIGIBLE
+                requestId: req-01J35T3QJ4HB
+            reviewAlreadySubmitted:
+              value:
+                type: urn:my-petmate:problem:review-already-submitted
+                title: Review already submitted
+                status: 409
+                detail: 이 약속에 대한 평가를 이미 제출했습니다.
+                instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/review
+                code: REVIEW_ALREADY_SUBMITTED
+                requestId: req-01J35T3QJ4HC
+    PayloadTooLargeError:
+      description: 업로드 파일이 허용 크기를 초과함
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:payload-too-large
+            title: Payload too large
+            status: 413
+            detail: 사진은 최대 10 MiB까지 업로드할 수 있습니다.
+            instance: /api/dogs
+            code: PAYLOAD_TOO_LARGE
+            fieldErrors:
+              - field: photo
+                reason: 파일 크기가 10 MiB를 초과했습니다.
+            requestId: req-01J35T3QJ4HD
+    UnsupportedMediaTypeError:
+      description: 요청 Content-Type 또는 업로드 파일 media type을 지원하지 않음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:unsupported-media-type
+            title: Unsupported media type
+            status: 415
+            detail: 지원하지 않는 사진 형식입니다.
+            instance: /api/dogs
+            code: UNSUPPORTED_MEDIA_TYPE
+            fieldErrors:
+              - field: photo
+                reason: JPEG, PNG 또는 WebP 파일만 사용할 수 있습니다.
+            requestId: req-01J35T3QJ4HE
+    MethodNotAllowedError:
+      description: endpoint가 요청 HTTP method를 지원하지 않음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:method-not-allowed
+            title: Method not allowed
+            status: 405
+            detail: 이 endpoint에서 지원하지 않는 HTTP method입니다.
+            instance: /api/guardians/me
+            code: METHOD_NOT_ALLOWED
+            requestId: req-01J35T3QJ4HF
+    NotAcceptableError:
+      description: 요청 Accept 헤더에 맞는 응답 형식을 생성할 수 없음
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:not-acceptable
+            title: Not acceptable
+            status: 406
+            detail: 요청한 응답 media type을 지원하지 않습니다.
+            instance: /api/guardians/me
+            code: NOT_ACCEPTABLE
+            requestId: req-01J35T3QJ4HG
+    InternalServerError:
+      description: 예상하지 못한 서버 오류. 내부 예외 정보는 노출하지 않는다.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:internal-server-error
+            title: Internal server error
+            status: 500
+            detail: 요청을 처리하는 중 오류가 발생했습니다.
+            instance: /api/guardians/me
+            code: INTERNAL_SERVER_ERROR
+            requestId: req-01J35T3QJ4HH

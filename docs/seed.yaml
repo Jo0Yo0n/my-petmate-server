@@ -3,7 +3,7 @@ goal: >
   React Native/Expo app, enabling pet guardians to register one or more dogs,
   receive safety- and compatibility-based nearby walking/playmate
   recommendations, mutually like matches, chat in real time, and coordinate
-  walk/play appointments.
+  walk/play appointments with private post-appointment feedback.
 
 constraints:
   - Backend must use Spring Boot.
@@ -21,26 +21,45 @@ constraints:
   - MVP authentication must use email/password with JWT access token, refresh
     token, password hashing, token refresh, and logout.
   - Social login, phone verification, device/session management, push
-    notifications, map exploration, calendar integration, payment,
+    notifications, map exploration, calendar integration, payment, public
     reviews/ratings, group walks, admin web UI, and document proof review are
     out of scope for MVP.
   - Exact real-time location must not be shown to users; only approximate
     distance and primary activity area may be displayed.
+  - Guardian gender, couple status, or family status is displayed and filterable
+    only when the guardian explicitly sets identity visibility to public.
+  - >
+    Identity disclosure is reciprocal for recommendations: a guardian who
+    publishes identity receives only candidates who also publish identity.
   - One guardian account may register multiple dogs, but recommendation, like,
     match, chat, and appointment flows operate on one selected dog pair at a
     time.
   - Matching recommendations are calculated on request, not precomputed by batch
     jobs.
+  - Recommendation preference filters are optional ranking inputs only; server
+    safety exclusions always run first and cannot be weakened by a client.
+  - Dog photos are uploaded through the API to a private S3 bucket, and clients
+    receive expiring read URLs rather than permanent public object URLs.
+  - A closed match cannot be reopened or used for chat in the MVP; closing a
+    match is distinct from blocking or reporting a guardian.
+  - Chat history uses cursor pagination, and WebSocket message sends use a
+    client-generated idempotency key with explicit success or error events.
+  - REST errors use RFC 9457 ProblemDetail with application/problem+json and
+    My Petmate extensions code, optional fieldErrors, and requestId.
 
 acceptance_criteria:
   - A guardian can sign up, log in, log out, refresh tokens, and access
     protected API/app screens only with valid JWT authentication.
+  - A guardian can register as an individual, couple, or family, provide gender
+    only for an individual account, and change whether that identity is public.
   - A guardian can create and edit dog profiles containing required safety and
-    compatibility fields, including dog identity, photo, breed/mix status, age,
+    compatibility fields, including dog identity, photo, breed, age,
     sex, weight/size, neuter status, activity area, available time slots,
     vaccination status, animal registration status, sociability, aggression
     level, preferred walk intensity, reaction to unfamiliar dogs, and
     self-introduction.
+  - A dog breed is selected from the server-supported breed list, where
+    mixed_breed is one normal option and no separate mixed-breed boolean exists.
   - The app shows a recommendation list and detail screen for the selected dog,
     excluding unsafe or clearly incompatible candidates and displaying
     compatibility grade plus human-readable reasons instead of numeric
@@ -49,12 +68,177 @@ acceptance_criteria:
     when both sides like each other for the relevant dog pair.
   - Matched guardians can use a WebSocket-based 1:1 chat room and exchange
     normal text messages plus appointment proposal cards.
-  - In a chat room, a guardian can propose an appointment with date, time slot,
-    and place text; the other guardian can accept or reject it; an accepted
-    appointment can later be canceled with a reason.
+  - In a chat room, a guardian can propose an appointment with date, start time,
+    end time, and place text; the other guardian can accept or reject it; an
+    accepted appointment can later be canceled with a reason.
+  - After an accepted appointment's end time, each participating guardian can
+    submit one private 1-to-5 review of the other guardian with optional tags and
+    comment; the review and aggregate score are not shown to the other user.
   - A guardian can block or report another guardian, and reported or blocked
-    users are excluded from relevant matching/chat interactions; accumulated or
-    severe reports can temporarily restrict matching/chat access.
+    users are excluded from relevant matching/chat interactions; accumulated
+    reports or server-classified high-risk report reasons can temporarily
+    restrict matching/chat access.
+  - A report uses one allowed reason and an optional comment; the reporting user
+    does not choose a severity.
+  - An authenticated guardian can restore the app session from a current-user
+    response containing guardian identity and account status.
+  - A guardian can upload an initial dog photo with profile creation and replace
+    the photo later; the app never needs to submit a public storage URL.
+  - A guardian can apply optional size, walk intensity, sociability, available
+    day, maximum-distance, and public guardian-identity filters to
+    recommendations without bypassing safety exclusions or exposing private
+    identity data.
+  - A public guardian receives only public-identity candidates and can use
+    guardian identity filters. A private guardian cannot use those filters and
+    sees all candidate guardian identities as private.
+  - A guardian can close an active match without blocking the other guardian,
+    and a closed match no longer permits message reads or sends.
+  - Chat history can be paged backward, duplicate WebSocket sends do not create
+    duplicate stored messages, and send success or failure is explicit.
+  - A match list exposes the latest message preview and unread message count,
+    and opening a chat can advance the guardian's read position.
+  - REST validation, authentication, authorization, not-found, conflict, upload,
+    and server errors conform to the shared ProblemDetail contract.
+
+api_contract_additions:
+  - name: current_guardian
+    method_and_path:
+      - GET /api/guardians/me
+      - PATCH /api/guardians/me
+    milestone: M1
+    purpose: >
+      Restore the authenticated guardian and let the owner change individual,
+      couple, or family presentation and its visibility.
+    response_fields:
+      - id
+      - email
+      - profileType
+      - gender
+      - identityVisibility
+      - status
+    rules:
+      - profileType is individual, couple, or family.
+      - gender is required for individual and must be absent for couple or family.
+      - identityVisibility is public or private.
+
+  - name: dog_photo_upload
+    method_and_path:
+      - POST /api/dogs
+      - POST /api/dogs/{dogId}/photos
+    milestone: M2
+    purpose: >
+      Create a dog with multipart profile JSON plus an initial photo, and replace
+      an owned dog's photo later without accepting a client-managed public URL.
+    rules:
+      - The create request uses multipart fields named profile and photo.
+      - The replacement request uses a multipart field named photo.
+      - The server validates ownership, media type, dimensions, and size.
+      - The response returns an expiring photo URL.
+
+  - name: recommendation_filters
+    method_and_path: GET /api/dogs/{dogId}/recommendations
+    milestone: M3
+    optional_query_parameters:
+      - sizeGroups
+      - walkIntensities
+      - sociabilityLevels
+      - availableDays
+      - maxDistanceKm
+      - guardianIdentities
+    rules:
+      - Safety and block/report exclusions run before preference filtering.
+      - Omitted parameters mean no preference restriction for that dimension.
+      - Invalid or unsupported values return a validation error.
+      - guardianIdentities accepts female, male, couple, and family.
+      - A public requester receives only candidates whose identity is public,
+        even when guardianIdentities is omitted.
+      - A public requester can use guardianIdentities to narrow that public
+        candidate pool.
+      - A private requester may receive public and private candidates, but every
+        guardianIdentity field is masked in the response.
+      - A private requester cannot use guardianIdentities; the API returns
+        IDENTITY_DISCLOSURE_REQUIRED.
+
+  - name: close_match
+    method_and_path: POST /api/matches/{matchId}/close
+    milestone: M4
+    purpose: Close an active match without blocking or reporting either guardian.
+    rules:
+      - Only a participating guardian can close the match.
+      - Closing an already closed match is idempotent.
+      - Closed matches reject future message reads and sends.
+
+  - name: reliable_chat
+    method_and_path:
+      - GET /api/matches/{matchId}/messages?before={cursor}&limit={limit}
+      - WS /ws
+    milestone: M5
+    purpose: Provide backward history pagination and idempotent message delivery.
+    websocket_contract:
+      client_send_fields: [matchId, clientMessageId, body]
+      server_event_types: [auth_ok, message_created, message_error]
+      idempotency_scope: [match_id, sender_guardian_id, client_message_id]
+
+  - name: unread_messages
+    method_and_path:
+      - GET /api/matches
+      - POST /api/matches/{matchId}/read
+    milestone: M5
+    purpose: Show latest-message context and advance a guardian's read position.
+    match_list_fields: [latestMessagePreview, latestMessageAt, unreadCount]
+    read_request_fields: [lastReadMessageId]
+
+  - name: appointment_review
+    method_and_path: POST /api/appointment-proposals/{proposalId}/review
+    milestone: M6
+    purpose: >
+      Let each participant privately evaluate the other guardian once after an
+      accepted appointment has ended.
+    request_fields: [score, tags, comment]
+    response_projection_fields: [reviewEligible, reviewSubmitted]
+    rules:
+      - Score is an integer from 1 through 5.
+      - Tags are optional and limited to on_time, respectful_communication,
+        safe_handling, dog_profile_accurate, and would_meet_again.
+      - Comment is optional and limited to 500 characters.
+      - The appointment must be accepted and its end time in Asia/Seoul must
+        have passed.
+      - Each guardian can review a proposal only once and only the other guardian.
+      - Raw reviews and aggregate scores are private in the MVP.
+
+api_error_contract:
+  standard: RFC 9457 Problem Details
+  media_type: application/problem+json
+  required_fields: [type, title, status, detail, instance, code, requestId]
+  optional_fields: [fieldErrors]
+  rules:
+    - The body status equals the HTTP response status.
+    - Apps branch on code, not on the human-readable detail.
+    - fieldErrors is present only when field-level validation details exist.
+    - instance contains the request path without sensitive query values.
+    - MVC and Spring Security errors use the same response shape.
+  error_codes:
+    - VALIDATION_FAILED
+    - IDENTITY_DISCLOSURE_REQUIRED
+    - AUTH_TOKEN_EXPIRED
+    - AUTH_TOKEN_INVALID
+    - AUTH_INVALID_CREDENTIALS
+    - AUTH_REFRESH_INVALID
+    - FORBIDDEN
+    - ACCOUNT_RESTRICTED
+    - RESOURCE_NOT_FOUND
+    - EMAIL_ALREADY_EXISTS
+    - STATE_CONFLICT
+    - MATCH_CLOSED
+    - MATCH_BLOCKED
+    - APPOINTMENT_STATE_CONFLICT
+    - REVIEW_NOT_ELIGIBLE
+    - REVIEW_ALREADY_SUBMITTED
+    - PAYLOAD_TOO_LARGE
+    - UNSUPPORTED_MEDIA_TYPE
+    - METHOD_NOT_ALLOWED
+    - NOT_ACCEPTABLE
+    - INTERNAL_SERVER_ERROR
 
 ontology_schema:
   name: MyPetmateMvp
@@ -72,9 +256,17 @@ ontology_schema:
         - name: password_hash
           type: string
           required: true
+        - name: profile_type
+          type: enum
+          values: [individual, couple, family]
+          required: true
         - name: gender
           type: enum
-          values: [female, male, non_binary, prefer_not_to_say, other]
+          values: [female, male]
+          required: false
+        - name: identity_visibility
+          type: enum
+          values: [public, private]
           required: true
         - name: status
           type: enum
@@ -92,17 +284,17 @@ ontology_schema:
         - name: name
           type: string
           required: true
-        - name: photo_url
+        - name: photo_object_key
           type: string
           required: true
         - name: breed
           type: string
           required: true
-        - name: is_mixed_breed
-          type: boolean
-          required: true
-        - name: birth_month_or_age
-          type: string
+          allowed_special_values: [mixed_breed]
+        - name: age
+          type: integer
+          minimum: 0
+          maximum: 30
           required: true
         - name: sex
           type: enum
@@ -161,6 +353,9 @@ ontology_schema:
         - name: candidate_dog_id
           type: uuid
           required: true
+        - name: candidate_photo_url
+          type: string
+          required: true
         - name: compatibility_grade
           type: enum
           values: [excellent, good, check_conditions]
@@ -171,6 +366,13 @@ ontology_schema:
         - name: approximate_distance_km
           type: number
           required: true
+        - name: applied_filters
+          type: object
+          required: false
+        - name: guardian_identity
+          type: enum
+          values: [female, male, couple, family]
+          required: false
 
     - name: Like
       fields:
@@ -200,6 +402,9 @@ ontology_schema:
           type: enum
           values: [active, blocked, closed]
           required: true
+        - name: closed_at
+          type: datetime
+          required: false
 
     - name: ChatMessage
       fields:
@@ -212,6 +417,9 @@ ontology_schema:
         - name: sender_guardian_id
           type: uuid
           required: true
+        - name: client_message_id
+          type: uuid
+          required: true
         - name: message_type
           type: enum
           values: [text, appointment_proposal]
@@ -219,6 +427,24 @@ ontology_schema:
         - name: body
           type: string
           required: false
+        - name: created_at
+          type: datetime
+          required: true
+
+    - name: MatchReadState
+      fields:
+        - name: match_id
+          type: uuid
+          required: true
+        - name: guardian_id
+          type: uuid
+          required: true
+        - name: last_read_message_id
+          type: uuid
+          required: false
+        - name: updated_at
+          type: datetime
+          required: true
 
     - name: AppointmentProposal
       fields:
@@ -234,8 +460,11 @@ ontology_schema:
         - name: date
           type: date
           required: true
-        - name: time_slot
-          type: string
+        - name: start_time
+          type: time
+          required: true
+        - name: end_time
+          type: time
           required: true
         - name: place_text
           type: string
@@ -247,6 +476,42 @@ ontology_schema:
         - name: cancellation_reason
           type: string
           required: false
+
+    - name: AppointmentReview
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: appointment_proposal_id
+          type: uuid
+          required: true
+        - name: reviewer_guardian_id
+          type: uuid
+          required: true
+        - name: target_guardian_id
+          type: uuid
+          required: true
+        - name: score
+          type: integer
+          minimum: 1
+          maximum: 5
+          required: true
+        - name: tags
+          type: array
+          item_values:
+            - on_time
+            - respectful_communication
+            - safe_handling
+            - dog_profile_accurate
+            - would_meet_again
+          required: false
+        - name: comment
+          type: string
+          max_length: 500
+          required: false
+        - name: created_at
+          type: datetime
+          required: true
 
     - name: SafetyAction
       fields:
@@ -264,11 +529,19 @@ ontology_schema:
           values: [block, report]
           required: true
         - name: reason
-          type: string
-          required: false
-        - name: severity
           type: enum
-          values: [normal, severe]
+          values:
+            - inappropriate_language
+            - harassment
+            - threatening_behavior
+            - unsafe_dog_handling
+            - false_profile
+            - no_show
+            - other
+          required: false
+        - name: comment
+          type: string
+          max_length: 1000
           required: false
 
 evaluation_principles:
@@ -280,12 +553,12 @@ evaluation_principles:
     description: Implement only the agreed MVP and avoid excluded features.
     weight: 0.9
   - name: appointment_validation
-    description: Success is measured by actual accepted appointment proposals,
-      not only matches.
+    description: Success is measured by actual accepted appointments and
+      completed private feedback, not only matches.
     weight: 0.9
   - name: privacy
-    description: Location exposure must stay approximate and never reveal exact
-      live location.
+    description: Location exposure must stay approximate, and private guardian
+      identity must never be exposed or inferred through filters.
     weight: 0.8
   - name: simplicity
     description: Prefer request-time recommendation and PostgreSQL-only
@@ -294,10 +567,14 @@ evaluation_principles:
 
 success_metrics:
   - profile_completion_rate
+  - recommendation_filter_usage_rate
   - recommendation_to_like_rate
   - mutual_match_rate
   - chat_start_rate
+  - unread_message_open_rate
+  - match_close_rate
   - appointment_acceptance_rate
+  - appointment_review_submission_rate
   - report_rate
   - block_rate
   - temporary_restriction_rate
@@ -310,7 +587,7 @@ exit_conditions:
   - name: core_flow_observed
     description: A test guardian can complete signup, dog profile creation,
       recommendation, mutual like, chat, appointment proposal, acceptance, and
-      cancellation.
+      post-appointment review.
     criteria: The full core flow is manually verified in the app against the
       Spring Boot API.
   - name: safety_flow_observed
@@ -323,7 +600,8 @@ exit_conditions:
     criteria: Required build, test, lint, and type checks exit successfully.
 
 metadata:
-  version: 1
+  version: 5
+  last_updated: "2026-07-27"
   generated_at: "2026-07-08T11:03:50Z"
   project: my-petmate
   ambiguity_score: 0.12
