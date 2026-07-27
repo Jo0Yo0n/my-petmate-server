@@ -20,6 +20,18 @@ info:
     aggregateReviewScoresReturned: false
   x-websocket-protocol: ./websocket-protocol.md
   x-error-response-contract: ./error-response.md
+  x-request-id-policy:
+    generatedBy: server
+    scope: every-http-request
+    format: req-{26-character-crockford-base32-ulid}
+    pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+    incomingRequestHeader: ignored
+    responseHeader: X-Request-Id
+    requestAttribute: requestId
+    mdcKey: requestId
+    securityOrder: before-spring-security
+    problemDetailField: requestId
+    cleanup: clear-mdc-in-finally
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -1111,6 +1123,15 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Authorization 헤더에 `Bearer {accessToken}`을 전달한다.
+  headers:
+    RequestId:
+      description: |
+        서버가 이 HTTP 요청을 위해 생성한 추적 식별자다. `req-`와 26자 Crockford
+        Base32 ULID로 구성되며, 오류 응답에서는 ProblemDetail의 `requestId`와 같다.
+      schema:
+        type: string
+        pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+      example: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
   parameters:
     DogId:
       name: dogId
@@ -2294,9 +2315,10 @@ components:
             $ref: "#/components/schemas/FieldError"
         requestId:
           type: string
-          minLength: 1
-          maxLength: 100
-          description: 서버 로그와 사용자 문의를 연결하는 요청 추적 식별자.
+          pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          description: |
+            서버가 요청마다 생성하며 서버 로그와 사용자 문의를 연결하는 추적 식별자.
+            같은 오류 응답의 `X-Request-Id` header와 반드시 같은 값이다.
   responses:
     ValidationError:
       description: 요청 body, query 또는 path 입력값 validation 실패
@@ -2314,7 +2336,7 @@ components:
             fieldErrors:
               - field: gender
                 reason: profileType이 individual이면 필수입니다.
-            requestId: req-01J35T3QJ4GZ
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     RecommendationValidationError:
       description: 추천 query validation 또는 공개 상호성 규칙 위반
       content:
@@ -2333,7 +2355,7 @@ components:
                 fieldErrors:
                   - field: maxDistanceKm
                     reason: 0.5 이상 50 이하이어야 합니다.
-                requestId: req-01J35T3QJ4GY
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             identityDisclosure:
               value:
                 type: urn:my-petmate:problem:identity-disclosure-required
@@ -2345,7 +2367,7 @@ components:
                 fieldErrors:
                   - field: guardianIdentities
                     reason: 비공개 보호자는 사용할 수 없습니다.
-                requestId: req-01J35T3QJ4H0
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     AuthenticationError:
       description: access token 누락, 오류 또는 만료
       content:
@@ -2361,7 +2383,7 @@ components:
                 detail: access token이 만료되었습니다.
                 instance: /api/guardians/me
                 code: AUTH_TOKEN_EXPIRED
-                requestId: req-01J35T3QJ4H1
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             invalid:
               value:
                 type: urn:my-petmate:problem:auth-token-invalid
@@ -2370,7 +2392,7 @@ components:
                 detail: 유효한 access token이 필요합니다.
                 instance: /api/guardians/me
                 code: AUTH_TOKEN_INVALID
-                requestId: req-01J35T3QJ4H2
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     InvalidCredentialsError:
       description: 로그인 자격 증명 오류
       content:
@@ -2384,7 +2406,7 @@ components:
             detail: 이메일 또는 비밀번호가 올바르지 않습니다.
             instance: /api/auth/login
             code: AUTH_INVALID_CREDENTIALS
-            requestId: req-01J35T3QJ4H3
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     RefreshTokenError:
       description: refresh token 만료, 폐기, 오류 또는 재사용
       content:
@@ -2398,7 +2420,7 @@ components:
             detail: refresh token이 만료되었거나 유효하지 않습니다.
             instance: /api/auth/refresh
             code: AUTH_REFRESH_INVALID
-            requestId: req-01J35T3QJ4H4
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     PermissionError:
       description: 인증됐지만 리소스 또는 기능에 대한 권한 없음
       content:
@@ -2414,7 +2436,7 @@ components:
                 detail: 이 작업을 수행할 권한이 없습니다.
                 instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
                 code: FORBIDDEN
-                requestId: req-01J35T3QJ4H5
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             accountRestricted:
               value:
                 type: urn:my-petmate:problem:account-restricted
@@ -2423,7 +2445,7 @@ components:
                 detail: 현재 계정은 추천 또는 채팅을 사용할 수 없습니다.
                 instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
                 code: ACCOUNT_RESTRICTED
-                requestId: req-01J35T3QJ4H5A
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     NotFoundError:
       description: 리소스 없음
       content:
@@ -2437,7 +2459,7 @@ components:
             detail: 요청한 리소스를 찾을 수 없습니다.
             instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
             code: RESOURCE_NOT_FOUND
-            requestId: req-01J35T3QJ4H6
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     EmailAlreadyExistsError:
       description: 이미 가입된 이메일과 충돌
       content:
@@ -2454,7 +2476,7 @@ components:
             fieldErrors:
               - field: email
                 reason: 이미 사용 중인 이메일입니다.
-            requestId: req-01J35T3QJ4H6A
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     ConflictError:
       description: 현재 리소스 상태 또는 중복 요청과 충돌
       content:
@@ -2468,7 +2490,7 @@ components:
             detail: 현재 상태에서는 요청을 처리할 수 없습니다.
             instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/likes
             code: STATE_CONFLICT
-            requestId: req-01J35T3QJ4H7
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     MatchUnavailableError:
       description: closed 또는 blocked match는 조회·전송·읽음 갱신할 수 없음
       content:
@@ -2484,7 +2506,7 @@ components:
                 detail: 종료된 매칭에서는 채팅을 사용할 수 없습니다.
                 instance: /api/matches/45dd6b51-5924-4b2d-aab8-697f09a12bbb/messages
                 code: MATCH_CLOSED
-                requestId: req-01J35T3QJ4H8
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             blocked:
               value:
                 type: urn:my-petmate:problem:match-blocked
@@ -2493,7 +2515,7 @@ components:
                 detail: 차단된 매칭에서는 채팅을 사용할 수 없습니다.
                 instance: /api/matches/45dd6b51-5924-4b2d-aab8-697f09a12bbb/messages
                 code: MATCH_BLOCKED
-                requestId: req-01J35T3QJ4H9
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     AppointmentStateConflict:
       description: 약속 상태, 종료 시각 또는 중복 평가 충돌
       content:
@@ -2509,7 +2531,7 @@ components:
                 detail: 현재 약속 상태에서는 요청을 처리할 수 없습니다.
                 instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/accept
                 code: APPOINTMENT_STATE_CONFLICT
-                requestId: req-01J35T3QJ4HA
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             reviewNotEligible:
               value:
                 type: urn:my-petmate:problem:review-not-eligible
@@ -2518,7 +2540,7 @@ components:
                 detail: 종료된 수락 약속만 평가할 수 있습니다.
                 instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/review
                 code: REVIEW_NOT_ELIGIBLE
-                requestId: req-01J35T3QJ4HB
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
             reviewAlreadySubmitted:
               value:
                 type: urn:my-petmate:problem:review-already-submitted
@@ -2527,7 +2549,7 @@ components:
                 detail: 이 약속에 대한 평가를 이미 제출했습니다.
                 instance: /api/appointment-proposals/cfc7ffb2-4684-42e6-aebc-f6888bfc5cc6/review
                 code: REVIEW_ALREADY_SUBMITTED
-                requestId: req-01J35T3QJ4HC
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     PayloadTooLargeError:
       description: 업로드 파일이 허용 크기를 초과함
       content:
@@ -2544,7 +2566,7 @@ components:
             fieldErrors:
               - field: photo
                 reason: 파일 크기가 10 MiB를 초과했습니다.
-            requestId: req-01J35T3QJ4HD
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     UnsupportedMediaTypeError:
       description: 요청 Content-Type 또는 업로드 파일 media type을 지원하지 않음
       content:
@@ -2561,7 +2583,7 @@ components:
             fieldErrors:
               - field: photo
                 reason: JPEG, PNG 또는 WebP 파일만 사용할 수 있습니다.
-            requestId: req-01J35T3QJ4HE
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     MethodNotAllowedError:
       description: endpoint가 요청 HTTP method를 지원하지 않음
       content:
@@ -2575,7 +2597,7 @@ components:
             detail: 이 endpoint에서 지원하지 않는 HTTP method입니다.
             instance: /api/guardians/me
             code: METHOD_NOT_ALLOWED
-            requestId: req-01J35T3QJ4HF
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     NotAcceptableError:
       description: 요청 Accept 헤더에 맞는 응답 형식을 생성할 수 없음
       content:
@@ -2589,7 +2611,7 @@ components:
             detail: 요청한 응답 media type을 지원하지 않습니다.
             instance: /api/guardians/me
             code: NOT_ACCEPTABLE
-            requestId: req-01J35T3QJ4HG
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     InternalServerError:
       description: 예상하지 못한 서버 오류. 내부 예외 정보는 노출하지 않는다.
       content:
@@ -2603,4 +2625,4 @@ components:
             detail: 요청을 처리하는 중 오류가 발생했습니다.
             instance: /api/guardians/me
             code: INTERNAL_SERVER_ERROR
-            requestId: req-01J35T3QJ4HH
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV

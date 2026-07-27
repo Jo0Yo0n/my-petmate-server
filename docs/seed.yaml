@@ -211,6 +211,18 @@ api_error_contract:
   media_type: application/problem+json
   required_fields: [type, title, status, detail, instance, code, requestId]
   optional_fields: [fieldErrors]
+  request_id:
+    generated_by: server
+    scope: every_http_request
+    format: req- followed by a 26-character Crockford Base32 ULID
+    pattern: '^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$'
+    incoming_x_request_id: ignored
+    response_header: X-Request-Id
+    request_attribute: requestId
+    mdc_key: requestId
+    filter_order: before_spring_security
+    problem_detail_must_match_header: true
+    mdc_cleanup: finally
   rules:
     - The body status equals the HTTP response status.
     - Apps branch on code, not on the human-readable detail.
@@ -600,7 +612,7 @@ exit_conditions:
     criteria: Required build, test, lint, and type checks exit successfully.
 
 metadata:
-  version: 5
+  version: 6
   last_updated: "2026-07-27"
   generated_at: "2026-07-08T11:03:50Z"
   project: my-petmate

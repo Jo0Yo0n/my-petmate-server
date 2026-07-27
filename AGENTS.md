@@ -7,6 +7,11 @@ Before changing code or build configuration or commit, you must read and follow
 Before starting milestone work, you must check the current milestone in
 `docs/backend-mvp-plan.md`.
 
+Before any M1 authentication, JWT, refresh-token, request-id, or error-handling
+work, you must read `docs/m1-auth-contract-checklist.md` completely together
+with the OpenAPI and error-response documents linked from it. Do not mark M1
+complete until every required checklist item and verification gate is satisfied.
+
 AI may:
 - ask clarifying questions
 - propose architecture alternatives

@@ -135,6 +135,8 @@ AI agent가 현재 마일스톤을 알아야 할 때는 이 섹션과 위 진행
 
 ### M1. 인증 기반
 
+강제 진입·완료 게이트: `docs/m1-auth-contract-checklist.md`
+
 구현 API:
 
 - `POST /api/auth/signup`
@@ -154,6 +156,8 @@ AI agent가 현재 마일스톤을 알아야 할 때는 이 섹션과 위 진행
 - 비밀번호는 hash로 저장하고 refresh token은 hash만 저장한다.
 - REST 오류는 `docs/openapi.yaml`과 `docs/error-response.md`의 RFC 9457 `ProblemDetail` 계약을 사용하고 `application/problem+json`으로 반환한다.
 - Spring MVC advice와 Spring Security의 `AuthenticationEntryPoint`·`AccessDeniedHandler`가 같은 `type`, `title`, `status`, `detail`, `instance`, `code`, 선택적 `fieldErrors`, `requestId` 구조를 사용한다.
+- 모든 HTTP 요청에 서버 생성 `req-` + ULID requestId를 부여하고 request attribute, MDC, `X-Request-Id` 응답 header, 오류 ProblemDetail에 같은 값을 사용한다.
+- requestId filter는 Spring Security보다 먼저 실행하고 요청 처리 후 MDC를 반드시 정리한다.
 
 완료 기준:
 
@@ -169,6 +173,8 @@ AI agent가 현재 마일스톤을 알아야 할 때는 이 섹션과 위 진행
 - signup/login/refresh/logout/me 조회·수정 정상 흐름과 잘못된 인증 정보 흐름 API 테스트.
 - 개인 계정 gender 필수와 여성·남성 enum 제한, 커플·가족 계정 gender 금지, 비공개 응답 마스킹 validation 테스트.
 - MVC validation 오류와 Security 401·403의 `application/problem+json`, body status, code, requestId 계약 테스트.
+- 정상·오류 응답의 `X-Request-Id`, ULID 형식, 요청별 유일성, Security filter 공유, MDC 정리 테스트.
+- `docs/m1-auth-contract-checklist.md`의 자동 검증과 완료 게이트 전체 확인.
 
 ### M2. 반려견 프로필
 

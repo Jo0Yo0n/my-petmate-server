@@ -49,6 +49,12 @@
 WebSocket event는 HTTP 응답이 아니므로 RFC 9457 `ProblemDetail` 전체를 사용하지 않는다. 다만 REST와 같은
 `code`, `detail`, 선택적 `fieldErrors`, `requestId` 의미를 유지한다.
 
+서버는 HTTP handshake의 requestId를 frame 처리에 재사용하지 않는다. 수신한 client frame을 처리할
+때마다 REST와 같은 `req-` + 26자 Crockford Base32 ULID 형식으로 새 requestId를 생성하고 MDC key
+`requestId`에 저장한다. 실패 시 `message_error`와 서버 로그에 같은 값을 사용하며 frame 처리가 끝나면
+`finally`에서 MDC를 제거한다. 이 값은 로그 상관관계용이며 메시지 멱등성은 아래
+`clientMessageId` 계약이 담당한다.
+
 ```json
 {
   "type": "message_error",
@@ -57,7 +63,7 @@ WebSocket event는 HTTP 응답이 아니므로 RFC 9457 `ProblemDetail` 전체�
   "error": {
     "code": "MATCH_CLOSED",
     "detail": "종료된 매칭에서는 메시지를 보낼 수 없습니다.",
-    "requestId": "req-01J35T3QJ4HD"
+    "requestId": "req-01ARZ3NDEKTSV4RRFFQ69G5FAV"
   }
 }
 ```

@@ -19,16 +19,33 @@ WebSocket 오류는 frame event이므로 `docs/websocket-protocol.md`의 `messag
 | `instance` | RFC 9457 | 예 | 오류가 발생한 요청 경로다. 비밀번호, token 및 민감한 query 값은 포함하지 않는다. | `/api/guardians/me` |
 | `code` | My Petmate 확장 | 예 | 앱이 refresh, 화면 이탈, 필터 안내 등 구체적인 동작을 결정하는 안정적인 enum이다. | `VALIDATION_FAILED` |
 | `fieldErrors` | My Petmate 확장 | 아니오 | 입력 validation 실패 시 필드별 오류를 표시한다. validation이 아니면 생략한다. | `[{"field":"gender","reason":"필수입니다."}]` |
-| `requestId` | My Petmate 확장 | 예 | 서버 로그와 사용자 문의를 연결하는 요청 추적 식별자다. | `req-01J35T3QJ4GZ` |
+| `requestId` | My Petmate 확장 | 예 | 서버 로그와 사용자 문의를 연결하는 서버 생성 요청 추적 식별자다. | `req-01ARZ3NDEKTSV4RRFFQ69G5FAV` |
 
 앱은 `detail` 문자열을 비교해서 분기하지 않는다. HTTP `status`로 인증·입력·권한·서버 오류의 큰
 범주를 판단하고, 구체적인 동작은 `code`로 결정한다.
+
+## requestId 생성과 전달
+
+- 모든 HTTP 요청마다 서버가 새 requestId를 하나 생성한다. 형식은 `req-`와 26자 Crockford Base32
+  ULID이며 정규식 `^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$`을 만족한다. 첫 문자를 `0`~`7`로
+  제한해 canonical ULID의 128비트 범위를 보장한다.
+- 클라이언트가 `X-Request-Id`를 보내더라도 서버는 그 값을 신뢰하거나 재사용하지 않는다.
+- 생성 filter는 Spring Security보다 먼저 실행한다. 따라서 MVC 오류뿐 아니라 Security의 401·403도
+  같은 requestId를 사용할 수 있다.
+- 같은 값을 request attribute와 MDC key `requestId`에 저장하고 모든 성공·오류 응답의
+  `X-Request-Id` header에 반환한다.
+- 오류 응답에서는 header의 `X-Request-Id`와 ProblemDetail의 `requestId`가 반드시 같아야 한다.
+- 요청 처리가 끝나면 `finally`에서 MDC 값을 제거해 thread가 재사용될 때 다른 요청의 ID가 섞이지
+  않게 한다.
+- requestId에는 사용자, token, 리소스 식별 정보를 넣지 않는다. requestId는 로그 상관관계용이며
+  인증 수단이나 요청 멱등성 키로 사용하지 않는다.
 
 ## 기본 예시
 
 ```http
 HTTP/1.1 400 Bad Request
 Content-Type: application/problem+json
+X-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 ```
 
 ```json
@@ -45,7 +62,7 @@ Content-Type: application/problem+json
       "reason": "profileType이 individual이면 필수입니다."
     }
   ],
-  "requestId": "req-01J35T3QJ4GZ"
+  "requestId": "req-01ARZ3NDEKTSV4RRFFQ69G5FAV"
 }
 ```
 
@@ -98,6 +115,8 @@ Content-Type: application/problem+json
   `VALIDATION_FAILED`로 변환하고 가능한 경우 `fieldErrors`를 채운다.
 - JWT 인증 실패는 Spring Security `AuthenticationEntryPoint`, 접근 거부는 `AccessDeniedHandler`에서
   동일한 `ProblemDetail`을 직렬화한다. Security filter 오류가 MVC advice와 다른 JSON을 반환하면 안 된다.
+- requestId 생성 filter는 Spring Security chain보다 먼저 적용하고 request attribute와 MDC를 설정한다.
+  응답 완료 여부와 관계없이 `finally`에서 MDC를 정리한다.
 - `spring.mvc.problemdetails.enabled=true`를 사용하더라도 `code`, `fieldErrors`, `requestId`와 프로젝트
   도메인 code는 별도 중앙 처리가 필요하다.
 - 내부 exception class, stack trace, SQL, token, 비밀번호, 정확한 위치는 `detail`이나 `fieldErrors`에
