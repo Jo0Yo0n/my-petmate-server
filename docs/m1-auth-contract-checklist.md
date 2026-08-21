@@ -2,8 +2,8 @@
 
 ## 사용 방법
 
-이 문서는 M1 인증 기반 구현의 강제 진입점과 완료 게이트다. 사람과 AI agent는 인증, JWT,
-refresh token, 현재 보호자, requestId 또는 오류 처리 작업을 시작하기 전에 이 파일을 끝까지 읽는다.
+이 문서는 M1 인증 기반 구현의 강제 진입점과 완료 게이트다. 사람과 AI agent는 인증, JWT, refresh token, 현재 보호자, requestId 또는 오류 처리
+작업을 시작하기 전에 이 파일을 끝까지 읽는다.
 
 계약 원본의 우선순위는 다음과 같다.
 
@@ -12,8 +12,86 @@ refresh token, 현재 보호자, requestId 또는 오류 처리 작업을 시작
 3. M1 범위와 완료 조건: `docs/backend-mvp-plan.md`
 4. 제품 제약과 인수 기준: `docs/seed.yaml`
 
-문서가 충돌하면 구현으로 해결하지 않는다. 먼저 문서를 같은 계약으로 수정하고 검증한 뒤 구현한다.
-아래 필수 항목과 검증 게이트가 모두 충족되기 전에는 M1을 `완료`로 변경하지 않는다.
+문서가 충돌하면 구현으로 해결하지 않는다. 먼저 문서를 같은 계약으로 수정하고 검증한 뒤 구현한다. 아래 필수 항목과 검증 게이트가 모두 충족되기 전에는 M1을 `완료`로 변경하지
+않는다.
+
+#### M1 구현 순서
+
+- Guardian·RefreshToken Flyway migration
+
+- enum과 요청 validation 모델
+
+- Guardian·RefreshToken entity·repository
+    - enum DB 매핑
+    - email 조회
+    - refresh token hash 조회
+    - token lifecycle 저장
+
+- 비밀번호 hashing
+
+- JWT 발급·검증
+    - access token 15분
+    - refresh token 30일
+    - token 원문 로그 금지
+
+- refresh token 회전·폐기
+    - hash만 DB 저장
+    - refresh 시 기존 token 폐기
+    - 재사용 차단
+    - logout 멱등 처리
+    - 트랜잭션·동시 요청 정책 확인
+
+- requestId filter
+    - Spring Security보다 먼저 실행
+    - 서버에서 `req-` + ULID 생성
+    - request attribute와 MDC에 저장
+    - 정상·오류 응답에 `X-Request-Id`
+    - ProblemDetail의 `requestId`와 같은 값 사용
+    - `finally`에서 MDC 정리
+
+- 공통 ProblemDetail 모델·생성기
+    - type, title, status, detail, instance
+    - code, 선택적 fieldErrors, requestId
+    - `application/problem+json`
+
+- Spring MVC 전역 예외 처리
+    - Bean Validation 실패
+    - 잘못된 enum·JSON
+    - query/path 타입 오류
+    - 리소스 없음
+    - 이메일 중복
+    - 상태 충돌
+    - 예상하지 못한 서버 오류
+
+- Spring Security 인증 구성
+    - JWT authentication filter
+    - SecurityFilterChain
+    - 인증 제외/보호 endpoint 설정
+    - JWT subject에서 현재 Guardian 복원
+
+- Security AuthenticationEntryPoint·AccessDeniedHandler
+    - 인증 실패·토큰 누락: AuthenticationEntryPoint
+    - 권한 부족: AccessDeniedHandler
+    - MVC advice와 동일한 ProblemDetail 생성기 사용
+
+- signup/login/refresh/logout
+
+- `/guardians/me` 조회·수정
+    - 인증된 Guardian 조회
+    - profileType·gender 조건부 검증
+    - identityVisibility 수정
+
+- API·보안 테스트
+
+#### M1 검증 후 프론트 F1 연결
+
+- OpenAPI 타입 생성
+- `application/problem+json` 파싱
+- access token 메모리 보관
+- refresh token SecureStore 보관
+- 동시 401 시 refresh 한 번만 실행
+- 원 요청 한 번만 재시도
+- family와 공개 설정 UI 연결
 
 ## 구현 전 확인
 
@@ -24,8 +102,8 @@ refresh token, 현재 보호자, requestId 또는 오류 처리 작업을 시작
 
 ## Token 계약
 
-- [ ] access token TTL은 900초(15분)다.
-- [ ] refresh token TTL은 2,592,000초(30일)다.
+- [ ] access token TTL은 900초 (15분)다.
+- [ ] refresh token TTL은 2,592,000초 (30일)다.
 - [ ] refresh 성공 시 기존 refresh token을 폐기하고 새 access/refresh token 쌍을 발급한다.
 - [ ] 회전된 이전 refresh token의 재사용은 `AUTH_REFRESH_INVALID` 401이다.
 - [ ] logout은 전달된 refresh token을 폐기하며 같은 token에 대한 재요청은 멱등이다.
@@ -37,8 +115,9 @@ refresh token, 현재 보호자, requestId 또는 오류 처리 작업을 시작
 
 - [ ] `profileType`은 `individual`, `couple`, `family`만 허용한다.
 - [ ] `individual`은 `female` 또는 `male` gender가 필수다.
-- [ ] `couple`과 `family`는 gender를 받지 않는다.
+- [ ] `couple`과 `family`는 gender를 생략하거나 null로 전달한다.
 - [ ] `identityVisibility`는 `public` 또는 `private`만 허용한다.
+- [ ] 회원가입 비밀번호는 8~72자의 영문 대문자, 영문 소문자, 숫자, 허용 특수문자 (`! @ # $ % ^ & *`)로만 구성하고 각 종류를 하나 이상 포함한다.
 - [ ] `GET /api/guardians/me`는 id, email, profileType, 조건부 gender, identityVisibility, status를 반환한다.
 - [ ] 공개 여부 변경은 다음 추천부터 적용되고 기존 match/chat에는 영향을 주지 않는다.
 
