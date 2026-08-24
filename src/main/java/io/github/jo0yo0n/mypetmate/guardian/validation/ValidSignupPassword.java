@@ -14,7 +14,8 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ValidSignupPassword {
 
-  String message() default "영문 대문자, 영문 소문자, 숫자, ASCII 특수문자를 각각 하나 이상 포함해야 합니다.";
+  String message() default
+      "영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @ # $ % ^ & *)를 각각 하나 이상 포함해야 하며, 다른 특수문자와 공백은 사용할 수 없습니다.";
 
   Class<?>[] groups() default {};
 
