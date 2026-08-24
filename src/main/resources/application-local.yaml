@@ -1,0 +1,8 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:my_petmate}}
+    username: ${DB_USERNAME:my_petmate}
+    password: ${DB_PASSWORD:my_petmate}

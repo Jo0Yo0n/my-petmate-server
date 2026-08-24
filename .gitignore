@@ -39,3 +39,6 @@ out/
 ### Codex agents ###
 .agents/
 /.codegraph
+
+### Local environment ###
+.env
