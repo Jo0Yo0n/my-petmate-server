@@ -98,6 +98,47 @@ class RequestValidationTest {
   }
 
   @Test
+  void normalizesSignupAndLoginEmailsBeforeValidation() {
+    SignupRequest signup =
+        new SignupRequest(
+            "  GUARDIAN@EXAMPLE.COM  ",
+            "StrongPass123!",
+            ProfileType.INDIVIDUAL,
+            Gender.FEMALE,
+            IdentityVisibility.PUBLIC);
+    LoginRequest login = new LoginRequest("  GUARDIAN@EXAMPLE.COM  ", "x");
+
+    assertThat(signup.email()).isEqualTo("guardian@example.com");
+    assertThat(login.email()).isEqualTo("guardian@example.com");
+    assertThat(violations(signup)).isEmpty();
+    assertThat(violations(login)).isEmpty();
+  }
+
+  @Test
+  void validatesNormalizedEmailBlankAndLengthBoundaries() {
+    String longestValidEmail = longestValidEmail();
+    String tooLongEmail = longestValidEmail + "x";
+
+    assertThat(violations(signupWithEmail("  ")))
+        .extracting(violation -> violation.getPropertyPath().toString())
+        .contains("email");
+    assertThat(violations(signupWithEmail(" " + longestValidEmail + " "))).isEmpty();
+    assertThat(violations(signupWithEmail(tooLongEmail)))
+        .extracting(violation -> violation.getPropertyPath().toString())
+        .contains("email");
+  }
+
+  @Test
+  void rejectsSignupEmailShorterThanThreeCharacters() {
+    assertViolation(signupWithEmail("a@"), "email", "3자 이상 254자 이하이어야 합니다.");
+  }
+
+  @Test
+  void rejectsBlankSignupPassword() {
+    assertViolation(signup(""), "password", "8자 이상 72자 이하이어야 합니다.");
+  }
+
+  @Test
   void loginDoesNotReapplySignupPasswordComplexity() {
     LoginRequest request = new LoginRequest("guardian@example.com", "x");
 
@@ -105,11 +146,100 @@ class RequestValidationTest {
   }
 
   @Test
-  void validatesRefreshTokenLength() {
-    assertThat(violations(new RefreshRequest("t".repeat(20)))).isEmpty();
-    assertThat(violations(new RefreshRequest("short")))
-        .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("refreshToken");
+  void acceptsValidRefreshToken() {
+    assertThat(violations(new RefreshRequest("A".repeat(43)))).isEmpty();
+  }
+
+  @Test
+  void rejectsRefreshTokenShorterThan43Characters() {
+    assertViolation(new RefreshRequest("A".repeat(42)), "refreshToken", "43자이어야 합니다.");
+  }
+
+  @Test
+  void rejectsRefreshTokenLongerThan43Characters() {
+    assertViolation(new RefreshRequest("A".repeat(44)), "refreshToken", "43자이어야 합니다.");
+  }
+
+  @Test
+  void rejectsRefreshTokenWithNonBase64UrlCharacter() {
+    assertViolation(
+        new RefreshRequest("+" + "A".repeat(42)), "refreshToken", "Base64 URL 형식이어야 합니다.");
+  }
+
+  @Test
+  void rejectsMissingRefreshToken() {
+    assertViolation(new RefreshRequest(null), "refreshToken", "필수입니다.");
+  }
+
+  @Test
+  void rejectsEmptyRefreshToken() {
+    assertViolation(new RefreshRequest(""), "refreshToken", "43자이어야 합니다.");
+  }
+
+  @Test
+  void rejectsMissingLoginEmail() {
+    assertViolation(new LoginRequest(null, "StringPass123!"), "email", "필수입니다.");
+  }
+
+  @Test
+  void rejectsBlankLoginEmail() {
+    assertViolation(new LoginRequest("", "StringPass123!"), "email", "필수입니다.");
+  }
+
+  @Test
+  void rejectsLoginEmailBlankAfterNormalization() {
+    assertViolation(new LoginRequest("  ", "StringPass123!"), "email", "필수입니다.");
+  }
+
+  @Test
+  void rejectsInvalidLoginEmail() {
+    assertViolation(
+        new LoginRequest("not-an-email", "StringPass123!"), "email", "올바른 이메일 형식이어야 합니다.");
+  }
+
+  @Test
+  void rejectsLoginEmailShorterThanThreeCharacters() {
+    assertViolation(new LoginRequest("a@", "StringPass123!"), "email", "3자 이상 254자 이하이어야 합니다.");
+  }
+
+  @Test
+  void rejectsLoginEmailLongerThan254Characters() {
+    assertViolation(
+        new LoginRequest(longestValidEmail() + "x", "StringPass123!"),
+        "email",
+        "3자 이상 254자 이하이어야 합니다.");
+  }
+
+  @Test
+  void rejectsLoginEmailLongerThan254CharactersAfterNormalization() {
+    assertViolation(
+        new LoginRequest(" " + longestValidEmail() + " x", "StringPass123!"),
+        "email",
+        "3자 이상 254자 이하이어야 합니다.");
+  }
+
+  @Test
+  void acceptsRefreshTokenWithBase64UrlCharacters() {
+    assertThat(violations(new RefreshRequest("A".repeat(41) + "-_"))).isEmpty();
+  }
+
+  @Test
+  void rejectsMissingLoginPassword() {
+    assertViolation(new LoginRequest("guardian@example.com", null), "password", "필수입니다.");
+  }
+
+  @Test
+  void rejectsEmptyLoginPassword() {
+    assertViolation(
+        new LoginRequest("guardian@example.com", ""), "password", "1자 이상 72자 이하이어야 합니다.");
+  }
+
+  @Test
+  void rejectsLoginPasswordLongerThan72Characters() {
+    assertViolation(
+        new LoginRequest("guardian@example.com", "String123!" + "a".repeat(63)),
+        "password",
+        "1자 이상 72자 이하이어야 합니다.");
   }
 
   private SignupRequest signup(ProfileType profileType, Gender gender) {
@@ -124,6 +254,24 @@ class RequestValidationTest {
         ProfileType.INDIVIDUAL,
         Gender.FEMALE,
         IdentityVisibility.PUBLIC);
+  }
+
+  private SignupRequest signupWithEmail(String email) {
+    return new SignupRequest(
+        email, "StrongPass123!", ProfileType.INDIVIDUAL, Gender.FEMALE, IdentityVisibility.PUBLIC);
+  }
+
+  private String longestValidEmail() {
+    return "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(61);
+  }
+
+  private <T> void assertViolation(T value, String field, String message) {
+    assertThat(violations(value))
+        .anySatisfy(
+            violation -> {
+              assertThat(violation.getPropertyPath().toString()).isEqualTo(field);
+              assertThat(violation.getMessage()).isEqualTo(message);
+            });
   }
 
   private void assertPasswordInvalid(String password) {

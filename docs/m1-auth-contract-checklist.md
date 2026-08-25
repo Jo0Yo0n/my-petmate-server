@@ -38,6 +38,7 @@
 | 인증 복원     | stateless Security를 사용하고 JWT `sub`로 매 요청 현재 Guardian을 DB에서 복원한다. `withdrawn`은 인증을 거부하고 `temporarily_restricted`는 제한 대상 기능에서 권한을 검사한다.                                                                                                          |
 | 요청 ID       | Security보다 먼저 실행되는 `OncePerRequestFilter`에서 서버 ULID를 생성하고 request attribute, MDC, 응답 header에 전달한다. 처리 후 `finally`에서 MDC의 이전 값을 복원하거나 제거한다.                                                                                                    |
 | REST 오류     | MVC advice, `AuthenticationEntryPoint`, `AccessDeniedHandler`가 작은 공통 ProblemDetail factory와 writer를 공유한다. 오류별 범용 exception 계층은 만들지 않는다.                                                                                                                         |
+| 입력 email 정규화 | `SignupRequest`와 `LoginRequest`가 같은 null-safe 정규화를 사용하도록 `guardian.support.EmailNormalizer`를 둔다. 각 record에 정규화를 중복하면 정책 변경 시 불일치할 수 있으므로 제외한다. 별도 service나 mapper 계층은 추가하지 않는다. |
 | 검증          | H2 대신 PostgreSQL Testcontainers로 Flyway, DB 제약, repository와 token 회전 동시성을 검증한다.                                                                                                                                                                                          |
 
 ### 새 의존성 검토
@@ -52,9 +53,9 @@
 
 ## 진입 조건
 
-- [ ] 이 문서를 끝까지 읽었다.
-- [ ] `openapi.yaml`의 M1 경로와 관련 스키마를 읽었다.
-- [ ] `error-response.md`의 오류 구조, 오류 코드, 요청 ID 규칙을 읽었다.
+- [x] 이 문서를 끝까지 읽었다.
+- [x] `openapi.yaml`의 M1 경로와 관련 스키마를 읽었다.
+- [x] `error-response.md`의 오류 구조, 오류 코드, 요청 ID 규칙을 읽었다.
 - [x] migration, 보안 구성, token 회전, 요청 ID filter 설계를 사람 개발자가 명시적으로 검토했다.
 - [x] 새 패키지, 계층 또는 의존성이 필요하면 필요성과 대안을 먼저 기록했다.
 
@@ -72,16 +73,16 @@
 
 #### 작업
 
-- [ ] 이 문서의 `진입 조건` 다섯 항목을 모두 완료한다.
-- [ ] 현재 마일스톤이 `M1. 인증 기반 — 진행 중`인지 확인한다.
-- [ ] 작업 브랜치가 저장소 브랜치 규칙을 따르는지 확인한다.
-- [ ] 작업 트리의 기존 변경을 확인하고 M1 구현과 무관한 변경을 덮어쓰지 않는다.
-- [ ] OpenAPI 또는 오류 계약과 구현 계획이 충돌하면 코드를 작성하기 전에 기준 문서를 먼저 수정한다.
+- [x] 이 문서의 `진입 조건` 다섯 항목을 모두 완료한다.
+- [x] 현재 마일스톤이 `M1. 인증 기반 — 진행 중`인지 확인한다.
+- [x] 작업 브랜치가 저장소 브랜치 규칙을 따른다.
+- [x] 작업 트리의 기존 변경을 확인하고 M1 구현과 무관한 변경을 덮어쓰지 않는다.
+- [x] OpenAPI 또는 오류 계약과 구현 계획이 충돌하면 코드를 작성하기 전에 기준 문서를 먼저 수정한다.
 
 #### 완료 조건
 
-- [ ] 진입 조건에 미완료 항목이 없다.
-- [ ] 이번 작업 단위의 완료 조건과 관련 계약 위치를 설명할 수 있다.
+- [x] 진입 조건에 미완료 항목이 없다.
+- [x] 이번 작업 단위의 완료 조건과 관련 계약 위치를 설명할 수 있다.
 
 ### 1. 기존 입력 모델을 최신 계약에 맞추기
 
@@ -91,25 +92,24 @@
 
 - [x] Guardian enum의 JSON 값과 DB converter가 OpenAPI·V1 migration의 값과 정확히 일치한다.
 - [x] signup 비밀번호와 보호자 유형·성별 조합 validation이 요청 DTO에 적용된다.
-- [ ] `SignupRequest`와 `LoginRequest`가 `info.x-email-policy`에 따라 null-safe하게 email을 정규화한다.
-- [ ] `RefreshRequest`의 길이와 허용 문자 validation을 `components.schemas.RefreshRequest`와 일치시킨다.
-- [ ] 누락 필드, 빈 값, 길이 경계, 허용하지 않는 enum과 알 수 없는 JSON 필드의 처리 방식을 계약과 일치시킨다.
-- [ ] 정규화된 email이 이후 조회·저장·응답에서 사용하는 유일한 값이 되도록 테스트로 고정한다.
+- [x] `SignupRequest`와 `LoginRequest`가 `info.x-email-policy`에 따라 null-safe하게 email을 정규화한다.
+- [x] `RefreshRequest`의 길이와 허용 문자 validation을 `components.schemas.RefreshRequest`와 일치시킨다.
+- [x] 누락 필드, 빈 값, 길이 경계, 허용하지 않는 enum과 알 수 없는 JSON 필드의 처리 방식을 계약과 일치시킨다.
 
 #### 필수 테스트
 
 - [x] enum JSON 직렬화·역직렬화와 DB converter 테스트
 - [x] 개인·커플·가족의 정상·실패 조합 validation 테스트
 - [x] signup 비밀번호 문자군과 길이 경계 테스트
-- [ ] 대문자와 앞뒤 공백이 있는 email의 정규화 테스트
-- [ ] 정규화 후 잘못된 email과 길이 경계 테스트
-- [ ] refresh token의 정상 값과 길이·문자 경계 테스트
+- [x] 대문자와 앞뒤 공백이 있는 email의 정규화 테스트
+- [x] 정규화 후 잘못된 email과 길이 경계 테스트
+- [x] refresh token의 정상 값과 길이·문자 경계 테스트
 
 #### 완료 조건
 
-- [ ] 요청 DTO 테스트가 모두 통과한다.
-- [ ] DTO의 validation 규칙과 OpenAPI 스키마 사이에 알려진 차이가 없다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] 요청 DTO 테스트가 모두 통과한다.
+- [x] DTO의 validation 규칙과 OpenAPI 스키마 사이에 알려진 차이가 없다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 2. PostgreSQL migration과 통합 테스트 기반 완성
 
@@ -153,6 +153,7 @@
 #### 필수 테스트
 
 - [ ] Guardian 저장·email 조회·enum 복원 테스트
+- [ ] 정규화된 email이 Guardian 저장과 email 조회에서 사용하는 유일한 값인지 확인하는 테스트
 - [ ] RefreshToken 저장·hash 조회·Guardian 연관관계 테스트
 - [ ] pessimistic write lock이 같은 token row의 동시 변경을 직렬화하는 PostgreSQL 테스트
 - [ ] 고유 제약 위반이 애플리케이션에서 email 충돌로 식별 가능한지 확인하는 테스트
@@ -212,6 +213,7 @@
 #### 필수 테스트
 
 - [ ] signup service의 정상 저장, 정규화 email 중복과 rollback 테스트
+- [ ] 정규화 전후 email로 login을 요청해도 같은 Guardian을 조회하는 테스트
 - [ ] login service의 성공·잘못된 email·잘못된 비밀번호 테스트
 - [ ] `withdrawn` login은 `AUTH_INVALID_CREDENTIALS`로 거부하고 `temporarily_restricted` login은 성공하는 테스트
 - [ ] refresh 발급·회전·만료·폐기·재사용·알 수 없는 token 테스트
@@ -337,6 +339,7 @@ JWT parsing을 직접 구현하지 않고 Resource Server가 access token을 검
 #### 필수 공통 테스트
 
 - [ ] 각 endpoint의 OpenAPI 정상 status와 응답 필드 테스트
+- [ ] signup, login, 현재 Guardian 응답이 정규화된 email만 반환하는 테스트
 - [ ] 누락·빈 값·길이·enum·알 수 없는 JSON 필드 실패 테스트
 - [ ] 각 endpoint에 정의된 400·401·409 응답 계약 테스트
 - [ ] 모든 정상·오류 응답의 `X-Request-Id` 테스트
