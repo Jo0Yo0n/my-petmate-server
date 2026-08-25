@@ -1,63 +1,72 @@
-# 문서 안내서
+# My Petmate Server
 
-이 문서는 `docs` 디렉터리의 시작점이다. 같은 내용을 여러 문서에 반복하지 않고, 아래 표에 지정한 기준 문서에서만 상세 내용을 관리한다.
+반려견 보호자가 산책·놀이 친구를 안전하게 찾고, 매칭 이후 약속까지 조율할 수 있도록 만드는 **My Petmate MVP의 백엔드 API**입니다.
 
-## 빠른 찾기
+이 프로젝트는 단순히 후보를 나열하는 서비스가 아니라, 안전 규칙과 개인정보 보호를 먼저 적용한 뒤 반려견 간 궁합을 안내하는 것을 목표로 합니다. 현재 Spring Boot와
+PostgreSQL 기반의 인증 토대 (M1)를 구현 중입니다.
 
-| 확인할 내용                               | 기준 문서                                                          | 위치                                                                                                                                                                                           |
-|-------------------------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 프로젝트 목표와 MVP 범위                  | [`seed.yaml`](./seed.yaml)                                         | `goal`, `constraints`                                                                                                                                                                          |
-| 사용자 관점의 완료 조건                   | [`seed.yaml`](./seed.yaml)                                         | `acceptance_criteria`                                                                                                                                                                          |
-| 도메인 개념과 주요 필드                   | [`seed.yaml`](./seed.yaml)                                         | `ontology_schema`                                                                                                                                                                              |
-| 평가 원칙, 지표, MVP 종료 조건            | [`seed.yaml`](./seed.yaml)                                         | `evaluation_principles`, `success_metrics`, `exit_conditions`                                                                                                                                  |
-| 현재 마일스톤과 구현 순서                 | [`backend-mvp-plan.md`](./backend-mvp-plan.md)                     | [진행 현황](./backend-mvp-plan.md#진행-현황), [마일스톤별 계획](./backend-mvp-plan.md#마일스톤별-계획)                                                                                         |
-| 마일스톤별 API 범위·작업·완료·테스트 기준 | [`backend-mvp-plan.md`](./backend-mvp-plan.md)                     | `M0`~`M7` 절                                                                                                                                                                                   |
-| HTTP 메서드·경로·요청·응답 스키마         | [`openapi.yaml`](./openapi.yaml)                                   | `paths`, `components`                                                                                                                                                                          |
-| 토큰 수명과 개인정보 정책                 | [`openapi.yaml`](./openapi.yaml)                                   | `info.x-token-policy`, `info.x-privacy-policy`                                                                                                                                                 |
-| REST 오류 본문·오류 코드·요청 ID          | [`error-response.md`](./error-response.md)                         | [응답 구조](./error-response.md#응답-구조), [오류 코드](./error-response.md#오류-코드), [요청-id](./error-response.md#요청-id)                                                                 |
-| WebSocket 인증·이벤트·멱등성·재연결       | [`websocket-protocol.md`](./websocket-protocol.md)                 | [연결과 인증](./websocket-protocol.md#연결과-인증), [이벤트](./websocket-protocol.md#이벤트), [멱등성과 권한](./websocket-protocol.md#멱등성과-권한), [재연결](./websocket-protocol.md#재연결) |
-| M1 인증 구현 순서와 완료 점검             | [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md) | [진입 조건](./m1-auth-contract-checklist.md#진입-조건), [구현 순서](./m1-auth-contract-checklist.md#구현-순서), [검증 게이트](./m1-auth-contract-checklist.md#검증-게이트)                     |
-| 코드·브랜치·커밋·PR 규칙                  | [`development-conventions.md`](./development-conventions.md)       | [코드와 설계](./development-conventions.md#코드와-설계), [Git 작업](./development-conventions.md#git-작업), [Pull Request](./development-conventions.md#pull-request)                          |
+## 제품 흐름
 
-## 문서별 역할
+```text
+보호자·반려견 등록
+        ↓
+안전 제외 → 공개 정보 상호성 → 선택 필터 → 궁합 안내
+        ↓
+상호 좋아요로만 매칭 생성
+        ↓
+멱등 WebSocket 채팅 · 약속 조율 · 종료 후 비공개 평가
+```
 
-| 문서                            | 이 문서에 기록하는 내용                          | 이 문서에 기록하지 않는 내용        |
-|---------------------------------|--------------------------------------------------|-------------------------------------|
-| `seed.yaml`                     | 제품 목표, 제약, 인수 기준, 도메인 개념          | 상세 HTTP·WebSocket 형식, 구현 일정 |
-| `backend-mvp-plan.md`           | 현재 진행 상태, 마일스톤별 구현·완료·테스트 범위 | 요청·응답 필드의 상세 정의          |
-| `openapi.yaml`                  | REST API의 실제 통신 계약                        | 제품 배경, 구현 작업 목록           |
-| `error-response.md`             | 모든 REST 오류와 요청 ID의 공통 계약             | 개별 성공 응답                      |
-| `websocket-protocol.md`         | WebSocket 연결과 프레임 계약                     | REST 채팅 조회 계약                 |
-| `m1-auth-contract-checklist.md` | M1 작업 진입·검증·완료 여부                      | 계약 상세 설명의 재작성             |
-| `development-conventions.md`    | 저장소 작업 방식과 검증 규칙                     | 기능 요구사항                       |
+한 보호자 계정은 여러 반려견을 등록할 수 있지만, 추천·좋아요·매칭·채팅은 항상 선택한 반려견 한 쌍을 기준으로 동작합니다.
 
-## 기능별 읽기 순서
+## 주요 설계
 
-### 일반 기능 개발
+| 주제                | 설계 판단                                                                                                                       |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| 안전 우선 추천      | 차단·신고·명백한 부적합 후보를 먼저 제외합니다. 클라이언트의 선호 필터는 이 규칙을 완화할 수 없습니다.                          |
+| 개인정보 보호       | 정확한 실시간 위치 대신 근사 거리와 활동 지역만 다룹니다. 보호자 정보는 공개 설정과 상호성 조건을 모두 만족할 때만 노출합니다.  |
+| 신뢰할 수 있는 인증 | 이메일·비밀번호 인증에 JWT access token과 회전되는 refresh token을 사용하며, 비밀번호와 refresh token 원문은 저장하지 않습니다. |
+| 예측 가능한 API     | REST 오류는 RFC 9457 `ProblemDetail` 형식과 요청 ID를 일관되게 사용합니다. API 계약은 OpenAPI로 관리합니다.                     |
+| 재전송에 강한 채팅  | 과거 메시지는 cursor pagination으로 조회하고, WebSocket 전송은 클라이언트 멱등성 키와 명시적인 성공·실패 이벤트를 사용합니다.   |
+| 제한적인 공개 평가  | 약속이 끝난 뒤 참여자가 상대에게 한 번 남기는 평가는 비공개이며, 원문과 집계 점수도 상대에게 공개하지 않습니다.                 |
 
-1. `development-conventions.md`에서 작업 규칙을 확인한다.
-2. `backend-mvp-plan.md`의 진행 현황과 해당 마일스톤을 확인한다.
-3. `seed.yaml`의 관련 인수 기준과 도메인 개념을 확인한다.
-4. REST 작업은 `openapi.yaml`, WebSocket 작업은 `websocket-protocol.md`를 확인한다.
-5. 오류를 추가하거나 변경하면 `error-response.md`를 함께 확인한다.
+## 기술 구성
 
-### M1 인증·JWT·토큰·요청 ID·오류 처리
+| 구분            | 선택                                            |
+|-----------------|-------------------------------------------------|
+| 언어·프레임워크 | Java 21 LTS, Spring Boot 3.x                    |
+| 빌드·형식       | Gradle Kotlin DSL, Spotless, Google Java Format |
+| 데이터          | PostgreSQL, Flyway, JPA                         |
+| 보안·통신       | Spring Security, JWT, REST, WebSocket           |
+| 테스트          | JUnit, Spring Boot Test, Spring Security Test   |
 
-1. `m1-auth-contract-checklist.md`를 처음부터 끝까지 읽는다.
-2. 체크리스트가 연결하는 `openapi.yaml`과 `error-response.md` 계약을 확인한다.
-3. 사람 개발자의 설계 검토를 받은 뒤 구현한다.
-4. 체크리스트의 검증 게이트를 모두 통과한 뒤에만 M1 상태를 완료로 바꾼다.
+## 구현 현황
 
-## 충돌 처리
+현재 **M1 — 인증 기반**을 진행 중입니다. 이 단계에서는 회원가입·로그인·토큰 갱신·로그아웃·현재 보호자 조회/수정과 공통 오류·요청 ID를 완성합니다. 이후 반려견
+프로필, 추천, 매칭, 채팅, 약속·평가, 안전 조치를 순서대로 확장합니다.
 
-문서끼리 내용이 다르면 코드에서 임의로 해석하지 말고 문서를 먼저 일치시킨다. 계약 종류별 우선 기준은 다음과 같다.
+세부 범위와 완료 기준은 [백엔드 MVP 마일스톤 계획](./backend-mvp-plan.md)에서 확인할 수 있습니다.
 
-1. REST 통신 형식: `openapi.yaml`
-2. REST 오류와 요청 ID: `error-response.md`
-3. WebSocket 통신 형식: `websocket-protocol.md`
-4. 제품 범위와 인수 기준: `seed.yaml`
-5. 구현 순서와 마일스톤 완료 조건: `backend-mvp-plan.md`
-6. M1 작업의 진입·검증 절차: `m1-auth-contract-checklist.md`
-7. 저장소 작업 방식: `development-conventions.md`
+## 문서 지도
 
-우선순위가 낮은 문서는 상위 기준 문서의 상세 계약을 복사하지 않고 링크만 유지한다.
+- 제품 요구사항과 인수 기준: [seed.yaml](./seed.yaml)
+- REST API 계약: [openapi.yaml](./openapi.yaml)
+- 오류와 요청 ID 계약: [error-response.md](./error-response.md)
+- WebSocket 계약: [websocket-protocol.md](./websocket-protocol.md)
+- 개발·검증 규칙: [development-conventions.md](./development-conventions.md)
+- 상세 문서 안내와 기능별 읽기 순서: [documentation-guide.md](./documentation-guide.md)
+
+## 로컬 실행
+
+로컬 PostgreSQL을 실행하려면 `.env`에 `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `DB_PORT`를 설정한 뒤 다음을 실행합니다.
+
+```bash
+docker compose up -d postgres
+./gradlew bootRun --args='--spring.profiles.active=local'
+```
+
+검증은 다음 명령으로 실행합니다.
+
+```bash
+./gradlew check
+```

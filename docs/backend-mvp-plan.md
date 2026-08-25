@@ -6,7 +6,7 @@
 - REST 요청·응답의 상세 계약: [`openapi.yaml`](./openapi.yaml)
 - 오류와 요청 ID 계약: [`error-response.md`](./error-response.md)
 - WebSocket 계약: [`websocket-protocol.md`](./websocket-protocol.md)
-- 문서 전체 위치 안내: [`README.md`](./README.md)
+- 문서 전체 위치 안내: [`documentation-guide.md`](./documentation-guide.md)
 
 상세 계약을 이 문서에 복사하지 않는다. 계약이 바뀌면 해당 기준 문서를 먼저 수정하고 이 문서에는 범위와 검증 기준만 반영한다.
 
