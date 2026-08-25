@@ -9,6 +9,8 @@ group = "io.github.jo0yo0n"
 version = "0.0.1-SNAPSHOT"
 description = "My Petmate backend API"
 
+val mockitoAgent by configurations.creating
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -40,6 +42,12 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    add(mockitoAgent.name, "org.mockito:mockito-core") {
+        isTransitive = false
+    }
+}
+tasks.withType<Test>().configureEach {
+    jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
 tasks.withType<Test> {
