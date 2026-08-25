@@ -26,20 +26,20 @@
 [`openapi.yaml`](./openapi.yaml), 오류와 요청 ID의 상세 규칙은 [`error-response.md`](./error-response.md)를 기준으로
 한다.
 
-| 주제          | 승인한 결정                                                                                                                                                                                                                                                                              |
-|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 영속성        | `Guardian`과 `RefreshToken` JPA entity를 직접 매핑한다. UUID는 애플리케이션에서 생성하고 시간은 `Instant`와 주입 가능한 `Clock`으로 계산한다. 범용 base entity나 별도 계층은 추가하지 않는다. 기존 V1 migration은 수정하지 않고 email 정책에 필요한 DB 제약은 V2 migration으로 추가한다. |
-| email         | 회원가입과 로그인 입력을 trim한 뒤 `Locale.ROOT` 기준 소문자로 정규화하고 저장·응답에도 같은 값을 사용한다. DB에서도 대소문자를 무시한 유일성을 보장한다. 상세 정책은 `openapi.yaml`의 `info.x-email-policy`를 따른다.                                                                   |
-| 비밀번호      | `DelegatingPasswordEncoder`의 BCrypt를 사용하고 초기 cost는 12로 시작한 뒤 실행 환경에서 측정해 조정한다. 원문은 저장하거나 로그에 기록하지 않는다.                                                                                                                                      |
-| access token  | Spring Security OAuth2 Resource Server와 Nimbus encoder·decoder를 사용해 HS256 JWT를 발급·검증한다. secret은 외부 설정으로만 주입하고 누락되거나 안전하지 않은 길이면 시작을 실패시킨다. `sub`에는 Guardian UUID만 사용하며 변경 가능한 보호자 정보는 claim에 넣지 않는다.               |
-| refresh token | 256-bit 무작위 opaque token을 padding 없는 Base64 URL 형식으로 반환하고 DB에는 SHA-256 hash만 저장한다. 상세 형식과 수명은 `openapi.yaml`의 `info.x-token-policy`를 따른다.                                                                                                              |
-| token 회전    | refresh token row를 pessimistic write lock으로 조회하고 기존 token 폐기와 새 token 저장을 하나의 transaction에서 수행한다. 동시 요청은 먼저 잠근 하나만 성공하며 폐기·회전된 token 재사용은 거부한다. token family와 기기·세션 관리는 M1에 추가하지 않는다.                              |
-| logout        | 이미 폐기됐거나 저장되지 않은 refresh token에도 성공을 반환하는 멱등 동작으로 처리한다. access token blacklist는 두지 않고 짧은 TTL 만료를 사용한다.                                                                                                                                     |
-| 인증 복원     | stateless Security를 사용하고 JWT `sub`로 매 요청 현재 Guardian을 DB에서 복원한다. `withdrawn`은 인증을 거부하고 `temporarily_restricted`는 제한 대상 기능에서 권한을 검사한다.                                                                                                          |
-| 요청 ID       | Security보다 먼저 실행되는 `OncePerRequestFilter`에서 서버 ULID를 생성하고 request attribute, MDC, 응답 header에 전달한다. 처리 후 `finally`에서 MDC의 이전 값을 복원하거나 제거한다.                                                                                                    |
-| REST 오류     | MVC advice, `AuthenticationEntryPoint`, `AccessDeniedHandler`가 작은 공통 ProblemDetail factory와 writer를 공유한다. 오류별 범용 exception 계층은 만들지 않는다.                                                                                                                         |
-| 입력 email 정규화 | `SignupRequest`와 `LoginRequest`가 같은 null-safe 정규화를 사용하도록 `guardian.support.EmailNormalizer`를 둔다. 각 record에 정규화를 중복하면 정책 변경 시 불일치할 수 있으므로 제외한다. 별도 service나 mapper 계층은 추가하지 않는다. |
-| 검증          | H2 대신 PostgreSQL Testcontainers로 Flyway, DB 제약, repository와 token 회전 동시성을 검증한다.                                                                                                                                                                                          |
+| 주제              | 승인한 결정                                                                                                                                                                                                                                                                              |
+|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 영속성            | `Guardian`과 `RefreshToken` JPA entity를 직접 매핑한다. UUID는 애플리케이션에서 생성하고 시간은 `Instant`와 주입 가능한 `Clock`으로 계산한다. 범용 base entity나 별도 계층은 추가하지 않는다. 기존 V1 migration은 수정하지 않고 email 정책에 필요한 DB 제약은 V2 migration으로 추가한다. |
+| email             | 회원가입과 로그인 입력을 trim한 뒤 `Locale.ROOT` 기준 소문자로 정규화하고 저장·응답에도 같은 값을 사용한다. DB에서도 대소문자를 무시한 유일성을 보장한다. 상세 정책은 `openapi.yaml`의 `info.x-email-policy`를 따른다.                                                                   |
+| 비밀번호          | `DelegatingPasswordEncoder`의 BCrypt를 사용하고 초기 cost는 12로 시작한 뒤 실행 환경에서 측정해 조정한다. 원문은 저장하거나 로그에 기록하지 않는다.                                                                                                                                      |
+| access token      | Spring Security OAuth2 Resource Server와 Nimbus encoder·decoder를 사용해 HS256 JWT를 발급·검증한다. secret은 외부 설정으로만 주입하고 누락되거나 안전하지 않은 길이면 시작을 실패시킨다. `sub`에는 Guardian UUID만 사용하며 변경 가능한 보호자 정보는 claim에 넣지 않는다.               |
+| refresh token     | 256-bit 무작위 opaque token을 padding 없는 Base64 URL 형식으로 반환하고 DB에는 SHA-256 hash만 저장한다. 상세 형식과 수명은 `openapi.yaml`의 `info.x-token-policy`를 따른다.                                                                                                              |
+| token 회전        | refresh token row를 pessimistic write lock으로 조회하고 기존 token 폐기와 새 token 저장을 하나의 transaction에서 수행한다. 동시 요청은 먼저 잠근 하나만 성공하며 폐기·회전된 token 재사용은 거부한다. token family와 기기·세션 관리는 M1에 추가하지 않는다.                              |
+| logout            | 이미 폐기됐거나 저장되지 않은 refresh token에도 성공을 반환하는 멱등 동작으로 처리한다. access token blacklist는 두지 않고 짧은 TTL 만료를 사용한다.                                                                                                                                     |
+| 인증 복원         | stateless Security를 사용하고 JWT `sub`로 매 요청 현재 Guardian을 DB에서 복원한다. `withdrawn`은 인증을 거부하고 `temporarily_restricted`는 제한 대상 기능에서 권한을 검사한다.                                                                                                          |
+| 요청 ID           | Security보다 먼저 실행되는 `OncePerRequestFilter`에서 서버 ULID를 생성하고 request attribute, MDC, 응답 header에 전달한다. 처리 후 `finally`에서 MDC의 이전 값을 복원하거나 제거한다.                                                                                                    |
+| REST 오류         | MVC advice, `AuthenticationEntryPoint`, `AccessDeniedHandler`가 작은 공통 ProblemDetail factory와 writer를 공유한다. 오류별 범용 exception 계층은 만들지 않는다.                                                                                                                         |
+| 입력 email 정규화 | `SignupRequest`와 `LoginRequest`가 같은 null-safe 정규화를 사용하도록 `guardian.support.EmailNormalizer`를 둔다. 각 record에 정규화를 중복하면 정책 변경 시 불일치할 수 있으므로 제외한다. 별도 service나 mapper 계층은 추가하지 않는다.                                                 |
+| 검증              | H2 대신 PostgreSQL Testcontainers로 Flyway, DB 제약, repository와 token 회전 동시성을 검증한다.                                                                                                                                                                                          |
 
 ### 새 의존성 검토
 
@@ -51,38 +51,10 @@
 
 이 검토는 구현 전 설계 승인이다. 구현 후 보안·인증·데이터베이스·트랜잭션 동작에 대한 사람 검토와 수동 검증은 검증 게이트에서 별도로 수행한다.
 
-## 진입 조건
-
-- [x] 이 문서를 끝까지 읽었다.
-- [x] `openapi.yaml`의 M1 경로와 관련 스키마를 읽었다.
-- [x] `error-response.md`의 오류 구조, 오류 코드, 요청 ID 규칙을 읽었다.
-- [x] migration, 보안 구성, token 회전, 요청 ID filter 설계를 사람 개발자가 명시적으로 검토했다.
-- [x] 새 패키지, 계층 또는 의존성이 필요하면 필요성과 대안을 먼저 기록했다.
-
-진입 조건을 충족하기 전에는 M1 구현을 시작하지 않는다.
-
 ## 구현 순서
 
 아래 단계는 위에서 아래로 진행한다. 각 단계의 **완료 조건**을 충족하기 전에는 다음 단계로 넘어가지 않는다. 체크 표시는 코드가 존재할 때가 아니라 명시된 테스트와 검토까지
 끝났을 때만 변경한다. 프로덕션 코드는 사람 개발자가 작성하고 AI가 작성한 코드가 있다면 Pull Request에 범위와 검토 방법을 기록한다.
-
-현재 시작점은 **0단계**다. `진입 조건`의 문서 확인 세 항목을 사람 개발자가 완료한 뒤 1단계의 첫 미완료 항목인 email 정규화부터 진행한다. 이후에는 번호가 가장 작은
-미완료 항목이 항상 다음 작업이다.
-
-### 0. 진입 조건과 작업 기준 고정
-
-#### 작업
-
-- [x] 이 문서의 `진입 조건` 다섯 항목을 모두 완료한다.
-- [x] 현재 마일스톤이 `M1. 인증 기반 — 진행 중`인지 확인한다.
-- [x] 작업 브랜치가 저장소 브랜치 규칙을 따른다.
-- [x] 작업 트리의 기존 변경을 확인하고 M1 구현과 무관한 변경을 덮어쓰지 않는다.
-- [x] OpenAPI 또는 오류 계약과 구현 계획이 충돌하면 코드를 작성하기 전에 기준 문서를 먼저 수정한다.
-
-#### 완료 조건
-
-- [x] 진입 조건에 미완료 항목이 없다.
-- [x] 이번 작업 단위의 완료 조건과 관련 계약 위치를 설명할 수 있다.
 
 ### 1. 기존 입력 모델을 최신 계약에 맞추기
 
