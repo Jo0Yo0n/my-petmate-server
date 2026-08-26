@@ -16,7 +16,7 @@
 | 토큰 수명과 개인정보 정책                 | [`openapi.yaml`](./openapi.yaml)                                   | `info.x-token-policy`, `info.x-privacy-policy`                                                                                                                                                 |
 | REST 오류 본문·오류 코드·요청 ID          | [`error-response.md`](./error-response.md)                         | [응답 구조](./error-response.md#응답-구조), [오류 코드](./error-response.md#오류-코드), [요청 ID](./error-response.md#요청-id)                                                                 |
 | WebSocket 인증·이벤트·멱등성·재연결       | [`websocket-protocol.md`](./websocket-protocol.md)                 | [연결과 인증](./websocket-protocol.md#연결과-인증), [이벤트](./websocket-protocol.md#이벤트), [멱등성과 권한](./websocket-protocol.md#멱등성과-권한), [재연결](./websocket-protocol.md#재연결) |
-| M1 인증 구현 순서와 완료 점검             | [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md) | [진입 조건](./m1-auth-contract-checklist.md#진입-조건), [구현 순서](./m1-auth-contract-checklist.md#구현-순서), [검증 게이트](./m1-auth-contract-checklist.md#검증-게이트)                     |
+| M1 인증 구현 순서와 완료 점검             | [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md) | [구현 순서](./m1-auth-contract-checklist.md#구현-순서), [검증 게이트](./m1-auth-contract-checklist.md#검증-게이트)                                                                             |
 | 코드·브랜치·커밋·PR 규칙                  | [`development-conventions.md`](./development-conventions.md)       | [코드와 설계](./development-conventions.md#코드와-설계), [Git 작업](./development-conventions.md#git-작업), [Pull Request](./development-conventions.md#pull-request)                          |
 
 ## 문서별 역할
@@ -40,13 +40,6 @@
 3. `seed.yaml`의 관련 인수 기준과 도메인 개념을 확인한다.
 4. REST 작업은 `openapi.yaml`, WebSocket 작업은 `websocket-protocol.md`를 확인한다.
 5. 오류를 추가하거나 변경하면 `error-response.md`를 함께 확인한다.
-
-### M1 인증·JWT·토큰·요청 ID·오류 처리
-
-1. `m1-auth-contract-checklist.md`를 처음부터 끝까지 읽는다.
-2. 체크리스트가 연결하는 `openapi.yaml`과 `error-response.md` 계약을 확인한다.
-3. 사람 개발자의 설계 검토를 받은 뒤 구현한다.
-4. 체크리스트의 검증 게이트를 모두 통과한 뒤에만 M1 상태를 완료로 바꾼다.
 
 ## 충돌 처리
 
