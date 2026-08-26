@@ -88,26 +88,28 @@
 #### 작업
 
 - [x] V1 migration에 Guardian과 RefreshToken table, 관계, enum·수명 주기 제약이 존재한다.
-- [ ] 기존 V1을 수정하지 않고 email 정규화·대소문자 무시 유일성을 보장하는 V2 migration을 추가한다.
-- [ ] V2 적용 전 기존 email 처리와 중복 가능성을 검토하고 migration 실패 정책을 정한다.
-- [ ] PostgreSQL Testcontainers와 JUnit 연동 의존성을 test scope에 추가한다.
-- [ ] 테스트 container에 Flyway migration 전체를 처음부터 적용한다.
-- [ ] 테스트 profile에서도 Hibernate schema 자동 생성 대신 `ddl-auto=validate`를 사용한다.
+- [x] 기존 V1을 수정하지 않고 email 정규화·대소문자 무시 유일성을 보장하는 V2 migration을 추가한다.
+- [x] V2 적용 전 기존 email 처리와 중복 가능성을 검토하고 migration 실패 정책을 정한다.
+    - 검토 결과 (2026-08-26): 현재 `guardian` 레코드가 0건이므로 기존 email 정규화·대소문자 중복 데이터 정정은 적용 대상이 없다. V2의 데이터
+      충돌 시 정정 정책은 생략한다. 그 밖의 Flyway 실행 실패는 애플리케이션 기동을 중단하고 원인을 수정한 뒤 동일 migration을 재실행한다.
+- [x] PostgreSQL Testcontainers와 JUnit 연동 의존성을 test scope에 추가한다.
+- [x] 테스트 container에 Flyway migration 전체를 처음부터 적용한다.
+- [x] 테스트 profile에서도 Hibernate schema 자동 생성 대신 `ddl-auto=validate`를 사용한다.
 
 #### 필수 테스트
 
-- [ ] 빈 PostgreSQL에 V1부터 최신 migration까지 적용되는 테스트
-- [ ] Guardian의 enum, profile type·gender 조합과 email DB 제약 테스트
-- [ ] 정규화 전후 대소문자만 다른 email의 중복 거부 테스트
-- [ ] RefreshToken의 hash, 만료·폐기 시각과 Guardian foreign key 제약 테스트
-- [ ] Guardian 삭제 시 연결된 RefreshToken 삭제 테스트
+- [x] 빈 PostgreSQL에 V1부터 최신 migration까지 적용되는 테스트
+- [x] Guardian의 enum, profile type·gender 조합과 email DB 제약 테스트
+- [x] 정규화 전후 대소문자만 다른 email의 중복 거부 테스트
+- [x] RefreshToken의 hash, 만료·폐기 시각과 Guardian foreign key 제약 테스트
+- [x] Guardian 삭제 시 연결된 RefreshToken 삭제 테스트
 
 #### 완료 조건
 
-- [ ] H2 없이 실제 PostgreSQL에서 migration·제약 테스트가 통과한다.
-- [ ] migration과 OpenAPI email 정책 사이에 알려진 차이가 없다.
-- [ ] 사람 개발자가 V2 migration과 기존 데이터 영향을 검토했다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] H2 없이 실제 PostgreSQL에서 migration·제약 테스트가 통과한다.
+- [x] migration과 OpenAPI email 정책 사이에 알려진 차이가 없다.
+- [x] 사람 개발자가 V2 migration과 기존 데이터 영향을 검토했다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 3. Guardian·RefreshToken 영속성 모델 구현
 

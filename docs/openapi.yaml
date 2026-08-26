@@ -22,6 +22,7 @@ info:
   x-email-policy:
     canonicalization: trim-and-lowercase
     lowercaseLocale: root
+    allowedCharacterSet: ascii-printable
     appliesTo: [signup, login, storage, response]
     uniqueness: case-insensitive
   x-privacy-policy:
@@ -1332,6 +1333,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         profileType:
           const: individual
         gender:
@@ -1353,6 +1355,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         profileType:
           const: couple
         identityVisibility:
@@ -1372,6 +1375,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         profileType:
           const: family
         identityVisibility:
@@ -1399,6 +1403,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         password:
           type: string
           format: password
@@ -1423,6 +1428,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         password:
           type: string
           format: password
@@ -1447,6 +1453,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         password:
           type: string
           format: password
@@ -1515,6 +1522,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
+          pattern: "^[!-~]+$"
         password:
           type: string
           format: password

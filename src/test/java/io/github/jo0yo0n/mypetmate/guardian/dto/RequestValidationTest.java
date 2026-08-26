@@ -129,6 +129,16 @@ class RequestValidationTest {
   }
 
   @Test
+  void rejectsNonAsciiSignupAndLoginEmails() {
+    assertViolation(
+        signupWithEmail("guardian@예시.한국"), "email", "영문, 숫자, 기호로 구성된 이메일 주소만 사용할 수 있습니다.");
+    assertViolation(
+        new LoginRequest("müller@example.com", "StringPass123!"),
+        "email",
+        "영문, 숫자, 기호로 구성된 이메일 주소만 사용할 수 있습니다.");
+  }
+
+  @Test
   void rejectsSignupEmailShorterThanThreeCharacters() {
     assertViolation(signupWithEmail("a@"), "email", "3자 이상 254자 이하이어야 합니다.");
   }
