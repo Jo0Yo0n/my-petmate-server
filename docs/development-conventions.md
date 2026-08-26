@@ -1,6 +1,7 @@
 # 개발 규칙
 
-이 문서는 코드·빌드 설정·Git 작업 방식을 정하는 기준 문서다. 기능 요구사항과 API 계약의 위치는 [`documentation-guide.md`](./documentation-guide.md)에서 확인한다.
+이 문서는 코드·빌드 설정·Git 작업 방식을 정하는 기준 문서다. 기능 요구사항과 API 계약의 위치는 [
+`documentation-guide.md`](./documentation-guide.md)에서 확인한다.
 
 코드나 빌드 설정을 변경하기 전에 사람 개발자와 AI 에이전트 모두 이 문서를 읽어야 한다.
 
@@ -64,7 +65,7 @@ docs: reorganize backend documentation
 
 ### 브랜치
 
-브랜치 이름은 다음 형식을 사용한다.
+브랜치 이름은 다음 형식을 사용한다. summary에는 현재 위치한 마일스톤 위치를 기입한다.
 
 ```text
 <type>/<short-kebab-summary>
