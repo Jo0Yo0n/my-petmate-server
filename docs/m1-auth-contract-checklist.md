@@ -136,7 +136,7 @@
 
 - [x] repository가 M1 service에 필요한 조회만 노출한다.
 - [x] entity mapping이 `ddl-auto=validate`와 모든 PostgreSQL 통합 테스트를 통과한다.
-- [ ] 사람 개발자가 entity mapping, cascade와 lock 범위를 검토했다.
+- [x] 사람 개발자가 entity mapping, cascade와 lock 범위를 검토했다.
 - [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 4. 비밀번호·access token·refresh token 기본 구성요소 구현
