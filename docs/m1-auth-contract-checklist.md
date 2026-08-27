@@ -115,29 +115,29 @@
 
 #### 작업
 
-- [ ] 승인된 필드만 사용하는 `Guardian` JPA entity를 작성한다.
-- [ ] 승인된 필드만 사용하는 `RefreshToken` JPA entity와 Guardian 연관관계를 작성한다.
-- [ ] UUID는 애플리케이션에서 생성하고 시간은 `Instant`로 저장한다.
-- [ ] token 만료 계산과 시간 의존 로직을 위해 주입 가능한 `Clock`을 준비한다.
-- [ ] `GuardianRepository`에 정규화 email 조회와 존재 확인만 추가한다.
-- [ ] `RefreshTokenRepository`에 hash 조회와 pessimistic write lock 조회를 추가한다.
-- [ ] 비밀번호 hash와 token hash가 entity의 `toString`, 로그 또는 예외 메시지에 포함되지 않게 한다.
-- [ ] 범용 base entity, repository interface, mapper 계층과 양방향 연관관계를 추가하지 않는다.
+- [x] 승인된 필드만 사용하는 `Guardian` JPA entity를 작성한다.
+- [x] 승인된 필드만 사용하는 `RefreshToken` JPA entity와 Guardian 연관관계를 작성한다.
+- [x] UUID는 애플리케이션에서 생성하고 시간은 `Instant`로 저장한다.
+- [x] token 만료 계산과 시간 의존 로직을 위해 주입 가능한 `Clock`을 준비한다.
+- [x] `GuardianRepository`에 정규화 email 조회와 존재 확인만 추가한다.
+- [x] `RefreshTokenRepository`에 hash 조회와 pessimistic write lock 조회를 추가한다.
+- [x] 비밀번호 hash와 token hash가 entity의 `toString`, 로그 또는 예외 메시지에 포함되지 않게 한다.
+- [x] 범용 base entity, repository interface, mapper 계층과 양방향 연관관계를 추가하지 않는다.
 
 #### 필수 테스트
 
-- [ ] Guardian 저장·email 조회·enum 복원 테스트
-- [ ] 정규화된 email이 Guardian 저장과 email 조회에서 사용하는 유일한 값인지 확인하는 테스트
-- [ ] RefreshToken 저장·hash 조회·Guardian 연관관계 테스트
-- [ ] pessimistic write lock이 같은 token row의 동시 변경을 직렬화하는 PostgreSQL 테스트
-- [ ] 고유 제약 위반이 애플리케이션에서 email 충돌로 식별 가능한지 확인하는 테스트
+- [x] Guardian 저장·email 조회·enum 복원 테스트
+- [x] 정규화된 email이 Guardian 저장과 email 조회에서 사용하는 유일한 값인지 확인하는 테스트
+- [x] RefreshToken 저장·hash 조회·Guardian 연관관계 테스트
+- [x] pessimistic write lock이 같은 token row의 동시 변경을 직렬화하는 PostgreSQL 테스트
+- [x] 고유 제약 위반이 애플리케이션에서 email 충돌로 식별 가능한지 확인하는 테스트
 
 #### 완료 조건
 
-- [ ] repository가 M1 service에 필요한 조회만 노출한다.
-- [ ] entity mapping이 `ddl-auto=validate`와 모든 PostgreSQL 통합 테스트를 통과한다.
-- [ ] 사람 개발자가 entity mapping, cascade와 lock 범위를 검토했다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] repository가 M1 service에 필요한 조회만 노출한다.
+- [x] entity mapping이 `ddl-auto=validate`와 모든 PostgreSQL 통합 테스트를 통과한다.
+- [x] 사람 개발자가 entity mapping, cascade와 lock 범위를 검토했다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 4. 비밀번호·access token·refresh token 기본 구성요소 구현
 
