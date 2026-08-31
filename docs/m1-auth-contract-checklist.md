@@ -30,7 +30,7 @@
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 영속성            | `Guardian`과 `RefreshToken` JPA entity를 직접 매핑한다. UUID는 애플리케이션에서 생성하고 시간은 `Instant`와 주입 가능한 `Clock`으로 계산한다. 범용 base entity나 별도 계층은 추가하지 않는다. 기존 V1 migration은 수정하지 않고 email 정책에 필요한 DB 제약은 V2 migration으로 추가한다. |
 | email             | 회원가입과 로그인 입력을 trim한 뒤 `Locale.ROOT` 기준 소문자로 정규화하고 저장·응답에도 같은 값을 사용한다. DB에서도 대소문자를 무시한 유일성을 보장한다. 상세 정책은 `openapi.yaml`의 `info.x-email-policy`를 따른다.                                                                   |
-| 비밀번호          | `DelegatingPasswordEncoder`의 BCrypt를 사용하고 초기 cost는 12로 시작한 뒤 실행 환경에서 측정해 조정한다. 원문은 저장하거나 로그에 기록하지 않는다.                                                                                                                                      |
+| 비밀번호          | `BCryptPasswordEncoder`를 사용하고 초기 cost는 12로 시작한 뒤 실행 환경에서 측정해 조정한다. 단일 BCrypt 정책이므로 `DelegatingPasswordEncoder`는 사용하지 않는다. 원문은 저장하거나 로그에 기록하지 않는다.                                                                             |
 | access token      | Spring Security OAuth2 Resource Server와 Nimbus encoder·decoder를 사용해 HS256 JWT를 발급·검증한다. secret은 외부 설정으로만 주입하고 누락되거나 안전하지 않은 길이면 시작을 실패시킨다. `sub`에는 Guardian UUID만 사용하며 변경 가능한 보호자 정보는 claim에 넣지 않는다.               |
 | refresh token     | 256-bit 무작위 opaque token을 padding 없는 Base64 URL 형식으로 반환하고 DB에는 SHA-256 hash만 저장한다. 상세 형식과 수명은 `openapi.yaml`의 `info.x-token-policy`를 따른다.                                                                                                              |
 | token 회전        | refresh token row를 pessimistic write lock으로 조회하고 기존 token 폐기와 새 token 저장을 하나의 transaction에서 수행한다. 동시 요청은 먼저 잠근 하나만 성공하며 폐기·회전된 token 재사용은 거부한다. token family와 기기·세션 관리는 M1에 추가하지 않는다.                              |
@@ -145,31 +145,33 @@
 
 #### 작업
 
-- [ ] `DelegatingPasswordEncoder`의 BCrypt 설정을 추가하고 승인된 초기 cost를 적용한다.
-- [ ] BCrypt 검증 시간을 실행 환경에서 측정하고 조정 여부를 기록한다.
-- [ ] Spring Security OAuth2 Resource Server/Jose 의존성을 추가한다.
-- [ ] HS256 secret을 외부 설정으로만 주입하고 누락·잘못된 길이에서 시작을 실패시킨다.
-- [ ] `JwtEncoder`와 `JwtDecoder`가 같은 승인된 issuer, audience, algorithm과 시간 검증 규칙을 사용하게 한다.
-- [ ] access token에는 Guardian UUID subject와 token 식별·시간 claim만 넣고 변경 가능한 Guardian 정보는 넣지 않는다.
-- [ ] `SecureRandom` 기반 opaque refresh token 생성과 SHA-256 hash 계산을 구현한다.
-- [ ] token TTL과 응답 상수는 하나의 application 설정에서 읽고 계약 테스트로 `info.x-token-policy`와 일치함을 고정한다.
-- [ ] 테스트가 실제 시스템 시각이나 `sleep`에 의존하지 않도록 `Clock`을 사용한다.
+- [x] `BCryptPasswordEncoder` 설정을 추가하고 승인된 초기 cost를 적용한다.
+- [x] BCrypt 검증 시간을 실행 환경에서 측정하고 조정 여부를 기록한다.
+    - 측정 기록 (2026-08-28): 현재 개발 환경의 Java 21에서 `./gradlew bcryptBenchmark`를 실행했다. cost 12의 matches ()
+      100회 측정 결과 median 228ms, p95 230ms였으며, 현 단계에서는 cost 12를 유지한다. 배포 환경에서도 같은 태스크로 다시 측정한다.
+- [x] Spring Security OAuth2 Resource Server/Jose 의존성을 추가한다.
+- [x] HS256 secret을 외부 설정으로만 주입하고 누락·잘못된 길이에서 시작을 실패시킨다.
+- [x] `JwtEncoder`와 `JwtDecoder`가 같은 승인된 issuer, audience, algorithm과 시간 검증 규칙을 사용하게 한다.
+- [x] access token에는 Guardian UUID subject와 token 식별·시간 claim만 넣고 변경 가능한 Guardian 정보는 넣지 않는다.
+- [x] `SecureRandom` 기반 opaque refresh token 생성과 SHA-256 hash 계산을 구현한다.
+- [x] token TTL과 응답 상수는 하나의 application 설정에서 읽고 계약 테스트로 `info.x-token-policy`와 일치함을 고정한다.
+- [x] 테스트가 실제 시스템 시각이나 `sleep`에 의존하지 않도록 `Clock`을 사용한다.
 
 #### 필수 테스트
 
-- [ ] 비밀번호 encode·match·불일치와 원문 미포함 테스트
-- [ ] access token subject·issuer·audience·서명·TTL 테스트
-- [ ] 만료, 변조, 잘못된 issuer·audience·algorithm token 거부 테스트
-- [ ] refresh token 형식·요청별 유일성과 hash 결정성 테스트
-- [ ] refresh token 원문과 hash가 서로 다르고 DB 저장 형식과 일치하는지 확인하는 테스트
-- [ ] secret 누락·짧은 secret 설정 실패 테스트
+- [x] 비밀번호 encode·match·불일치와 원문 미포함 테스트
+- [x] access token subject·issuer·audience·서명·TTL 테스트
+- [x] 만료, 변조, 잘못된 issuer·audience·algorithm token 거부 테스트
+- [x] refresh token 형식·요청별 유일성과 hash 결정성 테스트
+- [x] refresh token 원문과 hash가 서로 다르고 DB 저장 형식과 일치하는지 확인하는 테스트
+- [x] secret 누락·짧은 secret 설정 실패 테스트
 
 #### 완료 조건
 
-- [ ] 암호화 구성요소 단위 테스트가 모두 통과한다.
-- [ ] 비밀번호와 token 원문이 로그·예외·영속 객체에 들어가지 않는다.
-- [ ] 새 의존성과 설정값의 주입 방법이 README 또는 배포 설정의 지정 위치에 기록돼 있다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] 암호화 구성요소 단위 테스트가 모두 통과한다.
+- [x] 비밀번호와 token 원문이 로그·예외·영속 객체에 들어가지 않는다.
+- [x] 새 의존성과 설정값의 주입 방법이 README 또는 배포 설정의 지정 위치에 기록돼 있다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 5. RefreshToken 수명 주기와 인증 application service 구현
 

@@ -11,6 +11,11 @@ info:
   x-time-zone: Asia/Seoul
   x-token-policy:
     accessTokenTtlSeconds: 900
+    accessTokenIssuer: my-petmate-server
+    accessTokenAudience: my-petmate-api
+    accessTokenAlgorithm: HS256
+    accessTokenClockSkewSeconds: 0
+    tokenType: Bearer
     refreshTokenTtlSeconds: 2592000
     refreshTokenFormat: opaque-base64url-without-padding
     refreshTokenEntropyBits: 256
