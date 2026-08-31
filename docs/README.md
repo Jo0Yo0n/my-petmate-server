@@ -62,8 +62,12 @@ PostgreSQL 기반의 인증 토대 (M1)를 구현 중입니다.
 
 ```bash
 docker compose up -d postgres
+# 최초 한 번만 `openssl rand -base64 32`으로 생성해 안전하게 보관한 값을 설정한다.
+export JWT_SECRET="<stored-jwt-secret>"
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
+
+`JWT_SECRET`은 HS256 access token 서명·검증에 사용하는 외부 환경 변수다. 최소 32바이트여야 하며, Git이나 application YAML에 실제 값을 저장하지 않는다. 서버 재시작에도 같은 값을 사용한다.
 
 검증은 다음 명령으로 실행합니다.
 

@@ -32,6 +32,7 @@ spotless {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -50,9 +51,25 @@ dependencies {
     }
 }
 tasks.withType<Test>().configureEach {
+    environment("JWT_SECRET", "test-jwt-secret-that-is-at-least-32-bytes")
     jvmArgs("-javaagent:${mockitoAgent.asPath}")
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
+tasks.named<Test>("test") {
+    useJUnitPlatform {
+        excludeTags("manual")
+    }
+}
+
+val bcryptBenchmark by tasks.registering(Test::class) {
+    description = "Measures BCrypt password verification time."
+    group = "verification"
+    testClassesDirs =
+        sourceSets.test
+            .get()
+            .output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform {
+        includeTags("manual")
+    }
 }
