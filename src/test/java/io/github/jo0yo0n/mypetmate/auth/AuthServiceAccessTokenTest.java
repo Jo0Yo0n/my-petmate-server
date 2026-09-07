@@ -11,22 +11,30 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 
-public class AuthServiceTest {
+@ExtendWith(MockitoExtension.class)
+public class AuthServiceAccessTokenTest {
 
   private static final Instant NOW = Instant.parse("2026-08-28T00:00:00Z");
   private static final String SECRET = "s".repeat(64);
@@ -35,6 +43,11 @@ public class AuthServiceTest {
   private static final String ACCESS_TOKEN_TTL = "900s";
   private static final String REFRESH_TOKEN_TTL = "2592000s";
   private static final String TOKEN_TYPE = "Bearer";
+
+  @Mock GuardianRepository guardianRepository;
+  @Mock RefreshTokenRepository refreshTokenRepository;
+  @Mock RefreshTokenGenerator refreshTokenGenerator;
+  @Mock PasswordEncoder passwordEncoder;
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
@@ -47,6 +60,7 @@ public class AuthServiceTest {
               "app.token.refresh-token-ttl=" + REFRESH_TOKEN_TTL,
               "app.token.token-type=" + TOKEN_TYPE);
 
+  @DisplayName("[M1-CRYPTO-02] issuesAnAccessTokenWithContractClaims")
   @Test
   void issuesAnAccessTokenWithContractClaims() {
     contextRunner.run(
@@ -68,7 +82,11 @@ public class AuthServiceTest {
                   context.getBean(Clock.class),
                   context.getBean(JwtEncoder.class),
                   context.getBean(JwtProperties.class),
-                  context.getBean(TokenProperties.class));
+                  context.getBean(TokenProperties.class),
+                  guardianRepository,
+                  refreshTokenRepository,
+                  refreshTokenGenerator,
+                  passwordEncoder);
 
           String accessToken = authService.issueAccessToken(guardian);
           JwtDecoder jwtDecoder = context.getBean(JwtDecoder.class);
