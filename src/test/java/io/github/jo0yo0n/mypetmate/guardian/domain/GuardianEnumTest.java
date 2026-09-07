@@ -8,12 +8,14 @@ import io.github.jo0yo0n.mypetmate.guardian.persistence.GenderConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianStatusConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.IdentityVisibilityConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.ProfileTypeConverter;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class GuardianEnumTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
+  @DisplayName("[M1-DTO-01] serializesEnumsAsContractValues")
   @Test
   void serializesEnumsAsContractValues() throws Exception {
     assertThat(objectMapper.writeValueAsString(ProfileType.INDIVIDUAL)).isEqualTo("\"individual\"");
@@ -24,6 +26,7 @@ class GuardianEnumTest {
         .isEqualTo("\"temporarily_restricted\"");
   }
 
+  @DisplayName("[M1-DTO-01] deserializesExactContractValues")
   @Test
   void deserializesExactContractValues() throws Exception {
     assertThat(objectMapper.readValue("\"couple\"", ProfileType.class))
@@ -35,6 +38,7 @@ class GuardianEnumTest {
         .isEqualTo(GuardianStatus.WITHDRAWN);
   }
 
+  @DisplayName("[M1-DTO-01] rejectsCaseVariantsAndUnknownValues")
   @Test
   void rejectsCaseVariantsAndUnknownValues() {
     assertThatThrownBy(() -> objectMapper.readValue("\"INDIVIDUAL\"", ProfileType.class))
@@ -43,6 +47,7 @@ class GuardianEnumTest {
         .hasMessageContaining("Unknown gender value");
   }
 
+  @DisplayName("[M1-DTO-01] convertersUseLowercaseDatabaseValues")
   @Test
   void convertersUseLowercaseDatabaseValues() {
     ProfileTypeConverter profileTypeConverter = new ProfileTypeConverter();
@@ -60,6 +65,7 @@ class GuardianEnumTest {
     assertThat(statusConverter.convertToDatabaseColumn(GuardianStatus.ACTIVE)).isEqualTo("active");
   }
 
+  @DisplayName("[M1-DTO-01] convertersPreserveNullsAndRejectUnknownDatabaseValues")
   @Test
   void convertersPreserveNullsAndRejectUnknownDatabaseValues() {
     ProfileTypeConverter converter = new ProfileTypeConverter();

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.time.Duration;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -17,6 +18,7 @@ class TokenPolicyContractTest {
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner().withUserConfiguration(TokenPropertiesConfiguration.class);
 
+  @DisplayName("[M1-CRYPTO-06] applicationTokenPolicyAndResponseConstantsMatchTheOpenApiContract")
   @Test
   void applicationTokenPolicyAndResponseConstantsMatchTheOpenApiContract() throws IOException {
     PropertySource<?> application = loadYaml("application", "src/main/resources/application.yaml");

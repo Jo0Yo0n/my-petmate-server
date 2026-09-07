@@ -3,6 +3,7 @@ package io.github.jo0yo0n.mypetmate.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -13,6 +14,7 @@ class TokenPropertiesTest {
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner().withUserConfiguration(TokenPropertiesConfiguration.class);
 
+  @DisplayName("[M1-CRYPTO-06] bindsTheTokenPolicy")
   @Test
   void bindsTheTokenPolicy() {
     contextRunner
@@ -30,6 +32,7 @@ class TokenPropertiesTest {
             });
   }
 
+  @DisplayName("[M1-CRYPTO-06] failsToStartWhenTheAccessTokenTtlIsZero")
   @Test
   void failsToStartWhenTheAccessTokenTtlIsZero() {
     contextRunner
@@ -40,6 +43,7 @@ class TokenPropertiesTest {
         .run(context -> assertThat(context).hasFailed());
   }
 
+  @DisplayName("[M1-CRYPTO-06] failsToStartWhenTheRefreshTokenTtlIsNegative")
   @Test
   void failsToStartWhenTheRefreshTokenTtlIsNegative() {
     contextRunner

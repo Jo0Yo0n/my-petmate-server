@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
@@ -19,6 +20,7 @@ public class SignupRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
+  @DisplayName("[M1-DTO-02] acceptsValidSignupJson")
   @Test
   void acceptsValidSignupJson() throws Exception {
     String json =
@@ -36,6 +38,7 @@ public class SignupRequestJsonTest {
                 IdentityVisibility.PUBLIC));
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownSignupJsonField")
   @Test
   void rejectsUnknownSignupJsonField() {
     String json =
@@ -48,16 +51,19 @@ public class SignupRequestJsonTest {
         .isInstanceOf(JsonProcessingException.class);
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownProfileTypeInSignupJson")
   @Test
   void rejectsUnknownProfileTypeInSignupJson() {
     assertSignupJsonRejected("unknown", "female", "public", "profileType");
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownGenderInSignupJson")
   @Test
   void rejectsUnknownGenderInSignupJson() {
     assertSignupJsonRejected("individual", "unknown", "public", "gender");
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownIdentityVisibilityInSignupJson")
   @Test
   void rejectsUnknownIdentityVisibilityInSignupJson() {
     assertSignupJsonRejected("individual", "female", "unknown", "identityVisibility");
