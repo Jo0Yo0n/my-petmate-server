@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 
+import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
+import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.dto.AuthResponse;
-import io.github.jo0yo0n.mypetmate.guardian.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;

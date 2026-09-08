@@ -45,12 +45,24 @@ class JwtPropertiesTest {
   @DisplayName("[M1-CRYPTO-05] failsToStartWhenTheSecretIsShorterThan32Bytes")
   @Test
   void failsToStartWhenTheSecretIsShorterThan32Bytes() {
+    String shortSecret = "too-short";
+
     contextRunner
         .withPropertyValues(
-            "app.jwt.secret=too-short",
+            "app.jwt.secret=" + shortSecret,
             "app.jwt.issuer=" + VALID_ISSUER,
             "app.jwt.audience=" + VALID_AUDIENCE)
-        .run(context -> assertThat(context).hasFailed());
+        .run(
+            context -> {
+              assertThat(context).hasFailed();
+              assertFailureDoesNotExpose(context.getStartupFailure(), shortSecret);
+            });
+  }
+
+  private void assertFailureDoesNotExpose(Throwable failure, String secret) {
+    for (Throwable exception = failure; exception != null; exception = exception.getCause()) {
+      assertThat(String.valueOf(exception.getMessage())).doesNotContain(secret);
+    }
   }
 
   @Configuration(proxyBeanMethods = false)

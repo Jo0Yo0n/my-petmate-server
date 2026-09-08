@@ -1,10 +1,11 @@
-package io.github.jo0yo0n.mypetmate.guardian.dto;
+package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -58,13 +59,35 @@ class RequestValidationTest {
   @DisplayName("[M1-DTO-02] appliesTheSameProfileRuleToGuardianUpdates")
   @Test
   void appliesTheSameProfileRuleToGuardianUpdates() {
-    GuardianUpdateRequest valid =
-        new GuardianUpdateRequest(ProfileType.COUPLE, null, IdentityVisibility.PRIVATE);
-    GuardianUpdateRequest invalid =
-        new GuardianUpdateRequest(ProfileType.FAMILY, Gender.FEMALE, IdentityVisibility.PUBLIC);
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(
+                    ProfileType.INDIVIDUAL, Gender.FEMALE, IdentityVisibility.PUBLIC)))
+        .isEmpty();
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(ProfileType.COUPLE, null, IdentityVisibility.PRIVATE)))
+        .isEmpty();
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(ProfileType.FAMILY, null, IdentityVisibility.PUBLIC)))
+        .isEmpty();
 
-    assertThat(violations(valid)).isEmpty();
-    assertThat(violations(invalid))
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(ProfileType.INDIVIDUAL, null, IdentityVisibility.PUBLIC)))
+        .extracting(violation -> violation.getPropertyPath().toString())
+        .contains("gender");
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(
+                    ProfileType.COUPLE, Gender.FEMALE, IdentityVisibility.PUBLIC)))
+        .extracting(violation -> violation.getPropertyPath().toString())
+        .contains("gender");
+    assertThat(
+            violations(
+                new GuardianUpdateRequest(
+                    ProfileType.FAMILY, Gender.FEMALE, IdentityVisibility.PUBLIC)))
         .extracting(violation -> violation.getPropertyPath().toString())
         .contains("gender");
   }
@@ -74,6 +97,16 @@ class RequestValidationTest {
   void acceptsPasswordContainingEveryRequiredAsciiCharacterGroup() {
     assertThat(violations(signup("StrongPass123!"))).isEmpty();
     assertThat(violations(signup("Aa1!" + "a".repeat(68)))).isEmpty();
+  }
+
+  @DisplayName("[M1-DTO-03] acceptsMinimumLengthPasswordAndEachAllowedSpecialCharacter")
+  @Test
+  void acceptsMinimumLengthPasswordAndEachAllowedSpecialCharacter() {
+    assertThat(violations(signup("Aa1!aaaa"))).isEmpty();
+
+    for (char specialCharacter : "!@#$%^&*".toCharArray()) {
+      assertThat(violations(signup("Aa1" + specialCharacter + "aaaa"))).isEmpty();
+    }
   }
 
   @DisplayName("[M1-DTO-03] rejectsPasswordMissingAnyRequiredCharacterGroup")
@@ -96,6 +129,12 @@ class RequestValidationTest {
     assertPasswordInvalid("Aa1!" + "a".repeat(69));
   }
 
+  @DisplayName("[M1-DTO-03] rejectsSignupPasswordShorterThanEightCharacters")
+  @Test
+  void rejectsSignupPasswordShorterThanEightCharacters() {
+    assertPasswordInvalid("Aa1!aaa");
+  }
+
   @DisplayName("[M1-DTO-02, M1-DTO-03, M1-DTO-05] validatesEmailAndRequiredSignupFields")
   @Test
   void validatesEmailAndRequiredSignupFields() {
@@ -104,6 +143,12 @@ class RequestValidationTest {
     assertThat(violations(request))
         .extracting(violation -> violation.getPropertyPath().toString())
         .contains("email", "password", "profileType", "identityVisibility");
+  }
+
+  @DisplayName("[M1-DTO-05] rejectsMissingSignupEmail")
+  @Test
+  void rejectsMissingSignupEmail() {
+    assertViolation(signupWithEmail(null), "email", "필수입니다.");
   }
 
   @DisplayName("[M1-DTO-04] normalizesSignupAndLoginEmailsBeforeValidation")
@@ -165,9 +210,8 @@ class RequestValidationTest {
   @DisplayName("[M1-DTO-06] loginDoesNotReapplySignupPasswordComplexity")
   @Test
   void loginDoesNotReapplySignupPasswordComplexity() {
-    LoginRequest request = new LoginRequest("guardian@example.com", "x");
-
-    assertThat(violations(request)).isEmpty();
+    assertThat(violations(new LoginRequest("guardian@example.com", "x"))).isEmpty();
+    assertThat(violations(new LoginRequest("guardian@example.com", "x".repeat(72)))).isEmpty();
   }
 
   @DisplayName("[M1-DTO-07] acceptsValidRefreshToken")

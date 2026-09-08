@@ -86,7 +86,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
-  @DisplayName("[M1-DB-04] refreshTokenRejectsInvalidHashTimesAndGuardian")
+  @DisplayName("[M1-DB-04] refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash")
   @Test
   void refreshTokenRejectsInvalidHashTimesAndGuardian() {
     UUID guardianId = insertGuardian("token-constraints@example.com", "individual", "female");
@@ -119,6 +119,14 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
             () ->
                 insertRefreshToken(
                     UUID.randomUUID(), hashOf('c'), createdAt.plusSeconds(1), null, createdAt))
+        .isInstanceOf(DataIntegrityViolationException.class);
+
+    String duplicateTokenHash = hashOf('d');
+    insertRefreshToken(guardianId, duplicateTokenHash, createdAt.plusSeconds(1), null, createdAt);
+    assertThatThrownBy(
+            () ->
+                insertRefreshToken(
+                    guardianId, duplicateTokenHash, createdAt.plusSeconds(2), null, createdAt))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 

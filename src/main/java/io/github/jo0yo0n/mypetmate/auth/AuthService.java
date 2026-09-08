@@ -1,12 +1,12 @@
 package io.github.jo0yo0n.mypetmate.auth;
 
+import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
+import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.config.JwtProperties;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
-import io.github.jo0yo0n.mypetmate.guardian.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;

@@ -18,6 +18,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +76,23 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     assertThat(duplicateEmail).isEqualTo(email);
     assertThatThrownBy(() -> guardianRepository.saveAndFlush(newGuardian(duplicateEmail)))
         .isInstanceOf(DataIntegrityViolationException.class)
-        .hasMessageContaining("uk_guardian_email_lower");
+        .isInstanceOfSatisfying(
+            DataIntegrityViolationException.class,
+            exception -> {
+              Throwable cause = exception.getCause();
+              ConstraintViolationException violation = null;
+
+              while (cause != null) {
+                if (cause instanceof ConstraintViolationException) {
+                  violation = (ConstraintViolationException) cause;
+                  assertThat(violation.getConstraintName()).isEqualTo("uk_guardian_email_lower");
+                  break;
+                }
+                cause = cause.getCause();
+              }
+
+              assertThat(violation).isNotNull();
+            });
   }
 
   @DisplayName("[M1-JPA-02] savesRefreshTokenAndFindsItByHashWithGuardianAssociation")
@@ -83,15 +100,20 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
   void savesRefreshTokenAndFindsItByHashWithGuardianAssociation() {
     Guardian guardian = guardianRepository.saveAndFlush(newGuardian("token@example.com"));
     String tokenHash = "a".repeat(64);
-    Instant now = clock.instant();
+    Instant now = Instant.parse("2026-08-26T00:00:00Z");
+    Instant expiresAt = now.plusSeconds(60);
+    Instant revokedAt = now.plusSeconds(30);
     refreshTokenRepository.saveAndFlush(
-        new RefreshToken(UUID.randomUUID(), guardian, tokenHash, now.plusSeconds(60), null, now));
+        new RefreshToken(UUID.randomUUID(), guardian, tokenHash, expiresAt, revokedAt, now));
     entityManager.clear();
 
     RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(tokenHash).orElseThrow();
 
     assertThat(refreshToken.getTokenHash()).isEqualTo(tokenHash);
     assertThat(refreshToken.getGuardian().getId()).isEqualTo(guardian.getId());
+    assertThat(refreshToken.getCreatedAt()).isEqualTo(now);
+    assertThat(refreshToken.getExpiresAt()).isEqualTo(expiresAt);
+    assertThat(refreshToken.getRevokedAt()).isEqualTo(revokedAt);
   }
 
   @DisplayName("[M1-JPA-03] pessimisticWriteLockSerializesConcurrentAccessToTheSameToken")

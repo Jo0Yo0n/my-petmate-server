@@ -39,16 +39,16 @@
 
 ### 1. 입력 모델과 계약
 
-| ID          | 계층                    | Given / When                                                                 | Then                                                                                         |
-|-------------|-------------------------|------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `M1-DTO-01` | 단위                    | 각 Guardian enum의 계약값을 JSON과 DB 값으로 변환한다.                       | 정확한 소문자 계약값으로 왕복하고 대소문자 변형·알 수 없는 값은 거부한다.                    |
-| `M1-DTO-02` | 단위·parameterized      | 개인·커플·가족의 유효한 signup/update 조합을 검증한다.                       | 개인은 gender가 있고 커플·가족은 gender가 없거나 `null`일 때만 성공한다.                     |
-| `M1-DTO-03` | 단위·parameterized      | signup 비밀번호의 길이와 필수 문자군 경계를 검증한다.                        | OpenAPI 패턴에 맞는 경계값만 성공하고 공백·비허용 문자·누락 문자군은 실패한다.               |
-| `M1-DTO-04` | 단위·parameterized      | signup/login email에 앞뒤 공백과 대문자가 있다.                              | 정규화 후 검증·저장에 사용할 canonical email이 만들어지고 `null`은 안전하게 처리된다.        |
-| `M1-DTO-05` | 단위·parameterized      | 정규화 전후의 email 길이·형식·문자 경계를 검증한다.                          | OpenAPI email 정책 밖의 값은 해당 필드 validation 오류가 된다.                               |
-| `M1-DTO-06` | 단위·parameterized      | login 비밀번호가 signup 복잡도는 만족하지 않지만 login 길이 계약은 만족한다. | login validation은 signup 전용 복잡도 규칙을 적용하지 않는다.                                |
-| `M1-DTO-07` | 단위·parameterized      | refresh token의 길이와 Base64 URL 문자 경계를 검증한다.                      | 계약 형식만 성공하며 누락·빈 값·길이 초과·비허용 문자는 실패한다.                            |
-| `M1-DTO-08` | JSON 단위·parameterized | 요청 JSON에 알 수 없는 필드나 enum 값이 들어온다.                            | 역직렬화를 거부하며 이후 HTTP 계층에서 `VALIDATION_FAILED`로 변환할 수 있는 오류가 발생한다. |
+| ID          | 계층                    | Given / When                                                                      | Then                                                                                                        |
+|-------------|-------------------------|-----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `M1-DTO-01` | 단위                    | 각 Guardian enum의 계약값을 JSON과 DB 값으로 변환한다.                            | 정확한 소문자 계약값으로 왕복하고 대소문자 변형·알 수 없는 값은 거부한다.                                   |
+| `M1-DTO-02` | 단위·parameterized      | 개인·커플·가족의 유효한 signup/update 조합을 검증한다.                            | 개인은 gender가 있고 커플·가족은 gender가 없거나 `null`일 때만 성공한다.                                    |
+| `M1-DTO-03` | 단위·parameterized      | signup 비밀번호의 최소·최대 길이와 각 허용 특수문자, 필수 문자군 경계를 검증한다. | 정확히 8~72자이고 허용 특수문자를 포함한 값만 성공하며, 공백·비허용 문자·누락 문자군·범위 밖 값은 실패한다. |
+| `M1-DTO-04` | 단위·parameterized      | signup/login email에 앞뒤 공백과 대문자가 있다.                                   | 정규화 후 검증·저장에 사용할 canonical email이 만들어지고 `null`은 안전하게 처리된다.                       |
+| `M1-DTO-05` | 단위·parameterized      | 정규화 전후의 email 길이·형식·문자 경계를 검증한다.                               | OpenAPI email 정책 밖의 값은 해당 필드 validation 오류가 된다.                                              |
+| `M1-DTO-06` | 단위·parameterized      | login 비밀번호의 누락·1~72자 경계와 signup 복잡도 규칙 미적용을 검증한다.         | 1~72자는 signup 복잡도와 무관하게 통과하고, 누락·빈 값·72자 초과는 validation 오류가 된다.                  |
+| `M1-DTO-07` | 단위·parameterized      | refresh token의 길이와 Base64 URL 문자 경계를 검증한다.                           | 계약 형식만 성공하며 누락·빈 값·길이 초과·비허용 문자는 실패한다.                                           |
+| `M1-DTO-08` | JSON 단위·parameterized | 요청 JSON에 알 수 없는 필드나 enum 값이 들어온다.                                 | 역직렬화를 거부하며 이후 HTTP 계층에서 `VALIDATION_FAILED`로 변환할 수 있는 오류가 발생한다.                |
 
 ### 2. Migration과 JPA 영속성
 
@@ -57,12 +57,12 @@
 | `M1-DB-01`  | PostgreSQL 통합               | 빈 PostgreSQL에 Flyway를 실행한다.                                                        | V1부터 최신 migration이 순서대로 적용되고 Hibernate `validate`가 성공한다.    |
 | `M1-DB-02`  | PostgreSQL 통합·parameterized | Guardian enum과 profile type·gender 조합을 직접 저장한다.                                 | 유효한 조합만 DB check 제약을 통과한다.                                       |
 | `M1-DB-03`  | PostgreSQL 통합               | 대소문자만 다른 email을 두 transaction에서 저장한다.                                      | DB가 case-insensitive unique 제약으로 둘 중 하나를 거부한다.                  |
-| `M1-DB-04`  | PostgreSQL 통합·parameterized | 잘못된 token hash, 만료·폐기 시각 또는 없는 Guardian FK를 저장한다.                       | 각각의 DB 제약이 잘못된 상태를 거부한다.                                      |
+| `M1-DB-04`  | PostgreSQL 통합·parameterized | 잘못된 token hash, 중복 hash, 만료·폐기 시각 또는 없는 Guardian FK를 저장한다.            | hash 형식·고유성·수명 주기·FK 제약이 각각 잘못된 상태를 거부한다.             |
 | `M1-DB-05`  | PostgreSQL 통합               | RefreshToken이 있는 Guardian을 삭제한다.                                                  | FK 정책에 따라 연결 token도 삭제된다.                                         |
 | `M1-JPA-01` | PostgreSQL 통합               | Guardian을 저장하고 canonical email로 조회한다.                                           | UUID, 정규화 email과 enum이 동일하게 복원된다.                                |
-| `M1-JPA-02` | PostgreSQL 통합               | RefreshToken을 저장하고 hash로 조회한다.                                                  | Guardian 단방향 연관관계와 token 수명 상태가 복원된다.                        |
+| `M1-JPA-02` | PostgreSQL 통합               | RefreshToken을 저장하고 hash로 조회한다.                                                  | Guardian 단방향 연관관계와 생성·만료·폐기 시각이 복원된다.                    |
 | `M1-JPA-03` | PostgreSQL 동시성             | transaction A가 token row를 pessimistic write lock으로 잡은 동안 B가 같은 row를 조회한다. | B는 A가 끝나기 전에 임계 구역을 통과하지 못하고 이후 최신 상태를 본다.        |
-| `M1-JPA-04` | 단위·통합                     | entity를 문자열화하거나 persistence 예외를 애플리케이션 오류로 변환한다.                  | 비밀번호 hash와 token hash가 출력되지 않고 email unique 위반은 식별 가능하다. |
+| `M1-JPA-04` | PostgreSQL 통합               | 대소문자를 무시하는 email unique 제약이 위반된다.                                         | 원인 예외에서 `uk_guardian_email_lower`를 식별해 email 충돌로 변환할 수 있다. |
 
 ### 3. 비밀번호와 Token 구성요소
 
