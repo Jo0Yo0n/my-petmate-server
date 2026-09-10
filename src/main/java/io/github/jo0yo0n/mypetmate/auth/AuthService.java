@@ -1,9 +1,10 @@
 package io.github.jo0yo0n.mypetmate.auth;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
+import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
-import io.github.jo0yo0n.mypetmate.config.JwtProperties;
+import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
@@ -13,14 +14,10 @@ import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
   private final Clock clock;
-  private final JwtEncoder jwtEncoder;
-  private final JwtProperties jwtProperties;
+  private final AccessTokenIssuer accessTokenIssuer;
   private final TokenProperties tokenProperties;
   private final GuardianRepository guardianRepository;
   private final RefreshTokenRepository refreshTokenRepository;
@@ -38,16 +34,15 @@ public class AuthService {
 
   public AuthService(
       Clock clock,
-      JwtEncoder jwtEncoder,
-      JwtProperties jwtProperties,
+      AccessTokenIssuer accessTokenIssuer,
       TokenProperties tokenProperties,
       GuardianRepository guardianRepository,
       RefreshTokenRepository refreshTokenRepository,
       RefreshTokenGenerator refreshTokenGenerator,
       PasswordEncoder passwordEncoder) {
+
     this.clock = clock;
-    this.jwtEncoder = jwtEncoder;
-    this.jwtProperties = jwtProperties;
+    this.accessTokenIssuer = accessTokenIssuer;
     this.tokenProperties = tokenProperties;
     this.guardianRepository = guardianRepository;
     this.refreshTokenRepository = refreshTokenRepository;
@@ -93,6 +88,30 @@ public class AuthService {
       throw exception;
     }
 
+    return makeAuthResponse(guardian, now);
+  }
+
+  @Transactional
+  AuthResponse login(LoginRequest loginRequest) {
+
+    Instant now = clock.instant();
+    Guardian guardian =
+        guardianRepository
+            .findByEmail(loginRequest.email())
+            .orElseThrow(InvalidCredentialsException::new);
+
+    if (!passwordEncoder.matches(loginRequest.password(), guardian.getPasswordHash())) {
+      throw new InvalidCredentialsException();
+    }
+
+    if (guardian.getStatus() == GuardianStatus.WITHDRAWN) {
+      throw new InvalidCredentialsException();
+    }
+
+    return makeAuthResponse(guardian, now);
+  }
+
+  private AuthResponse makeAuthResponse(Guardian guardian, Instant now) {
     String refreshToken = refreshTokenGenerator.generate();
     refreshTokenRepository.save(
         new RefreshToken(
@@ -103,7 +122,7 @@ public class AuthService {
             null,
             now));
 
-    String accessToken = issueAccessToken(guardian);
+    String accessToken = accessTokenIssuer.issue(guardian, now);
 
     return new AuthResponse(
         accessToken,
@@ -112,21 +131,5 @@ public class AuthService {
         Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()),
         Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()),
         GuardianResponse.from(guardian));
-  }
-
-  String issueAccessToken(Guardian guardian) {
-    Instant now = clock.instant();
-
-    JwtClaimsSet claims =
-        JwtClaimsSet.builder()
-            .subject(guardian.getId().toString())
-            .issuer(jwtProperties.issuer())
-            .audience(List.of(jwtProperties.audience()))
-            .issuedAt(now)
-            .expiresAt(now.plus(tokenProperties.accessTokenTtl()))
-            .id(UUID.randomUUID().toString())
-            .build();
-
-    return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
   }
 }
