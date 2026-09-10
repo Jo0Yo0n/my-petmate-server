@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -43,6 +44,7 @@ class JwtConfigTest {
               "app.jwt.issuer=" + ISSUER,
               "app.jwt.audience=" + AUDIENCE);
 
+  @DisplayName("[M1-CRYPTO-02] encodesAndDecodesAnHs256JwtWithTheConfiguredIssuerAndAudience")
   @Test
   void encodesAndDecodesAnHs256JwtWithTheConfiguredIssuerAndAudience() {
     contextRunner.run(
@@ -61,6 +63,7 @@ class JwtConfigTest {
         });
   }
 
+  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithAnUnexpectedIssuer")
   @Test
   void rejectsJwtWithAnUnexpectedIssuer() {
     contextRunner.run(
@@ -74,6 +77,7 @@ class JwtConfigTest {
         });
   }
 
+  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithAnUnexpectedAudience")
   @Test
   void rejectsJwtWithAnUnexpectedAudience() {
     contextRunner.run(
@@ -87,6 +91,7 @@ class JwtConfigTest {
         });
   }
 
+  @DisplayName("[M1-CRYPTO-03] rejectsExpiredJwtWithoutClockSkew")
   @Test
   void rejectsExpiredJwtWithoutClockSkew() {
     contextRunner.run(
@@ -102,6 +107,7 @@ class JwtConfigTest {
         });
   }
 
+  @DisplayName("[M1-CRYPTO-03] rejectsJwtSignedWithAnAlgorithmOtherThanHs256")
   @Test
   void rejectsJwtSignedWithAnAlgorithmOtherThanHs256() {
     contextRunner.run(
@@ -113,6 +119,7 @@ class JwtConfigTest {
         });
   }
 
+  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithForgerySignature")
   @Test
   void rejectsJwtWithForgerySignature() {
     contextRunner.run(

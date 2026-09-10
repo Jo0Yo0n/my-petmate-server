@@ -3,32 +3,23 @@ package io.github.jo0yo0n.mypetmate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-class DatabaseMigrationIntegrationTest {
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> postgresql =
-      new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"));
+class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   @Autowired private JdbcTemplate jdbcTemplate;
 
+  @DisplayName("[M1-DB-01] appliesAllMigrationsToAnEmptyPostgresDatabase")
   @Test
   void appliesAllMigrationsToAnEmptyPostgresDatabase() {
     Boolean guardianAndRefreshTokenTableExists =
@@ -57,6 +48,7 @@ class DatabaseMigrationIntegrationTest {
     assertThat(emailIndexExists).isTrue();
   }
 
+  @DisplayName("[M1-DB-02] guardianAcceptsValidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianAcceptsValidEnumAndProfileTypeGenderCombinations() {
     assertThat(insertGuardian("individual@example.com", "individual", "female")).isNotNull();
@@ -64,6 +56,7 @@ class DatabaseMigrationIntegrationTest {
     assertThat(insertGuardian("family@example.com", "family", null)).isNotNull();
   }
 
+  @DisplayName("[M1-DB-02] guardianRejectsInvalidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianRejectsInvalidEnumAndProfileTypeGenderCombinations() {
     assertThatThrownBy(() -> insertGuardian("unknown-profile@example.com", "unknown", "female"))
@@ -84,6 +77,7 @@ class DatabaseMigrationIntegrationTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @DisplayName("[M1-DB-03] guardianRejectsEmailsThatDifferOnlyByCase")
   @Test
   void guardianRejectsEmailsThatDifferOnlyByCase() {
     insertGuardian("Guardian@Example.com", "individual", "female");
@@ -92,6 +86,7 @@ class DatabaseMigrationIntegrationTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @DisplayName("[M1-DB-04] refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash")
   @Test
   void refreshTokenRejectsInvalidHashTimesAndGuardian() {
     UUID guardianId = insertGuardian("token-constraints@example.com", "individual", "female");
@@ -125,8 +120,17 @@ class DatabaseMigrationIntegrationTest {
                 insertRefreshToken(
                     UUID.randomUUID(), hashOf('c'), createdAt.plusSeconds(1), null, createdAt))
         .isInstanceOf(DataIntegrityViolationException.class);
+
+    String duplicateTokenHash = hashOf('d');
+    insertRefreshToken(guardianId, duplicateTokenHash, createdAt.plusSeconds(1), null, createdAt);
+    assertThatThrownBy(
+            () ->
+                insertRefreshToken(
+                    guardianId, duplicateTokenHash, createdAt.plusSeconds(2), null, createdAt))
+        .isInstanceOf(DataIntegrityViolationException.class);
   }
 
+  @DisplayName("[M1-DB-05] deletingGuardianDeletesRefreshTokens")
   @Test
   void deletingGuardianDeletesRefreshTokens() {
     UUID guardianId = insertGuardian("cascade@example.com", "individual", "female");

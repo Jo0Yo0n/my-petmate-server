@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.dto;
+package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

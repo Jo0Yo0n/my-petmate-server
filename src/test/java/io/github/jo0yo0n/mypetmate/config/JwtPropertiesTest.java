@@ -2,6 +2,7 @@ package io.github.jo0yo0n.mypetmate.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -16,6 +17,7 @@ class JwtPropertiesTest {
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner().withUserConfiguration(JwtPropertiesConfiguration.class);
 
+  @DisplayName("[M1-CRYPTO-05] startsWithASecretOfAtLeast32Bytes")
   @Test
   void startsWithASecretOfAtLeast32Bytes() {
     contextRunner
@@ -32,6 +34,7 @@ class JwtPropertiesTest {
             });
   }
 
+  @DisplayName("[M1-CRYPTO-05] failsToStartWhenTheSecretIsMissing")
   @Test
   void failsToStartWhenTheSecretIsMissing() {
     contextRunner
@@ -39,14 +42,27 @@ class JwtPropertiesTest {
         .run(context -> assertThat(context).hasFailed());
   }
 
+  @DisplayName("[M1-CRYPTO-05] failsToStartWhenTheSecretIsShorterThan32Bytes")
   @Test
   void failsToStartWhenTheSecretIsShorterThan32Bytes() {
+    String shortSecret = "too-short";
+
     contextRunner
         .withPropertyValues(
-            "app.jwt.secret=too-short",
+            "app.jwt.secret=" + shortSecret,
             "app.jwt.issuer=" + VALID_ISSUER,
             "app.jwt.audience=" + VALID_AUDIENCE)
-        .run(context -> assertThat(context).hasFailed());
+        .run(
+            context -> {
+              assertThat(context).hasFailed();
+              assertFailureDoesNotExpose(context.getStartupFailure(), shortSecret);
+            });
+  }
+
+  private void assertFailureDoesNotExpose(Throwable failure, String secret) {
+    for (Throwable exception = failure; exception != null; exception = exception.getCause()) {
+      assertThat(String.valueOf(exception.getMessage())).doesNotContain(secret);
+    }
   }
 
   @Configuration(proxyBeanMethods = false)

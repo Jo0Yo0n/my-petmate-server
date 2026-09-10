@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.dto;
+package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
@@ -19,6 +20,7 @@ public class SignupRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
+  @DisplayName("[M1-DTO-02] acceptsValidSignupJson")
   @Test
   void acceptsValidSignupJson() throws Exception {
     String json =
@@ -36,6 +38,37 @@ public class SignupRequestJsonTest {
                 IdentityVisibility.PUBLIC));
   }
 
+  @DisplayName("[M1-DTO-02] acceptsCoupleAndFamilySignupJsonWithoutGender")
+  @Test
+  void acceptsCoupleAndFamilySignupJsonWithoutGender() throws Exception {
+    String coupleJson =
+        """
+            {"email":"couple@example.com", "password":"StrongPass123!", "profileType":"couple", "identityVisibility":"private"}
+            """;
+    String familyJson =
+        """
+            {"email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "identityVisibility":"public"}
+            """;
+
+    assertThat(objectMapper.readValue(coupleJson, SignupRequest.class))
+        .isEqualTo(
+            new SignupRequest(
+                "couple@example.com",
+                "StrongPass123!",
+                ProfileType.COUPLE,
+                null,
+                IdentityVisibility.PRIVATE));
+    assertThat(objectMapper.readValue(familyJson, SignupRequest.class))
+        .isEqualTo(
+            new SignupRequest(
+                "family@example.com",
+                "StrongPass123!",
+                ProfileType.FAMILY,
+                null,
+                IdentityVisibility.PUBLIC));
+  }
+
+  @DisplayName("[M1-DTO-08] rejectsUnknownSignupJsonField")
   @Test
   void rejectsUnknownSignupJsonField() {
     String json =
@@ -48,16 +81,19 @@ public class SignupRequestJsonTest {
         .isInstanceOf(JsonProcessingException.class);
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownProfileTypeInSignupJson")
   @Test
   void rejectsUnknownProfileTypeInSignupJson() {
     assertSignupJsonRejected("unknown", "female", "public", "profileType");
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownGenderInSignupJson")
   @Test
   void rejectsUnknownGenderInSignupJson() {
     assertSignupJsonRejected("individual", "unknown", "public", "gender");
   }
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownIdentityVisibilityInSignupJson")
   @Test
   void rejectsUnknownIdentityVisibilityInSignupJson() {
     assertSignupJsonRejected("individual", "female", "unknown", "identityVisibility");

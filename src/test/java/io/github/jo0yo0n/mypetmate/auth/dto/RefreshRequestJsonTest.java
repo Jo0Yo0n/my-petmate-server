@@ -1,9 +1,10 @@
-package io.github.jo0yo0n.mypetmate.guardian.dto;
+package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
@@ -13,6 +14,7 @@ class RefreshRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
+  @DisplayName("[M1-DTO-08] rejectsUnknownRefreshJsonField")
   @Test
   void rejectsUnknownRefreshJsonField() {
     String json =

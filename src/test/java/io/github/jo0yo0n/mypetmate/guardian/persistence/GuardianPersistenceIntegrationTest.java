@@ -8,6 +8,7 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.support.EmailNormalizer;
+import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,26 +18,16 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.hibernate.exception.ConstraintViolationException;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Testcontainers
-class GuardianPersistenceIntegrationTest {
-
-  @Container @ServiceConnection
-  static final PostgreSQLContainer<?> postgresql =
-      new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"));
+class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   @Autowired private Clock clock;
   @Autowired private EntityManager entityManager;
@@ -44,6 +35,7 @@ class GuardianPersistenceIntegrationTest {
   @Autowired private RefreshTokenRepository refreshTokenRepository;
   @Autowired private TransactionTemplate transactionTemplate;
 
+  @DisplayName("[M1-JPA-01] savesGuardianAndRestoresNormalizedEmailAndEnums")
   @Test
   void savesGuardianAndRestoresNormalizedEmailAndEnums() {
     UUID guardianId = UUID.randomUUID();
@@ -73,6 +65,7 @@ class GuardianPersistenceIntegrationTest {
     assertThat(guardian.getStatus()).isEqualTo(GuardianStatus.ACTIVE);
   }
 
+  @DisplayName("[M1-JPA-04] rejectsDuplicateNormalizedEmail")
   @Test
   void rejectsDuplicateNormalizedEmail() {
     String localPart = "guardian-" + UUID.randomUUID();
@@ -83,24 +76,47 @@ class GuardianPersistenceIntegrationTest {
     assertThat(duplicateEmail).isEqualTo(email);
     assertThatThrownBy(() -> guardianRepository.saveAndFlush(newGuardian(duplicateEmail)))
         .isInstanceOf(DataIntegrityViolationException.class)
-        .hasMessageContaining("uk_guardian_email_lower");
+        .isInstanceOfSatisfying(
+            DataIntegrityViolationException.class,
+            exception -> {
+              Throwable cause = exception.getCause();
+              ConstraintViolationException violation = null;
+
+              while (cause != null) {
+                if (cause instanceof ConstraintViolationException) {
+                  violation = (ConstraintViolationException) cause;
+                  assertThat(violation.getConstraintName()).isEqualTo("uk_guardian_email_lower");
+                  break;
+                }
+                cause = cause.getCause();
+              }
+
+              assertThat(violation).isNotNull();
+            });
   }
 
+  @DisplayName("[M1-JPA-02] savesRefreshTokenAndFindsItByHashWithGuardianAssociation")
   @Test
   void savesRefreshTokenAndFindsItByHashWithGuardianAssociation() {
     Guardian guardian = guardianRepository.saveAndFlush(newGuardian("token@example.com"));
     String tokenHash = "a".repeat(64);
-    Instant now = clock.instant();
+    Instant now = Instant.parse("2026-08-26T00:00:00Z");
+    Instant expiresAt = now.plusSeconds(60);
+    Instant revokedAt = now.plusSeconds(30);
     refreshTokenRepository.saveAndFlush(
-        new RefreshToken(UUID.randomUUID(), guardian, tokenHash, now.plusSeconds(60), null, now));
+        new RefreshToken(UUID.randomUUID(), guardian, tokenHash, expiresAt, revokedAt, now));
     entityManager.clear();
 
     RefreshToken refreshToken = refreshTokenRepository.findByTokenHash(tokenHash).orElseThrow();
 
     assertThat(refreshToken.getTokenHash()).isEqualTo(tokenHash);
     assertThat(refreshToken.getGuardian().getId()).isEqualTo(guardian.getId());
+    assertThat(refreshToken.getCreatedAt()).isEqualTo(now);
+    assertThat(refreshToken.getExpiresAt()).isEqualTo(expiresAt);
+    assertThat(refreshToken.getRevokedAt()).isEqualTo(revokedAt);
   }
 
+  @DisplayName("[M1-JPA-03] pessimisticWriteLockSerializesConcurrentAccessToTheSameToken")
   @Test
   void pessimisticWriteLockSerializesConcurrentAccessToTheSameToken() throws Exception {
     Guardian guardian = guardianRepository.saveAndFlush(newGuardian("lock@example.com"));
