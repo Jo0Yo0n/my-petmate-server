@@ -72,4 +72,8 @@ public class RefreshToken {
   public Instant getCreatedAt() {
     return createdAt;
   }
+
+  public void setRevokedAt(Instant now) {
+    this.revokedAt = now;
+  }
 }

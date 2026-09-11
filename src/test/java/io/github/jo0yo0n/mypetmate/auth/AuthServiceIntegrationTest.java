@@ -8,7 +8,9 @@ import static org.mockito.Mockito.never;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
@@ -220,6 +222,57 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
         assertThat(refreshTokenRepository.count()).isEqualTo(1);
       }
     }
+  }
+
+  @DisplayName("[M1-AUTH-07] successRefresh")
+  @Test
+  @Transactional
+  void successRefresh() {
+
+    AuthResponse authResponse =
+        authService.signup(
+            new SignupRequest(
+                "guardian@example.com",
+                "StrongPassword1!",
+                ProfileType.FAMILY,
+                null,
+                IdentityVisibility.PUBLIC));
+
+    Guardian guardian = guardianRepository.findByEmail("guardian@example.com").orElseThrow();
+
+    // when
+    TokenResponse tokenResponse =
+        authService.refresh(new RefreshRequest(authResponse.refreshToken()));
+
+    RefreshToken beforeRefresh =
+        refreshTokenRepository
+            .findByTokenHash(refreshTokenGenerator.hash(authResponse.refreshToken()))
+            .orElseThrow();
+
+    RefreshToken afterRefresh =
+        refreshTokenRepository
+            .findByTokenHash(refreshTokenGenerator.hash(tokenResponse.refreshToken()))
+            .orElseThrow();
+
+    // then
+    assertThat(tokenResponse.refreshToken()).isNotEqualTo(authResponse.refreshToken());
+    assertThat(tokenResponse.refreshToken()).isNotEqualTo(afterRefresh.getTokenHash());
+    assertThat(refreshTokenGenerator.hash(tokenResponse.refreshToken()))
+        .isEqualTo(afterRefresh.getTokenHash());
+    assertThat(beforeRefresh.getRevokedAt()).isEqualTo(NOW);
+    assertThat(afterRefresh.getGuardian().getId()).isEqualTo(guardian.getId());
+    assertThat(afterRefresh.getExpiresAt()).isEqualTo(NOW.plus(tokenProperties.refreshTokenTtl()));
+    assertThat(refreshTokenRepository.count()).isEqualTo(2);
+
+    Jwt decodedLegacyAccessToken = jwtDecoder.decode(authResponse.accessToken());
+    Jwt decodedNewAccessToken = jwtDecoder.decode(tokenResponse.accessToken());
+    assertThat(decodedNewAccessToken.getId()).isNotEqualTo(decodedLegacyAccessToken.getId());
+    assertThat(decodedNewAccessToken.getSubject()).isEqualTo(guardian.getId().toString());
+    assertThat(tokenResponse.expiresIn())
+        .isEqualTo(Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()));
+    assertThat(tokenResponse.refreshExpiresIn())
+        .isEqualTo(Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()));
+    assertThat(tokenResponse.tokenType()).isEqualTo(tokenProperties.tokenType());
   }
 
   private Guardian newGuardian(GuardianStatus status, String hashedPassword) {
