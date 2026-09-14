@@ -117,16 +117,24 @@ public class AuthService {
   @Transactional
   TokenResponse refresh(RefreshRequest refreshRequest) {
 
+    Instant now = clock.instant();
+
     RefreshToken legacyRefreshToken =
         refreshTokenRepository
             .findByTokenHashWithPessimisticWriteLock(
                 refreshTokenGenerator.hash(refreshRequest.refreshToken()))
             .orElseThrow(InvalidRefreshTokenException::new);
 
+    if (!legacyRefreshToken.getExpiresAt().isAfter(now)
+        || legacyRefreshToken.getRevokedAt() != null) {
+
+      throw new InvalidRefreshTokenException();
+    }
+
     legacyRefreshToken.setRevokedAt(clock.instant());
 
     Guardian guardian = legacyRefreshToken.getGuardian();
-    Instant now = clock.instant();
+
     String accessToken = accessTokenIssuer.issue(guardian, now);
     String refreshToken = generateAndSaveRefreshToken(guardian, now);
 

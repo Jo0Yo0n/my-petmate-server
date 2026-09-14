@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
@@ -13,6 +14,7 @@ import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
+import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
@@ -25,6 +27,7 @@ import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
@@ -64,8 +67,25 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     TEMPORARILY_RESTRICT
   }
 
+  private enum InvalidRefreshToken {
+    EXPIRED,
+    EXPIRES_AT_NOW,
+    REVOKED,
+    ROTATED,
+    UNKNOWN
+  }
+
   static Stream<LoginCase> loginCases() {
     return Stream.of(LoginCase.WITHDRAWN, LoginCase.TEMPORARILY_RESTRICT);
+  }
+
+  static Stream<InvalidRefreshToken> invalidRefreshTokenCases() {
+    return Stream.of(
+        InvalidRefreshToken.EXPIRED,
+        InvalidRefreshToken.EXPIRES_AT_NOW,
+        InvalidRefreshToken.REVOKED,
+        InvalidRefreshToken.ROTATED,
+        InvalidRefreshToken.UNKNOWN);
   }
 
   @DisplayName("[M1-AUTH-01] successSignUp")
@@ -273,6 +293,112 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(tokenResponse.refreshExpiresIn())
         .isEqualTo(Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()));
     assertThat(tokenResponse.tokenType()).isEqualTo(tokenProperties.tokenType());
+  }
+
+  @DisplayName("[M1-AUTH-08] rejectsInvalidRefreshToken")
+  @ParameterizedTest
+  @MethodSource("invalidRefreshTokenCases")
+  @Transactional
+  void rejectsInvalidRefreshToken(InvalidRefreshToken invalidRefreshToken) {
+
+    Guardian guardian =
+        guardianRepository.saveAndFlush(newGuardian(GuardianStatus.ACTIVE, "hashed-password"));
+
+    record RefreshFixture(String rawRefreshToken, long countBefore) {}
+
+    RefreshFixture refreshFixture =
+        switch (invalidRefreshToken) {
+          case EXPIRED -> {
+            String generatedRefreshToken = refreshTokenGenerator.generate();
+            RefreshToken refreshToken =
+                new RefreshToken(
+                    UUID.randomUUID(),
+                    guardian,
+                    refreshTokenGenerator.hash(generatedRefreshToken),
+                    NOW.minus(Duration.ofSeconds(1)),
+                    null,
+                    NOW.minus(Duration.ofDays(1)));
+
+            refreshTokenRepository.save(refreshToken);
+
+            yield new RefreshFixture(generatedRefreshToken, refreshTokenRepository.count());
+          }
+
+          case EXPIRES_AT_NOW -> {
+            String generatedRefreshToken = refreshTokenGenerator.generate();
+            RefreshToken refreshToken =
+                new RefreshToken(
+                    UUID.randomUUID(),
+                    guardian,
+                    refreshTokenGenerator.hash(generatedRefreshToken),
+                    NOW,
+                    null,
+                    NOW.minus(Duration.ofDays(1)));
+
+            refreshTokenRepository.save(refreshToken);
+
+            yield new RefreshFixture(generatedRefreshToken, refreshTokenRepository.count());
+          }
+
+          case REVOKED -> {
+            String generatedRefreshToken = refreshTokenGenerator.generate();
+            RefreshToken refreshToken =
+                new RefreshToken(
+                    UUID.randomUUID(),
+                    guardian,
+                    refreshTokenGenerator.hash(generatedRefreshToken),
+                    NOW.plus(tokenProperties.refreshTokenTtl()),
+                    NOW,
+                    NOW);
+
+            refreshTokenRepository.save(refreshToken);
+
+            yield new RefreshFixture(generatedRefreshToken, refreshTokenRepository.count());
+          }
+
+          case ROTATED -> {
+            String generatedRefreshToken = refreshTokenGenerator.generate();
+            RefreshToken refreshToken =
+                new RefreshToken(
+                    UUID.randomUUID(),
+                    guardian,
+                    refreshTokenGenerator.hash(generatedRefreshToken),
+                    NOW.plus(tokenProperties.refreshTokenTtl()),
+                    null,
+                    NOW);
+
+            refreshTokenRepository.save(refreshToken);
+
+            authService.refresh(new RefreshRequest(generatedRefreshToken));
+
+            yield new RefreshFixture(generatedRefreshToken, refreshTokenRepository.count());
+          }
+
+          case UNKNOWN -> {
+            String generatedRefreshToken = refreshTokenGenerator.generate();
+
+            RefreshToken refreshToken =
+                new RefreshToken(
+                    UUID.randomUUID(),
+                    guardian,
+                    refreshTokenGenerator.hash(generatedRefreshToken),
+                    NOW.plus(tokenProperties.refreshTokenTtl()),
+                    null,
+                    NOW);
+
+            refreshTokenRepository.save(refreshToken);
+
+            yield new RefreshFixture(
+                refreshTokenGenerator.generate(), refreshTokenRepository.count());
+          }
+        };
+
+    clearInvocations(accessTokenIssuer);
+    assertThatThrownBy(
+            () -> authService.refresh(new RefreshRequest(refreshFixture.rawRefreshToken)))
+        .isInstanceOf(InvalidRefreshTokenException.class);
+    assertThat(refreshTokenRepository.count()).isEqualTo(refreshFixture.countBefore);
+    then(accessTokenIssuer).should(never()).issue(any(), any());
   }
 
   private Guardian newGuardian(GuardianStatus status, String hashedPassword) {
