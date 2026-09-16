@@ -125,6 +125,12 @@ public class AuthService {
                 refreshTokenGenerator.hash(refreshRequest.refreshToken()))
             .orElseThrow(InvalidRefreshTokenException::new);
 
+    Guardian guardian = legacyRefreshToken.getGuardian();
+
+    if (guardian.getStatus() != GuardianStatus.ACTIVE) {
+      throw new InvalidRefreshTokenException();
+    }
+
     if (!legacyRefreshToken.getExpiresAt().isAfter(now)
         || legacyRefreshToken.getRevokedAt() != null) {
 
@@ -132,8 +138,6 @@ public class AuthService {
     }
 
     legacyRefreshToken.setRevokedAt(clock.instant());
-
-    Guardian guardian = legacyRefreshToken.getGuardian();
 
     String accessToken = accessTokenIssuer.issue(guardian, now);
     String refreshToken = generateAndSaveRefreshToken(guardian, now);
