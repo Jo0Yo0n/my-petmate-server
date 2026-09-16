@@ -150,6 +150,24 @@ public class AuthService {
         Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()));
   }
 
+  @Transactional
+  void logout(RefreshRequest logoutRequest) {
+
+    Instant now = clock.instant();
+    refreshTokenRepository
+        .findByTokenHash(refreshTokenGenerator.hash(logoutRequest.refreshToken()))
+        .ifPresent(
+            refreshToken -> {
+              if (!refreshToken.getExpiresAt().isAfter(now)) {
+                refreshTokenRepository.deleteByTokenHash(refreshToken.getTokenHash());
+                return;
+              }
+              if (refreshToken.getRevokedAt() == null) {
+                refreshToken.setRevokedAt(now);
+              }
+            });
+  }
+
   private AuthResponse makeAuthResponse(Guardian guardian, Instant now) {
 
     String refreshToken = generateAndSaveRefreshToken(guardian, now);

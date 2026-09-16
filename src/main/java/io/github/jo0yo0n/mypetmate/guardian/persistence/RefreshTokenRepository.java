@@ -21,4 +21,6 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
       """)
   Optional<RefreshToken> findByTokenHashWithPessimisticWriteLock(
       @Param("tokenHash") String tokenHash);
+
+  void deleteByTokenHash(String tokenHash);
 }

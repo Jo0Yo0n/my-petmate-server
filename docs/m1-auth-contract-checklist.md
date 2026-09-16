@@ -186,7 +186,7 @@
 - [ ] refresh의 기존 token 검증·폐기와 새 token hash 저장을 하나의 transaction에서 처리한다.
 - [ ] 만료·폐기·회전·알 수 없는 refresh token을 같은 `AUTH_REFRESH_INVALID` 결과로 변환한다.
 - [ ] 동시에 같은 refresh token을 사용하면 먼저 lock을 획득한 요청 하나만 성공하게 한다.
-- [ ] logout은 존재하는 token을 폐기하고 이미 폐기됐거나 알 수 없는 token에도 성공하는 멱등 동작으로 만든다.
+- [x] logout은 존재하는 token을 폐기하고 이미 폐기됐거나 알 수 없는 token에도 성공하는 멱등 동작으로 만든다.
 - [x] access token blacklist, token family, 기기·세션 관리 기능은 추가하지 않는다.
 
 #### 테스트 범위
@@ -201,7 +201,7 @@
 - [x] [M1-AUTH-08](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-09](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-10](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-11](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-11](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-12](./m1-test-cases.md#4-인증-application-service)
 
 #### 완료 조건
