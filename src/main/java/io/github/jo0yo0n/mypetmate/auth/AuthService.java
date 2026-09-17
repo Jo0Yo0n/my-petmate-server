@@ -2,9 +2,12 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
+import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
@@ -111,7 +114,75 @@ public class AuthService {
     return makeAuthResponse(guardian, now);
   }
 
+  @Transactional
+  TokenResponse refresh(RefreshRequest refreshRequest) {
+
+    Instant now = clock.instant();
+
+    RefreshToken legacyRefreshToken =
+        refreshTokenRepository
+            .findByTokenHashWithPessimisticWriteLock(
+                refreshTokenGenerator.hash(refreshRequest.refreshToken()))
+            .orElseThrow(InvalidRefreshTokenException::new);
+
+    Guardian guardian = legacyRefreshToken.getGuardian();
+
+    if (guardian.getStatus() != GuardianStatus.ACTIVE) {
+      throw new InvalidRefreshTokenException();
+    }
+
+    if (!legacyRefreshToken.getExpiresAt().isAfter(now)
+        || legacyRefreshToken.getRevokedAt() != null) {
+
+      throw new InvalidRefreshTokenException();
+    }
+
+    legacyRefreshToken.setRevokedAt(clock.instant());
+
+    String accessToken = accessTokenIssuer.issue(guardian, now);
+    String refreshToken = generateAndSaveRefreshToken(guardian, now);
+
+    return new TokenResponse(
+        accessToken,
+        refreshToken,
+        tokenProperties.tokenType(),
+        Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()),
+        Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()));
+  }
+
+  @Transactional
+  void logout(RefreshRequest logoutRequest) {
+
+    Instant now = clock.instant();
+    refreshTokenRepository
+        .findByTokenHash(refreshTokenGenerator.hash(logoutRequest.refreshToken()))
+        .ifPresent(
+            refreshToken -> {
+              if (!refreshToken.getExpiresAt().isAfter(now)) {
+                refreshTokenRepository.deleteByTokenHash(refreshToken.getTokenHash());
+                return;
+              }
+              if (refreshToken.getRevokedAt() == null) {
+                refreshToken.setRevokedAt(now);
+              }
+            });
+  }
+
   private AuthResponse makeAuthResponse(Guardian guardian, Instant now) {
+
+    String refreshToken = generateAndSaveRefreshToken(guardian, now);
+    String accessToken = accessTokenIssuer.issue(guardian, now);
+
+    return new AuthResponse(
+        accessToken,
+        refreshToken,
+        tokenProperties.tokenType(),
+        Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()),
+        Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()),
+        GuardianResponse.from(guardian));
+  }
+
+  private String generateAndSaveRefreshToken(Guardian guardian, Instant now) {
     String refreshToken = refreshTokenGenerator.generate();
     refreshTokenRepository.save(
         new RefreshToken(
@@ -122,14 +193,6 @@ public class AuthService {
             null,
             now));
 
-    String accessToken = accessTokenIssuer.issue(guardian, now);
-
-    return new AuthResponse(
-        accessToken,
-        refreshToken,
-        tokenProperties.tokenType(),
-        Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()),
-        Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()),
-        GuardianResponse.from(guardian));
+    return refreshToken;
   }
 }

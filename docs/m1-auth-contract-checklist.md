@@ -182,11 +182,11 @@
 
 - [x] signup용 email 중복 확인·비밀번호 hash·Guardian 저장·token 쌍 발급을 하나의 명확한 transaction 경계에 둔다.
 - [x] login은 정규화 email로 Guardian을 조회하고 email 존재 여부와 무관하게 같은 자격 증명 오류를 반환한다.
-- [ ] refresh는 token hash row를 pessimistic write lock으로 조회한다.
-- [ ] refresh의 기존 token 검증·폐기와 새 token hash 저장을 하나의 transaction에서 처리한다.
-- [ ] 만료·폐기·회전·알 수 없는 refresh token을 같은 `AUTH_REFRESH_INVALID` 결과로 변환한다.
-- [ ] 동시에 같은 refresh token을 사용하면 먼저 lock을 획득한 요청 하나만 성공하게 한다.
-- [ ] logout은 존재하는 token을 폐기하고 이미 폐기됐거나 알 수 없는 token에도 성공하는 멱등 동작으로 만든다.
+- [x] refresh는 token hash row를 pessimistic write lock으로 조회한다.
+- [x] refresh의 기존 token 검증·폐기와 새 token hash 저장을 하나의 transaction에서 처리한다.
+- [x] 만료·폐기·회전·알 수 없는 refresh token을 같은 `AUTH_REFRESH_INVALID` 결과로 변환한다.
+- [x] 동시에 같은 refresh token을 사용하면 먼저 lock을 획득한 요청 하나만 성공하게 한다.
+- [x] logout은 존재하는 token을 폐기하고 이미 폐기됐거나 알 수 없는 token에도 성공하는 멱등 동작으로 만든다.
 - [x] access token blacklist, token family, 기기·세션 관리 기능은 추가하지 않는다.
 
 #### 테스트 범위
@@ -197,18 +197,18 @@
 - [x] [M1-AUTH-04](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-05](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-06](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-07](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-08](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-09](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-10](./m1-test-cases.md#4-인증-application-service)
-- [ ] [M1-AUTH-11](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-07](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-08](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-09](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-10](./m1-test-cases.md#4-인증-application-service)
+- [x] [M1-AUTH-11](./m1-test-cases.md#4-인증-application-service)
 - [x] [M1-AUTH-12](./m1-test-cases.md#4-인증-application-service)
 
 #### 완료 조건
 
-- [ ] 인증 service 테스트가 정상·실패·동시성·rollback 경로를 모두 통과한다.
-- [ ] 사람 개발자가 signup과 refresh의 transaction 경계 및 lock 순서를 검토했다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] 인증 service 테스트가 정상·실패·동시성·rollback 경로를 모두 통과한다.
+- [x] 사람 개발자가 signup과 refresh의 transaction 경계 및 lock 순서를 검토했다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 6. 요청 ID와 공통 REST 오류 기반 구현
 

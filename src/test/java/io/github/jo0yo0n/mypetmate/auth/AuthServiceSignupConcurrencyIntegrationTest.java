@@ -2,7 +2,7 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.BDDMockito.willAnswer;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
@@ -56,13 +56,13 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
     CountDownLatch bothPassedDuplicateCheck = new CountDownLatch(2);
     CountDownLatch allowSignupToContinue = new CountDownLatch(1);
 
-    doAnswer(
+    willAnswer(
             invocation -> {
               bothPassedDuplicateCheck.countDown();
               await(allowSignupToContinue);
               return false;
             })
-        .when(guardianRepository)
+        .given(guardianRepository)
         .existsByEmail(anyString());
 
     try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
