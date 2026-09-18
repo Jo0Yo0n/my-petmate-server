@@ -42,7 +42,7 @@ info:
     format: req-{26-character-crockford-base32-ulid}
     pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
     incomingRequestHeader: ignored
-    responseHeader: X-Request-Id
+    responseHeader: My-Petmate-Request-Id
     requestAttribute: requestId
     mdcKey: requestId
     securityOrder: before-spring-security
@@ -2362,7 +2362,7 @@ components:
           pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
           description: |
             서버가 요청마다 생성하며 서버 로그와 사용자 문의를 연결하는 추적 식별자.
-            같은 오류 응답의 `X-Request-Id` header와 반드시 같은 값이다.
+            같은 오류 응답의 `My-Petmate-Request-Id` header와 반드시 같은 값이다.
   responses:
     ValidationError:
       description: 요청 body, query 또는 path 입력값 validation 실패

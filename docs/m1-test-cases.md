@@ -101,8 +101,8 @@ logout이다.
 
 | ID          | 계층                       | Given / When                                                        | Then                                                                                       |
 |-------------|----------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| `M1-REQ-01` | filter·API                 | 정상 요청과 MVC 오류 요청을 각각 여러 번 보낸다.                    | 매 응답에 계약 형식의 서로 다른 서버 생성 `X-Request-Id`가 있다.                           |
-| `M1-REQ-02` | filter                     | 클라이언트가 `X-Request-Id`를 보낸다.                               | 서버는 입력값을 무시하고 새 값을 attribute, MDC와 응답 header에 사용한다.                  |
+| `M1-REQ-01` | filter·API                 | 정상 요청과 MVC 오류 요청을 각각 여러 번 보낸다.                    | 매 응답에 계약 형식의 서로 다른 서버 생성 `My-Petmate-Request-Id`가 있다.                  |
+| `M1-REQ-02` | filter                     | 클라이언트가 `My-Petmate-Request-Id`를 보낸다.                      | 서버는 입력값을 무시하고 새 값을 attribute, MDC와 응답 header에 사용한다.                  |
 | `M1-REQ-03` | filter·오류                | 요청 처리 중 ProblemDetail을 만든다.                                | request attribute, MDC, header와 body의 `requestId`가 같다.                                |
 | `M1-REQ-04` | filter 단위                | 기존 MDC 값이 없는 요청과 있는 요청을 각각 정상·예외 종료한다.      | `finally`에서 이전 값을 복원하거나 새 값을 제거해 다음 요청으로 유출하지 않는다.           |
 | `M1-ERR-01` | MVC 슬라이스·parameterized | Bean Validation, 잘못된 JSON·enum, query·path type 오류가 발생한다. | HTTP/body status, `VALIDATION_FAILED`, `fieldErrors` 유무와 instance가 오류 계약에 맞는다. |
@@ -146,7 +146,7 @@ logout이다.
 | `M1-API-ME-03`     | `PATCH /api/guardians/me` | profile type, gender와 identity visibility를 유효한 조합으로 변경한다.        | 현재 인증 Guardian만 수정하고 200의 discriminator 응답과 DB 상태가 같다.                                         |
 | `M1-API-ME-04`     | PATCH me                  | 개인·커플·가족 조건을 위반하거나 허용되지 않은 필드를 보낸다.                 | 400 `VALIDATION_FAILED`이고 기존 Guardian 상태는 바뀌지 않는다.                                                  |
 | `M1-API-ME-05`     | PATCH me                  | 다른 Guardian도 존재하지만 현재 token으로 수정한다.                           | token subject의 Guardian만 변경되어 수평 권한 경계가 유지된다.                                                   |
-| `M1-API-COMMON-01` | 여섯 endpoint             | 정상·오류 대표 요청을 보낸다.                                                 | OpenAPI status와 필드 집합을 지키고 모든 응답에 새 `X-Request-Id`가 있다.                                        |
+| `M1-API-COMMON-01` | 여섯 endpoint             | 정상·오류 대표 요청을 보낸다.                                                 | OpenAPI status와 필드 집합을 지키고 모든 응답에 새 `My-Petmate-Request-Id`가 있다.                               |
 | `M1-API-COMMON-02` | 여섯 endpoint             | 지원하지 않는 method/Accept 또는 의도적으로 만든 내부 실패를 보낸다.          | 405·406·500 공통 오류 계약을 지키고 내부 정보와 secret을 노출하지 않는다.                                        |
 
 ### 8. 계약·보안 회귀와 수동 흐름
@@ -170,7 +170,7 @@ API 오류 테스트는 가능한 경우 하나의 test helper로 다음 불변�
 - `Content-Type`은 `application/problem+json`이다.
 - `type`, `title`, `detail`, `instance`, `code`, `requestId`가 존재하고 해당 오류 계약과 맞는다.
 - validation 오류에만 필요한 `fieldErrors`가 있으며 민감한 입력값은 포함하지 않는다.
-- `X-Request-Id`와 body `requestId`가 같고 서버 생성 형식을 만족한다.
+- `My-Petmate-Request-Id`와 body `requestId`가 같고 서버 생성 형식을 만족한다.
 - 성공 응답은 OpenAPI의 필수 필드만 포함하고 비밀번호·hash·내부 수명 주기 상태를 노출하지 않는다.
 
 ## 완료 판정

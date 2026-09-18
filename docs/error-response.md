@@ -31,11 +31,11 @@ WebSocket 오류는 프레임 이벤트이므로 [`websocket-protocol.md`](./web
 
 - 모든 HTTP 요청마다 서버가 새 `requestId`를 하나 생성한다. 형식은 `req-`와 26자 Crockford Base32 ULID이며 정규식
   `^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$`을 만족한다. 첫 문자를 `0`~`7`로 제한해 canonical ULID의 128비트 범위를 보장한다.
-- 클라이언트가 `X-Request-Id`를 보내더라도 서버는 그 값을 신뢰하거나 재사용하지 않는다.
+- 클라이언트가 `My-Petmate-Request-Id`를 보내더라도 서버는 그 값을 신뢰하거나 재사용하지 않는다.
 - 생성 filter는 Spring Security보다 먼저 실행한다. 따라서 MVC 오류뿐 아니라 Security의 401·403도 같은 requestId를 사용할 수 있다.
 - 같은 값을 request attribute와 MDC key `requestId`에 저장하고 모든 성공·오류 응답의
-  `X-Request-Id` header에 반환한다.
-- 오류 응답에서는 header의 `X-Request-Id`와 ProblemDetail의 `requestId`가 반드시 같아야 한다.
+  `My-Petmate-Request-Id` header에 반환한다.
+- 오류 응답에서는 header의 `My-Petmate-Request-Id`와 ProblemDetail의 `requestId`가 반드시 같아야 한다.
 - 요청 처리가 끝나면 `finally`에서 MDC 값을 제거해 thread가 재사용될 때 다른 요청의 ID가 섞이지 않게 한다.
 - `requestId`에는 사용자, token, 리소스 식별 정보를 넣지 않는다. `requestId`는 로그 상관관계용이며 인증 수단이나 요청 멱등성 키로 사용하지 않는다.
 
@@ -44,7 +44,7 @@ WebSocket 오류는 프레임 이벤트이므로 [`websocket-protocol.md`](./web
 ```http
 HTTP/1.1 400 Bad Request
 Content-Type: application/problem+json
-X-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 ```
 
 ```json
