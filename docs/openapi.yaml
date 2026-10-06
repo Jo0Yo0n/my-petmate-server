@@ -123,7 +123,7 @@ paths:
                   identityVisibility: public
                   status: active
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "409":
           $ref: "#/components/responses/EmailAlreadyExistsError"
   /api/auth/login:
@@ -155,7 +155,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/InvalidCredentialsError"
   /api/auth/refresh:
@@ -195,7 +195,7 @@ paths:
                 expiresIn: 900
                 refreshExpiresIn: 2592000
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/RefreshTokenError"
   /api/auth/logout:
@@ -223,7 +223,7 @@ paths:
         "204":
           description: 로그아웃 완료
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
   /api/guardians/me:
     get:
       tags: [Guardians]
@@ -281,7 +281,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Guardian"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
   /api/dogs:
@@ -479,7 +479,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Dog"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -664,7 +664,7 @@ paths:
                   createdAt: "2026-07-23T10:15:30+09:00"
                   closedAt: null
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -869,7 +869,7 @@ paths:
                 lastReadMessageId: 6ffb927d-7958-493f-92e7-d14bcd30edbc
                 updatedAt: "2026-07-23T11:03:10+09:00"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -911,7 +911,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppointmentProposal"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -1005,7 +1005,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AppointmentProposal"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -1052,7 +1052,7 @@ paths:
                 reviewSubmitted: true
                 submittedAt: "2026-07-25T12:10:00+09:00"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -1127,7 +1127,7 @@ paths:
                 guardianId: 51c9f756-32b0-4181-8879-2f1f8d2d0ff3
                 submittedAt: "2026-07-23T12:35:00+09:00"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "404":
@@ -2297,6 +2297,7 @@ components:
       type: string
       enum:
         - VALIDATION_FAILED
+        - MALFORMED_REQUEST
         - IDENTITY_DISCLOSURE_REQUIRED
         - AUTH_TOKEN_EXPIRED
         - AUTH_TOKEN_INVALID
@@ -2364,6 +2365,34 @@ components:
             서버가 요청마다 생성하며 서버 로그와 사용자 문의를 연결하는 추적 식별자.
             같은 오류 응답의 `My-Petmate-Request-Id` header와 반드시 같은 값이다.
   responses:
+    RequestBodyError:
+      description: JSON 요청 본문의 역직렬화 또는 validation 실패
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            malformedRequest:
+              value:
+                type: urn:my-petmate:problem:malformed-request
+                title: 잘못된 요청 형식
+                status: 400
+                detail: 요청값을 확인해 주세요.
+                instance: /api/guardians/me
+                code: MALFORMED_REQUEST
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+            fieldValidation:
+              value:
+                type: urn:my-petmate:problem:validation-failed
+                title: 입력값 검증 실패
+                status: 400
+                detail: 요청값을 확인해 주세요.
+                instance: /api/guardians/me
+                code: VALIDATION_FAILED
+                fieldErrors:
+                  - field: gender
+                    reason: profileType이 individual이면 필수입니다.
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     ValidationError:
       description: 요청 body, query 또는 path 입력값 validation 실패
       content:
@@ -2408,9 +2437,6 @@ components:
                 detail: 보호자 정보 필터를 사용하려면 본인 정보도 공개해야 합니다.
                 instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
                 code: IDENTITY_DISCLOSURE_REQUIRED
-                fieldErrors:
-                  - field: guardianIdentities
-                    reason: 비공개 보호자는 사용할 수 없습니다.
                 requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     AuthenticationError:
       description: access token 누락, 오류 또는 만료
@@ -2517,9 +2543,6 @@ components:
             detail: 이미 사용 중인 이메일입니다.
             instance: /api/auth/signup
             code: EMAIL_ALREADY_EXISTS
-            fieldErrors:
-              - field: email
-                reason: 이미 사용 중인 이메일입니다.
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     ConflictError:
       description: 현재 리소스 상태 또는 중복 요청과 충돌
@@ -2607,9 +2630,6 @@ components:
             detail: 사진은 최대 10 MiB까지 업로드할 수 있습니다.
             instance: /api/dogs
             code: PAYLOAD_TOO_LARGE
-            fieldErrors:
-              - field: photo
-                reason: 파일 크기가 10 MiB를 초과했습니다.
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     UnsupportedMediaTypeError:
       description: 요청 Content-Type 또는 업로드 파일 media type을 지원하지 않음
@@ -2624,9 +2644,6 @@ components:
             detail: 지원하지 않는 사진 형식입니다.
             instance: /api/dogs
             code: UNSUPPORTED_MEDIA_TYPE
-            fieldErrors:
-              - field: photo
-                reason: JPEG, PNG 또는 WebP 파일만 사용할 수 있습니다.
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     MethodNotAllowedError:
       description: endpoint가 요청 HTTP method를 지원하지 않음

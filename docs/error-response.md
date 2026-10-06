@@ -67,44 +67,45 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 
 ## HTTP 상태 코드
 
-| 상태  | 의미                                        | 사용 예                                          |
-|-------|---------------------------------------------|--------------------------------------------------|
-| `400` | 요청값 형식 또는 필드 조합이 잘못됨         | validation, 비공개 보호자의 identity 필터 사용   |
-| `401` | 로그인 자격 증명 또는 token이 유효하지 않음 | 로그인 실패, access/refresh token 만료·오류      |
-| `403` | 인증됐지만 리소스나 기능 사용 권한이 없음   | 다른 보호자의 dog 접근, 제한 계정의 추천·채팅    |
-| `404` | 요청한 리소스가 없음                        | dog, match, appointment를 찾을 수 없음           |
-| `405` | endpoint가 HTTP method를 지원하지 않음      | GET 전용 endpoint에 POST                         |
-| `406` | 요청한 응답 media type을 만들 수 없음       | 지원하지 않는 `Accept` 헤더                      |
-| `409` | 현재 리소스 상태 또는 중복 요청과 충돌      | 종료된 match, 잘못된 appointment 상태, 중복 평가 |
-| `413` | 업로드 body가 제한을 초과함                 | 10 MiB 초과 dog 사진                             |
-| `415` | 요청 또는 파일 media type을 지원하지 않음   | JPEG·PNG·WebP가 아닌 dog 사진                    |
-| `500` | 예상하지 못한 서버 오류                     | 내부 예외. 예외명과 stack trace는 응답하지 않음  |
+| 상태  | 의미                                           | 사용 예                                                       |
+|-------|------------------------------------------------|---------------------------------------------------------------|
+| `400` | 요청 본문 형식, 입력값 또는 필드 조합이 잘못됨 | JSON 역직렬화, validation, 비공개 보호자의 identity 필터 사용 |
+| `401` | 로그인 자격 증명 또는 token이 유효하지 않음    | 로그인 실패, access/refresh token 만료·오류                   |
+| `403` | 인증됐지만 리소스나 기능 사용 권한이 없음      | 다른 보호자의 dog 접근, 제한 계정의 추천·채팅                 |
+| `404` | 요청한 리소스가 없음                           | dog, match, appointment를 찾을 수 없음                        |
+| `405` | endpoint가 HTTP method를 지원하지 않음         | GET 전용 endpoint에 POST                                      |
+| `406` | 요청한 응답 media type을 만들 수 없음          | 지원하지 않는 `Accept` 헤더                                   |
+| `409` | 현재 리소스 상태 또는 중복 요청과 충돌         | 종료된 match, 잘못된 appointment 상태, 중복 평가              |
+| `413` | 업로드 body가 제한을 초과함                    | 10 MiB 초과 dog 사진                                          |
+| `415` | 요청 또는 파일 media type을 지원하지 않음      | JPEG·PNG·WebP가 아닌 dog 사진                                 |
+| `500` | 예상하지 못한 서버 오류                        | 내부 예외. 예외명과 stack trace는 응답하지 않음               |
 
 ## 오류 코드
 
-| HTTP status | `code`                         | `type`                                                | 사용 조건 및 앱 동작                                                            |
-|-------------|--------------------------------|-------------------------------------------------------|---------------------------------------------------------------------------------|
-| 400         | `VALIDATION_FAILED`            | `urn:my-petmate:problem:validation-failed`            | body/query/path validation 실패. `fieldErrors`를 폼에 표시한다.                 |
-| 400         | `IDENTITY_DISCLOSURE_REQUIRED` | `urn:my-petmate:problem:identity-disclosure-required` | 비공개 보호자가 `guardianIdentities`를 사용했다. 공개 설정 안내를 표시한다.     |
-| 401         | `AUTH_TOKEN_EXPIRED`           | `urn:my-petmate:problem:auth-token-expired`           | access token 만료. refresh를 한 번 수행하고 원 요청을 한 번 재시도한다.         |
-| 401         | `AUTH_TOKEN_INVALID`           | `urn:my-petmate:problem:auth-token-invalid`           | access token 누락·변조·오류. 자동 재시도하지 않고 로그인 상태를 정리한다.       |
-| 401         | `AUTH_INVALID_CREDENTIALS`     | `urn:my-petmate:problem:invalid-credentials`          | 로그인 이메일 또는 비밀번호 오류. 어느 값이 틀렸는지는 구분해 노출하지 않는다.  |
-| 401         | `AUTH_REFRESH_INVALID`         | `urn:my-petmate:problem:refresh-token-invalid`        | refresh token 만료·폐기·재사용·오류. token을 삭제하고 로그인 화면으로 이동한다. |
-| 403         | `FORBIDDEN`                    | `urn:my-petmate:problem:forbidden`                    | 소유권 또는 참여자 권한 없음.                                                   |
-| 403         | `ACCOUNT_RESTRICTED`           | `urn:my-petmate:problem:account-restricted`           | 임시 제한 계정이 추천 또는 채팅을 요청했다. 제한 안내를 표시한다.               |
-| 404         | `RESOURCE_NOT_FOUND`           | `urn:my-petmate:problem:resource-not-found`           | 대상 리소스가 없거나 공개하지 않기로 한 리소스다.                               |
-| 409         | `EMAIL_ALREADY_EXISTS`         | `urn:my-petmate:problem:email-already-exists`         | 이미 가입된 이메일이다. 회원가입 이메일 필드에 표시한다.                        |
-| 409         | `STATE_CONFLICT`               | `urn:my-petmate:problem:state-conflict`               | 별도 도메인 code가 없는 일반 상태·중복 충돌이다.                                |
-| 409         | `MATCH_CLOSED`                 | `urn:my-petmate:problem:match-closed`                 | 종료된 match 접근. 채팅 입력을 닫고 목록으로 이동한다.                          |
-| 409         | `MATCH_BLOCKED`                | `urn:my-petmate:problem:match-blocked`                | 차단된 match 접근. 채팅 입력을 닫고 목록으로 이동한다.                          |
-| 409         | `APPOINTMENT_STATE_CONFLICT`   | `urn:my-petmate:problem:appointment-state-conflict`   | 현재 약속 상태에서 해당 전이를 할 수 없다. 약속 카드를 다시 조회한다.           |
-| 409         | `REVIEW_NOT_ELIGIBLE`          | `urn:my-petmate:problem:review-not-eligible`          | 아직 종료되지 않았거나 accepted가 아닌 약속 평가다.                             |
-| 409         | `REVIEW_ALREADY_SUBMITTED`     | `urn:my-petmate:problem:review-already-submitted`     | 참여자가 같은 약속에 이미 평가를 제출했다. 제출 완료 상태로 갱신한다.           |
-| 413         | `PAYLOAD_TOO_LARGE`            | `urn:my-petmate:problem:payload-too-large`            | dog 사진 크기 제한 초과. 사진을 줄이도록 안내한다.                              |
-| 415         | `UNSUPPORTED_MEDIA_TYPE`       | `urn:my-petmate:problem:unsupported-media-type`       | 요청 또는 사진 형식이 지원되지 않는다.                                          |
-| 405         | `METHOD_NOT_ALLOWED`           | `urn:my-petmate:problem:method-not-allowed`           | 클라이언트 계약 오류이므로 사용자 재시도 대상이 아니다.                         |
-| 406         | `NOT_ACCEPTABLE`               | `urn:my-petmate:problem:not-acceptable`               | 클라이언트가 지원하지 않는 응답 형식을 요구했다.                                |
-| 500         | `INTERNAL_SERVER_ERROR`        | `urn:my-petmate:problem:internal-server-error`        | 일반 오류 화면과 재시도를 제공하고 `requestId`를 기록한다.                      |
+| HTTP status | `code`                         | `type`                                                | `title`                     | 사용 조건 및 앱 동작                                                                                                                  |
+|-------------|--------------------------------|-------------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| 400         | `MALFORMED_REQUEST`            | `urn:my-petmate:problem:malformed-request`            | 잘못된 요청 형식            | JSON 문법 오류, 알 수 없는 필드·enum 값, 요청 DTO로 변환할 수 없는 타입이다. `fieldErrors`는 생략하며 앱은 요청 형식을 다시 확인한다. |
+| 400         | `VALIDATION_FAILED`            | `urn:my-petmate:problem:validation-failed`            | 입력값 검증 실패            | body/query/path validation 실패. `fieldErrors`를 폼에 표시한다.                                                                       |
+| 400         | `IDENTITY_DISCLOSURE_REQUIRED` | `urn:my-petmate:problem:identity-disclosure-required` | 보호자 정보 공개 필요       | 비공개 보호자가 `guardianIdentities`를 사용했다. 공개 설정 안내를 표시한다.                                                           |
+| 401         | `AUTH_TOKEN_EXPIRED`           | `urn:my-petmate:problem:auth-token-expired`           | access token 만료           | access token 만료. refresh를 한 번 수행하고 원 요청을 한 번 재시도한다.                                                               |
+| 401         | `AUTH_TOKEN_INVALID`           | `urn:my-petmate:problem:auth-token-invalid`           | 유효하지 않은 access token  | access token 누락·변조·오류. 자동 재시도하지 않고 로그인 상태를 정리한다.                                                             |
+| 401         | `AUTH_INVALID_CREDENTIALS`     | `urn:my-petmate:problem:invalid-credentials`          | 유효하지 않은 로그인 정보   | 로그인 이메일 또는 비밀번호 오류. 어느 값이 틀렸는지는 구분해 노출하지 않는다.                                                        |
+| 401         | `AUTH_REFRESH_INVALID`         | `urn:my-petmate:problem:refresh-token-invalid`        | 유효하지 않은 refresh token | refresh token 만료·폐기·재사용·오류. token을 삭제하고 로그인 화면으로 이동한다.                                                       |
+| 403         | `FORBIDDEN`                    | `urn:my-petmate:problem:forbidden`                    | 접근 권한 없음              | 소유권 또는 참여자 권한 없음.                                                                                                         |
+| 403         | `ACCOUNT_RESTRICTED`           | `urn:my-petmate:problem:account-restricted`           | 제한된 계정                 | 임시 제한 계정이 추천 또는 채팅을 요청했다. 제한 안내를 표시한다.                                                                     |
+| 404         | `RESOURCE_NOT_FOUND`           | `urn:my-petmate:problem:resource-not-found`           | 리소스를 찾을 수 없음       | 대상 리소스가 없거나 공개하지 않기로 한 리소스다.                                                                                     |
+| 409         | `EMAIL_ALREADY_EXISTS`         | `urn:my-petmate:problem:email-already-exists`         | 이미 가입된 이메일          | 이미 가입된 이메일이다. 회원가입 이메일 필드에 표시한다.                                                                              |
+| 409         | `STATE_CONFLICT`               | `urn:my-petmate:problem:state-conflict`               | 상태 충돌                   | 별도 도메인 code가 없는 일반 상태·중복 충돌이다.                                                                                      |
+| 409         | `MATCH_CLOSED`                 | `urn:my-petmate:problem:match-closed`                 | 종료된 매칭                 | 종료된 match 접근. 채팅 입력을 닫고 목록으로 이동한다.                                                                                |
+| 409         | `MATCH_BLOCKED`                | `urn:my-petmate:problem:match-blocked`                | 차단된 매칭                 | 차단된 match 접근. 채팅 입력을 닫고 목록으로 이동한다.                                                                                |
+| 409         | `APPOINTMENT_STATE_CONFLICT`   | `urn:my-petmate:problem:appointment-state-conflict`   | 약속 상태 충돌              | 현재 약속 상태에서 해당 전이를 할 수 없다. 약속 카드를 다시 조회한다.                                                                 |
+| 409         | `REVIEW_NOT_ELIGIBLE`          | `urn:my-petmate:problem:review-not-eligible`          | 평가 자격 없음              | 아직 종료되지 않았거나 accepted가 아닌 약속 평가다.                                                                                   |
+| 409         | `REVIEW_ALREADY_SUBMITTED`     | `urn:my-petmate:problem:review-already-submitted`     | 이미 제출한 평가            | 참여자가 같은 약속에 이미 평가를 제출했다. 제출 완료 상태로 갱신한다.                                                                 |
+| 413         | `PAYLOAD_TOO_LARGE`            | `urn:my-petmate:problem:payload-too-large`            | 요청 본문 크기 초과         | dog 사진 크기 제한 초과. 사진을 줄이도록 안내한다.                                                                                    |
+| 415         | `UNSUPPORTED_MEDIA_TYPE`       | `urn:my-petmate:problem:unsupported-media-type`       | 지원하지 않는 미디어 형식   | 요청 또는 사진 형식이 지원하지 않는다.                                                                                                |
+| 405         | `METHOD_NOT_ALLOWED`           | `urn:my-petmate:problem:method-not-allowed`           | 지원하지 않는 HTTP 메서드   | 클라이언트 계약 오류이므로 사용자 재시도 대상이 아니다.                                                                               |
+| 406         | `NOT_ACCEPTABLE`               | `urn:my-petmate:problem:not-acceptable`               | 지원하지 않는 응답 형식     | 클라이언트가 지원하지 않는 응답 형식을 요구한다.                                                                                      |
+| 500         | `INTERNAL_SERVER_ERROR`        | `urn:my-petmate:problem:internal-server-error`        | 서버 내부 오류              | 일반 오류 화면과 재시도를 제공하고 `requestId`를 기록한다.                                                                            |
 
 ## Spring 적용 규칙
 
@@ -112,6 +113,8 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
   `ResponseEntityExceptionHandler` 기반의 전역 advice에서 같은 형식으로 변환한다.
 - `MethodArgumentNotValidException`, `HandlerMethodValidationException`, query/path type mismatch는
   `VALIDATION_FAILED`로 변환하고 가능한 경우 `fieldErrors`를 채운다.
+- `HttpMessageNotReadableException`은 JSON 문법 오류, 알 수 없는 필드·enum 값 또는 요청 DTO로 변환할 수 없는
+  타입일 때 `MALFORMED_REQUEST`로 변환한다. 내부 parser 예외 메시지는 응답에 포함하지 않고 `fieldErrors`는 생략한다.
 - JWT 인증 실패는 Spring Security `AuthenticationEntryPoint`, 접근 거부는 `AccessDeniedHandler`에서 동일한
   `ProblemDetail`을 직렬화한다. Security filter 오류가 MVC advice와 다른 JSON을 반환하면 안 된다.
 - requestId 생성 filter는 Spring Security chain보다 먼저 적용하고 request attribute와 MDC를 설정한다. 응답 완료 여부와 관계없이

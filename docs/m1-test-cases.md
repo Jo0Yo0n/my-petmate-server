@@ -48,7 +48,7 @@
 | `M1-DTO-05` | 단위·parameterized      | 정규화 전후의 email 길이·형식·문자 경계를 검증한다.                               | OpenAPI email 정책 밖의 값은 해당 필드 validation 오류가 된다.                                              |
 | `M1-DTO-06` | 단위·parameterized      | login 비밀번호의 누락·1~72자 경계와 signup 복잡도 규칙 미적용을 검증한다.         | 1~72자는 signup 복잡도와 무관하게 통과하고, 누락·빈 값·72자 초과는 validation 오류가 된다.                  |
 | `M1-DTO-07` | 단위·parameterized      | refresh token의 길이와 Base64 URL 문자 경계를 검증한다.                           | 계약 형식만 성공하며 누락·빈 값·길이 초과·비허용 문자는 실패한다.                                           |
-| `M1-DTO-08` | JSON 단위·parameterized | 요청 JSON에 알 수 없는 필드나 enum 값이 들어온다.                                 | 역직렬화를 거부하며 이후 HTTP 계층에서 `VALIDATION_FAILED`로 변환할 수 있는 오류가 발생한다.                |
+| `M1-DTO-08` | JSON 단위·parameterized | 요청 JSON에 알 수 없는 필드나 enum 값이 들어온다.                                 | 역직렬화를 거부하며 이후 HTTP 계층에서 `MALFORMED_REQUEST`로 변환할 수 있는 오류가 발생한다.                |
 
 ### 2. Migration과 JPA 영속성
 
@@ -99,17 +99,17 @@ logout이다.
 
 요청 ID filter를 먼저 완성한 뒤 ProblemDetail factory·writer, MVC advice 순으로 진행한다.
 
-| ID          | 계층                       | Given / When                                                        | Then                                                                                       |
-|-------------|----------------------------|---------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| `M1-REQ-01` | filter·API                 | 정상 요청과 MVC 오류 요청을 각각 여러 번 보낸다.                    | 매 응답에 계약 형식의 서로 다른 서버 생성 `My-Petmate-Request-Id`가 있다.                  |
-| `M1-REQ-02` | filter                     | 클라이언트가 `My-Petmate-Request-Id`를 보낸다.                      | 서버는 입력값을 무시하고 새 값을 attribute, MDC와 응답 header에 사용한다.                  |
-| `M1-REQ-03` | filter·오류                | 요청 처리 중 ProblemDetail을 만든다.                                | request attribute, MDC, header와 body의 `requestId`가 같다.                                |
-| `M1-REQ-04` | filter 단위                | 기존 MDC 값이 없는 요청과 있는 요청을 각각 정상·예외 종료한다.      | `finally`에서 이전 값을 복원하거나 새 값을 제거해 다음 요청으로 유출하지 않는다.           |
-| `M1-ERR-01` | MVC 슬라이스·parameterized | Bean Validation, 잘못된 JSON·enum, query·path type 오류가 발생한다. | HTTP/body status, `VALIDATION_FAILED`, `fieldErrors` 유무와 instance가 오류 계약에 맞는다. |
-| `M1-ERR-02` | MVC 슬라이스·parameterized | email 중복, 리소스 없음 또는 상태 충돌 예외가 발생한다.             | 각 status·type·title·code와 `fieldErrors` 규칙이 기준 오류 metadata와 같다.                |
-| `M1-ERR-03` | MVC 슬라이스               | 예상하지 못한 예외가 발생한다.                                      | 500 공통 오류만 반환하고 exception class, stack trace, SQL과 민감정보는 body에 없다.       |
-| `M1-ERR-04` | MVC 슬라이스·parameterized | 지원하지 않는 HTTP method 또는 Accept로 요청한다.                   | 405/406의 `application/problem+json` 응답과 안정적인 code를 반환한다.                      |
-| `M1-ERR-05` | 공통 assertion             | 위의 모든 오류 응답을 검증한다.                                     | Content-Type, HTTP/body status, 필수 ProblemDetail 필드와 요청 ID가 항상 일치한다.         |
+| ID          | 계층                       | Given / When                                                        | Then                                                                                                                                                                                           |
+|-------------|----------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `M1-REQ-01` | filter·API                 | 정상 요청과 MVC 오류 요청을 각각 여러 번 보낸다.                    | 매 응답에 계약 형식의 서로 다른 서버 생성 `My-Petmate-Request-Id`가 있다.                                                                                                                      |
+| `M1-REQ-02` | filter                     | 클라이언트가 `My-Petmate-Request-Id`를 보낸다.                      | 서버는 입력값을 무시하고 새 값을 attribute, MDC와 응답 header에 사용한다.                                                                                                                      |
+| `M1-REQ-03` | filter·오류                | 요청 처리 중 ProblemDetail을 만든다.                                | request attribute, MDC, header와 body의 `requestId`가 같다.                                                                                                                                    |
+| `M1-REQ-04` | filter 단위                | 기존 MDC 값이 없는 요청과 있는 요청을 각각 정상·예외 종료한다.      | `finally`에서 이전 값을 복원하거나 새 값을 제거해 다음 요청으로 유출하지 않는다.                                                                                                               |
+| `M1-ERR-01` | MVC 슬라이스·parameterized | Bean Validation, 잘못된 JSON·enum, query·path type 오류가 발생한다. | Bean/query/path validation은 `VALIDATION_FAILED`와 `fieldErrors`를, JSON 역직렬화 실패는 `MALFORMED_REQUEST`와 `fieldErrors` 생략을 반환하며 HTTP/body status와 instance가 오류 계약에 맞는다. |
+| `M1-ERR-02` | MVC 슬라이스·parameterized | email 중복, 리소스 없음 또는 상태 충돌 예외가 발생한다.             | 각 status·type·title·code와 `fieldErrors` 규칙이 기준 오류 metadata와 같다.                                                                                                                    |
+| `M1-ERR-03` | MVC 슬라이스               | 예상하지 못한 예외가 발생한다.                                      | 500 공통 오류만 반환하고 exception class, stack trace, SQL과 민감정보는 body에 없다.                                                                                                           |
+| `M1-ERR-04` | MVC 슬라이스·parameterized | 지원하지 않는 HTTP method 또는 Accept로 요청한다.                   | 405/406의 `application/problem+json` 응답과 안정적인 code를 반환한다.                                                                                                                          |
+| `M1-ERR-05` | 공통 assertion             | 위의 모든 오류 응답을 검증한다.                                     | Content-Type, HTTP/body status, 필수 ProblemDetail 필드와 요청 ID가 항상 일치한다.                                                                                                             |
 
 ### 6. Stateless Security와 현재 Guardian 복원
 
@@ -130,24 +130,24 @@ logout이다.
 각 endpoint에서 정상 흐름 하나를 먼저 end-to-end로 통과시킨 뒤 대표 실패를 추가한다. DTO 단위 테스트의 모든 경계 조합을 HTTP 테스트에서 반복하지 않고,
 역직렬화·validation·오류 변환이 연결되는 대표값만 선택한다.
 
-| ID                 | Endpoint                  | Given / When                                                                  | Then                                                                                                             |
-|--------------------|---------------------------|-------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| `M1-API-SU-01`     | `POST /api/auth/signup`   | 개인·커플·가족의 유효한 요청을 보낸다.                                        | 201과 계약 형태의 AuthResponse를 반환하고 canonical email, discriminator별 gender와 active 상태를 저장·응답한다. |
-| `M1-API-SU-02`     | signup                    | 누락·잘못된 조합·알 수 없는 필드의 대표 요청을 보낸다.                        | 400 `VALIDATION_FAILED`이며 비밀번호가 응답과 로그에 없다.                                                       |
-| `M1-API-SU-03`     | signup                    | 정규화하면 기존 email과 같은 요청을 보낸다.                                   | 409 `EMAIL_ALREADY_EXISTS`, email `fieldErrors`를 반환하고 데이터가 추가되지 않는다.                             |
-| `M1-API-LI-01`     | `POST /api/auth/login`    | canonical 변형 email과 올바른 비밀번호를 보낸다.                              | 200 AuthResponse와 해당 Guardian을 반환하고 새 refresh token hash를 저장한다.                                    |
-| `M1-API-LI-02`     | login                     | 잘못된 email과 잘못된 비밀번호를 각각 보낸다.                                 | 두 응답 모두 동일한 401 `AUTH_INVALID_CREDENTIALS` 계약으로 계정 존재 여부를 숨긴다.                             |
-| `M1-API-LI-03`     | login                     | signup 복잡도에 맞지 않지만 길이는 유효한 기존 비밀번호를 보낸다.             | 400으로 조기 거부하지 않고 인증 service까지 전달한다.                                                            |
-| `M1-API-RF-01`     | `POST /api/auth/refresh`  | 유효한 token으로 요청한 뒤 이전 token을 다시 사용한다.                        | 첫 요청은 200 새 TokenResponse, 두 번째는 401 `AUTH_REFRESH_INVALID`다.                                          |
-| `M1-API-RF-02`     | refresh                   | 형식이 잘못된 token과 형식은 맞지만 만료·폐기·알 수 없는 token을 보낸다.      | 형식 오류는 400 validation, 수명 주기 오류는 같은 401 `AUTH_REFRESH_INVALID`로 구분된다.                         |
-| `M1-API-LO-01`     | `POST /api/auth/logout`   | 같은 유효 token으로 두 번 요청하고 알 수 없는 올바른 형식의 token도 요청한다. | 모두 body 없는 204이며 이후 기존 token refresh는 실패한다.                                                       |
-| `M1-API-ME-01`     | `GET /api/guardians/me`   | 각 profile type의 유효한 access token으로 조회한다.                           | 200 Guardian discriminator 응답이며 개인만 gender가 있고 canonical email과 현재 status가 있다.                   |
-| `M1-API-ME-02`     | GET me                    | token이 누락·만료·변조되었다.                                                 | 각각 Security 401 계약을 따르고 controller는 실행되지 않는다.                                                    |
-| `M1-API-ME-03`     | `PATCH /api/guardians/me` | profile type, gender와 identity visibility를 유효한 조합으로 변경한다.        | 현재 인증 Guardian만 수정하고 200의 discriminator 응답과 DB 상태가 같다.                                         |
-| `M1-API-ME-04`     | PATCH me                  | 개인·커플·가족 조건을 위반하거나 허용되지 않은 필드를 보낸다.                 | 400 `VALIDATION_FAILED`이고 기존 Guardian 상태는 바뀌지 않는다.                                                  |
-| `M1-API-ME-05`     | PATCH me                  | 다른 Guardian도 존재하지만 현재 token으로 수정한다.                           | token subject의 Guardian만 변경되어 수평 권한 경계가 유지된다.                                                   |
-| `M1-API-COMMON-01` | 여섯 endpoint             | 정상·오류 대표 요청을 보낸다.                                                 | OpenAPI status와 필드 집합을 지키고 모든 응답에 새 `My-Petmate-Request-Id`가 있다.                               |
-| `M1-API-COMMON-02` | 여섯 endpoint             | 지원하지 않는 method/Accept 또는 의도적으로 만든 내부 실패를 보낸다.          | 405·406·500 공통 오류 계약을 지키고 내부 정보와 secret을 노출하지 않는다.                                        |
+| ID                 | Endpoint                  | Given / When                                                                  | Then                                                                                                                                                     |
+|--------------------|---------------------------|-------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `M1-API-SU-01`     | `POST /api/auth/signup`   | 개인·커플·가족의 유효한 요청을 보낸다.                                        | 201과 계약 형태의 AuthResponse를 반환하고 canonical email, discriminator별 gender와 active 상태를 저장·응답한다.                                         |
+| `M1-API-SU-02`     | signup                    | 누락·잘못된 조합·알 수 없는 필드의 대표 요청을 보낸다.                        | 누락·잘못된 조합은 400 `VALIDATION_FAILED`이고, 알 수 없는 필드는 400 `MALFORMED_REQUEST`이며 비밀번호가 응답과 로그에 없다.                             |
+| `M1-API-SU-03`     | signup                    | 정규화하면 기존 email과 같은 요청을 보낸다.                                   | 409 `EMAIL_ALREADY_EXISTS`를 반환하고 데이터가 추가되지 않는다.                                                                                          |
+| `M1-API-LI-01`     | `POST /api/auth/login`    | canonical 변형 email과 올바른 비밀번호를 보낸다.                              | 200 AuthResponse와 해당 Guardian을 반환하고 새 refresh token hash를 저장한다.                                                                            |
+| `M1-API-LI-02`     | login                     | 잘못된 email과 잘못된 비밀번호를 각각 보낸다.                                 | 두 응답 모두 동일한 401 `AUTH_INVALID_CREDENTIALS` 계약으로 계정 존재 여부를 숨긴다.                                                                     |
+| `M1-API-LI-03`     | login                     | signup 복잡도에 맞지 않지만 길이는 유효한 기존 비밀번호를 보낸다.             | 400으로 조기 거부하지 않고 인증 service까지 전달한다.                                                                                                    |
+| `M1-API-RF-01`     | `POST /api/auth/refresh`  | 유효한 token으로 요청한 뒤 이전 token을 다시 사용한다.                        | 첫 요청은 200 새 TokenResponse, 두 번째는 401 `AUTH_REFRESH_INVALID`다.                                                                                  |
+| `M1-API-RF-02`     | refresh                   | 형식이 잘못된 token과 형식은 맞지만 만료·폐기·알 수 없는 token을 보낸다.      | 형식 오류는 400 validation, 수명 주기 오류는 같은 401 `AUTH_REFRESH_INVALID`로 구분된다.                                                                 |
+| `M1-API-LO-01`     | `POST /api/auth/logout`   | 같은 유효 token으로 두 번 요청하고 알 수 없는 올바른 형식의 token도 요청한다. | 모두 body 없는 204이며 이후 기존 token refresh는 실패한다.                                                                                               |
+| `M1-API-ME-01`     | `GET /api/guardians/me`   | 각 profile type의 유효한 access token으로 조회한다.                           | 200 Guardian discriminator 응답이며 개인만 gender가 있고 canonical email과 현재 status가 있다.                                                           |
+| `M1-API-ME-02`     | GET me                    | token이 누락·만료·변조되었다.                                                 | 각각 Security 401 계약을 따르고 controller는 실행되지 않는다.                                                                                            |
+| `M1-API-ME-03`     | `PATCH /api/guardians/me` | profile type, gender와 identity visibility를 유효한 조합으로 변경한다.        | 현재 인증 Guardian만 수정하고 200의 discriminator 응답과 DB 상태가 같다.                                                                                 |
+| `M1-API-ME-04`     | PATCH me                  | 개인·커플·가족 조건을 위반하거나 알 수 없는 JSON 필드·enum 값을 보낸다.       | 조건 위반은 400 `VALIDATION_FAILED`와 `fieldErrors`, 알 수 없는 필드·enum은 400 `MALFORMED_REQUEST`를 반환하며, 모두 기존 Guardian 상태는 바뀌지 않는다. |
+| `M1-API-ME-05`     | PATCH me                  | 다른 Guardian도 존재하지만 현재 token으로 수정한다.                           | token subject의 Guardian만 변경되어 수평 권한 경계가 유지된다.                                                                                           |
+| `M1-API-COMMON-01` | 여섯 endpoint             | 정상·오류 대표 요청을 보낸다.                                                 | OpenAPI status와 필드 집합을 지키고 모든 응답에 새 `My-Petmate-Request-Id`가 있다.                                                                       |
+| `M1-API-COMMON-02` | 여섯 endpoint             | 지원하지 않는 method/Accept 또는 의도적으로 만든 내부 실패를 보낸다.          | 405·406·500 공통 오류 계약을 지키고 내부 정보와 secret을 노출하지 않는다.                                                                                |
 
 ### 8. 계약·보안 회귀와 수동 흐름
 
@@ -169,7 +169,8 @@ API 오류 테스트는 가능한 경우 하나의 test helper로 다음 불변�
 - HTTP status와 body `status`가 같다.
 - `Content-Type`은 `application/problem+json`이다.
 - `type`, `title`, `detail`, `instance`, `code`, `requestId`가 존재하고 해당 오류 계약과 맞는다.
-- validation 오류에만 필요한 `fieldErrors`가 있으며 민감한 입력값은 포함하지 않는다.
+- `VALIDATION_FAILED`에만 필요한 `fieldErrors`가 있으며, `MALFORMED_REQUEST`를 포함한 다른 오류에는 생략되고 민감한 입력값은 포함하지
+  않는다.
 - `My-Petmate-Request-Id`와 body `requestId`가 같고 서버 생성 형식을 만족한다.
 - 성공 응답은 OpenAPI의 필수 필드만 포함하고 비밀번호·hash·내부 수명 주기 상태를 노출하지 않는다.
 

@@ -283,10 +283,11 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 
 - [ ] `M1-W-ERR-01` 오류 code별 안정적인 metadata와 `ProblemDetail`을 만드는 작은 factory를 구현한다.
     - 연관 테스트: M1-ERR-01 ~ M1-ERR-04
-- [ ] `M1-W-ERR-02` MVC와 Security가 공유하는 `application/problem+json` writer를 구현한다.
+- [ ] `M1-W-ERR-02` Security 오류를 MVC 오류와 동일한 ProblemDetail 계약 (application/problem+json)으로 직렬화하는
+  writer를 구현한다.
     - 연관 테스트: M1-ERR-05, M1-SEC-07, M1-SEC-08
-- [ ] `M1-W-ERR-03` `ResponseEntityExceptionHandler` 기반 advice에서 Bean Validation, 잘못된 JSON·enum,
-  query·path type 오류를 변환한다.
+- [ ] `M1-W-ERR-03` `ResponseEntityExceptionHandler` 기반 advice에서 Bean Validation과 query·path type
+  오류는 `VALIDATION_FAILED`로, 잘못된 JSON·enum은 `MALFORMED_REQUEST`로 변환한다.
     - 연관 테스트: M1-ERR-01, M1-ERR-04
 - [ ] `M1-W-ERR-04` email 중복, 리소스 없음, 상태 충돌과 예상하지 못한 오류를 계약 code로 변환하고 민감정보가 detail·fieldErrors에
   노출되지 않게 한다.
@@ -363,8 +364,9 @@ JWT parsing을 직접 구현하지 않고 Resource Server가 access token을 검
     - 연관 테스트: M1-API-SU-01, M1-API-SU-02
 - [ ] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-SU-01, M1-API-COMMON-01
-- [ ] `M1-W-API-SU-03` 잘못된 입력은 `VALIDATION_FAILED`, 정규화 email 중복은 `EMAIL_ALREADY_EXISTS`로 반환하고 비밀번호
-  원문을 DB·로그·응답에 남기지 않는다.
+- [ ] `M1-W-API-SU-03` DTO validation 실패는 `VALIDATION_FAILED`, JSON 역직렬화 실패는 `MALFORMED_REQUEST`,
+  정규화 email
+  중복은 `EMAIL_ALREADY_EXISTS`로 반환하고 비밀번호 원문을 DB·로그·응답에 남기지 않는다.
     - 연관 테스트: M1-API-SU-02, M1-API-SU-03, M1-API-COMMON-02
 
 #### `M1-W-API-LI` — 로그인
