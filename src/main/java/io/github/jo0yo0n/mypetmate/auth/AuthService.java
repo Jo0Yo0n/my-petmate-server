@@ -19,6 +19,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ public class AuthService {
   private final RefreshTokenRepository refreshTokenRepository;
   private final RefreshTokenGenerator refreshTokenGenerator;
   private final PasswordEncoder passwordEncoder;
+  private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
   public AuthService(
       Clock clock,
@@ -91,7 +94,9 @@ public class AuthService {
       throw exception;
     }
 
-    return makeAuthResponse(guardian, now);
+    AuthResponse authResponse = makeAuthResponse(guardian, now);
+    log.info("signup processing completed");
+    return authResponse;
   }
 
   @Transactional
@@ -111,7 +116,9 @@ public class AuthService {
       throw new InvalidCredentialsException();
     }
 
-    return makeAuthResponse(guardian, now);
+    AuthResponse authResponse = makeAuthResponse(guardian, now);
+    log.info("login processing completed");
+    return authResponse;
   }
 
   @Transactional
@@ -142,6 +149,7 @@ public class AuthService {
     String accessToken = accessTokenIssuer.issue(guardian, now);
     String refreshToken = generateAndSaveRefreshToken(guardian, now);
 
+    log.info("refresh processing completed");
     return new TokenResponse(
         accessToken,
         refreshToken,
