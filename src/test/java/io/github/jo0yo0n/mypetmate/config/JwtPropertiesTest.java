@@ -17,7 +17,7 @@ class JwtPropertiesTest {
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner().withUserConfiguration(JwtPropertiesConfiguration.class);
 
-  @DisplayName("[M1-CRYPTO-05] startsWithASecretOfAtLeast32Bytes")
+  @DisplayName("[보강] startsWithASecretOfAtLeast32Bytes")
   @Test
   void startsWithASecretOfAtLeast32Bytes() {
     contextRunner
@@ -34,7 +34,7 @@ class JwtPropertiesTest {
             });
   }
 
-  @DisplayName("[M1-CRYPTO-05] failsToStartWhenTheSecretIsMissing")
+  @DisplayName("[M1-CRYPTO-05A] failsToStartWhenTheSecretIsMissing")
   @Test
   void failsToStartWhenTheSecretIsMissing() {
     contextRunner
@@ -42,7 +42,7 @@ class JwtPropertiesTest {
         .run(context -> assertThat(context).hasFailed());
   }
 
-  @DisplayName("[M1-CRYPTO-05] failsToStartWhenTheSecretIsShorterThan32Bytes")
+  @DisplayName("[M1-CRYPTO-05B] failsToStartWhenTheSecretIsShorterThan32Bytes")
   @Test
   void failsToStartWhenTheSecretIsShorterThan32Bytes() {
     String shortSecret = "too-short";

@@ -9,7 +9,7 @@ class RefreshTokenGeneratorTest {
 
   private final RefreshTokenGenerator refreshTokenGenerator = new RefreshTokenGenerator();
 
-  @DisplayName("[M1-CRYPTO-04] generatesUniqueOpaqueBase64UrlTokensWith256BitsOfEntropy")
+  @DisplayName("[M1-CRYPTO-04A] generatesUniqueOpaqueBase64UrlTokensWith256BitsOfEntropy")
   @Test
   void generatesUniqueOpaqueBase64UrlTokensWith256BitsOfEntropy() {
     String firstToken = refreshTokenGenerator.generate();
@@ -20,7 +20,7 @@ class RefreshTokenGeneratorTest {
     assertThat(secondToken).isNotEqualTo(firstToken);
   }
 
-  @DisplayName("[M1-CRYPTO-04] createsADeterministicSha256HashForDatabaseStorage")
+  @DisplayName("[M1-CRYPTO-04B] createsADeterministicSha256HashForDatabaseStorage")
   @Test
   void createsADeterministicSha256HashForDatabaseStorage() {
     String refreshToken = "A".repeat(43);

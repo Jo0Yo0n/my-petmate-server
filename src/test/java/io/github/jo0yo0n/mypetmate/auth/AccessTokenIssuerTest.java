@@ -51,7 +51,7 @@ public class AccessTokenIssuerTest {
               "app.token.refresh-token-ttl=" + REFRESH_TOKEN_TTL,
               "app.token.token-type=" + TOKEN_TYPE);
 
-  @DisplayName("[M1-CRYPTO-02] issuesAnAccessTokenWithContractClaims")
+  @DisplayName("[M1-CRYPTO-02A] issuesAnAccessTokenWithContractClaims")
   @Test
   void issuesAnAccessTokenWithContractClaims() {
     contextRunner.run(

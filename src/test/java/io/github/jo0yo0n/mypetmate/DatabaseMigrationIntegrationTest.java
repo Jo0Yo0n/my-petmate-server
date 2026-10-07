@@ -48,7 +48,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThat(emailIndexExists).isTrue();
   }
 
-  @DisplayName("[M1-DB-02] guardianAcceptsValidEnumAndProfileTypeGenderCombinations")
+  @DisplayName("[M1-DB-02A] guardianAcceptsValidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianAcceptsValidEnumAndProfileTypeGenderCombinations() {
     assertThat(insertGuardian("individual@example.com", "individual", "female")).isNotNull();
@@ -56,7 +56,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThat(insertGuardian("family@example.com", "family", null)).isNotNull();
   }
 
-  @DisplayName("[M1-DB-02] guardianRejectsInvalidEnumAndProfileTypeGenderCombinations")
+  @DisplayName("[M1-DB-02B] guardianRejectsInvalidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianRejectsInvalidEnumAndProfileTypeGenderCombinations() {
     assertThatThrownBy(() -> insertGuardian("unknown-profile@example.com", "unknown", "female"))

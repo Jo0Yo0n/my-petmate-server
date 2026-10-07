@@ -7,14 +7,14 @@ import org.junit.jupiter.api.Test;
 
 class EmailNormalizerTest {
 
-  @DisplayName("[M1-DTO-04] normalizesEmailByTrimmingAndLowercasing")
+  @DisplayName("[보강] normalizesEmailByTrimmingAndLowercasing")
   @Test
   void normalizesEmailByTrimmingAndLowercasing() {
     assertThat(EmailNormalizer.normalize("  Guardian@Example.COM  "))
         .isEqualTo("guardian@example.com");
   }
 
-  @DisplayName("[M1-DTO-04] preservesNullEmail")
+  @DisplayName("[보강] preservesNullEmail")
   @Test
   void preservesNullEmail() {
     assertThat(EmailNormalizer.normalize(null)).isNull();

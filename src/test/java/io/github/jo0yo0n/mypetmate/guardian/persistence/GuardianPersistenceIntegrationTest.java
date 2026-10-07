@@ -65,7 +65,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     assertThat(guardian.getStatus()).isEqualTo(GuardianStatus.ACTIVE);
   }
 
-  @DisplayName("[M1-JPA-04] rejectsDuplicateNormalizedEmail")
+  @DisplayName("[보강] rejectsDuplicateNormalizedEmail")
   @Test
   void rejectsDuplicateNormalizedEmail() {
     String localPart = "guardian-" + UUID.randomUUID();

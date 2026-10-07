@@ -37,7 +37,7 @@ public class AuthServiceRefreshRollbackTest extends PostgreSqlIntegrationTestSup
           null,
           IdentityVisibility.PUBLIC);
 
-  @DisplayName("[M1-AUTH-10] rollsBackRefreshTokenRotationWhenRepositorySaveThrows()")
+  @DisplayName("[보강] rollsBackRefreshTokenRotationWhenRepositorySaveThrows()")
   @Test
   void rollsBackRefreshTokenRotationWhenRepositorySaveThrows() {
 

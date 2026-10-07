@@ -15,7 +15,7 @@ class GuardianEnumTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper();
 
-  @DisplayName("[M1-DTO-01] serializesEnumsAsContractValues")
+  @DisplayName("[M1-DTO-01A] serializesEnumsAsContractValues")
   @Test
   void serializesEnumsAsContractValues() throws Exception {
     assertThat(objectMapper.writeValueAsString(ProfileType.INDIVIDUAL)).isEqualTo("\"individual\"");
@@ -26,7 +26,7 @@ class GuardianEnumTest {
         .isEqualTo("\"temporarily_restricted\"");
   }
 
-  @DisplayName("[M1-DTO-01] deserializesExactContractValues")
+  @DisplayName("[M1-DTO-01B] deserializesExactContractValues")
   @Test
   void deserializesExactContractValues() throws Exception {
     assertThat(objectMapper.readValue("\"couple\"", ProfileType.class))
@@ -38,7 +38,7 @@ class GuardianEnumTest {
         .isEqualTo(GuardianStatus.WITHDRAWN);
   }
 
-  @DisplayName("[M1-DTO-01] rejectsCaseVariantsAndUnknownValues")
+  @DisplayName("[M1-DTO-01C] rejectsCaseVariantsAndUnknownValues")
   @Test
   void rejectsCaseVariantsAndUnknownValues() {
     assertThatThrownBy(() -> objectMapper.readValue("\"INDIVIDUAL\"", ProfileType.class))
@@ -47,7 +47,7 @@ class GuardianEnumTest {
         .hasMessageContaining("Unknown gender value");
   }
 
-  @DisplayName("[M1-DTO-01] convertersUseLowercaseDatabaseValues")
+  @DisplayName("[M1-DTO-01D] convertersUseLowercaseDatabaseValues")
   @Test
   void convertersUseLowercaseDatabaseValues() {
     ProfileTypeConverter profileTypeConverter = new ProfileTypeConverter();
@@ -65,7 +65,7 @@ class GuardianEnumTest {
     assertThat(statusConverter.convertToDatabaseColumn(GuardianStatus.ACTIVE)).isEqualTo("active");
   }
 
-  @DisplayName("[M1-DTO-01] convertersPreserveNullsAndRejectUnknownDatabaseValues")
+  @DisplayName("[보강] convertersPreserveNullsAndRejectUnknownDatabaseValues")
   @Test
   void convertersPreserveNullsAndRejectUnknownDatabaseValues() {
     ProfileTypeConverter converter = new ProfileTypeConverter();
