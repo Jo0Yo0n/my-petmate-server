@@ -231,7 +231,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             getRequestURI(request),
             getRequestId(request));
 
-    log.error("Unhandled exception while processing request", ex);
+    log.error(
+        "event=unexpected_error code={} requestId={}",
+        ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+        getRequestId(request));
     return new ResponseEntity<>(problemDetail, HttpHeaders.EMPTY, problemDetail.getStatus());
   }
 
