@@ -323,7 +323,7 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 - [x] `M1-W-ERR-01` 오류 code별 안정적인 metadata와 `ProblemDetail`을 만드는 작은 factory를 구현한다.
     - 연관 테스트: M1-ERR-01A ~ M1-ERR-01E, M1-ERR-02A ~ M1-ERR-02D, M1-ERR-03A ~ M1-ERR-03B,
       M1-ERR-04A ~ M1-ERR-04B, M1-ERR-05
-- [ ] `M1-W-ERR-02` Security 오류를 MVC 오류와 동일한 ProblemDetail 계약 (application/problem+json)으로 직렬화하는
+- [x] `M1-W-ERR-02` Security 오류를 MVC 오류와 동일한 ProblemDetail 계약 (application/problem+json)으로 직렬화하는
   writer를 구현한다.
     - 연관 테스트: M1-WRITER-01
 - [x] `M1-W-ERR-03` `ResponseEntityExceptionHandler` 기반 advice에서 Bean Validation과 query·path type
@@ -356,12 +356,12 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 - [x] [M1-ERR-04A](./m1-test-cases-detail.md#m1-err-04a)
 - [x] [M1-ERR-04B](./m1-test-cases-detail.md#m1-err-04b)
 - [x] [M1-ERR-05](./m1-test-cases-detail.md#m1-err-05)
-- [ ] [M1-WRITER-01](./m1-test-cases-detail.md#m1-writer-01)
+- [x] [M1-WRITER-01](./m1-test-cases-detail.md#m1-writer-01)
 
 #### 완료 조건
 
 - [x] MVC 정상·오류 경로의 요청 ID와 ProblemDetail 테스트가 모두 통과한다.
-- [ ] writer 직렬화를 테스트로 확인하고 요청 ID filter의 선행 등록 설정을 코드 검토했다.
+- [x] writer 직렬화를 테스트로 확인하고 요청 ID filter의 선행 등록 설정을 코드 검토했다.
 - [x] 오류 응답 snapshot 또는 필드 단위 검증이 OpenAPI·오류 계약과 일치한다.
 - [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
