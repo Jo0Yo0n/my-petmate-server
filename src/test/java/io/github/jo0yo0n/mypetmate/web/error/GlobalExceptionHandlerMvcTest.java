@@ -20,8 +20,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -171,7 +174,8 @@ class GlobalExceptionHandlerMvcTest {
   @DisplayName("[M1-ERR-03B] mapsUnexpectedExceptionToInternalServerError")
   @Test
   @WithMockUser
-  void mapsUnexpectedExceptionToInternalServerError() throws Exception {
+  @ExtendWith(OutputCaptureExtension.class)
+  void mapsUnexpectedExceptionToInternalServerError(CapturedOutput output) throws Exception {
     MvcResult result =
         assertProblem(
             get("/test/unexpected"),
@@ -179,6 +183,17 @@ class GlobalExceptionHandlerMvcTest {
             500,
             ErrorCode.INTERNAL_SERVER_ERROR.getCode());
     assertInternalInformationAbsent(result);
+    assertThat(output.getOut())
+        .contains(
+            "event=unexpected_error",
+            "requestId=" + result.getResponse().getHeader("My-Petmate-Request-Id"),
+            "exceptionType=java.lang.IllegalStateException",
+            "ErrorTestController.unexpected(")
+        .doesNotContain(
+            ErrorTestController.INTERNAL_MESSAGE,
+            ErrorTestController.INTERNAL_SQL,
+            ErrorTestController.PASSWORD,
+            ErrorTestController.TOKEN);
   }
 
   @DisplayName("[M1-ERR-04A] mapsUnsupportedMethodToMethodNotAllowed")
