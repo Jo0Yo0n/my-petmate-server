@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class PasswordConfigTest {
 
-  @DisplayName("[M1-CRYPTO-01] encodesPassword")
+  @DisplayName("[M1-CRYPTO-01A] encodesPassword")
   @Test
   void encodesPassword() {
     var passwordEncoder = new PasswordConfig().passwordEncoder();
@@ -18,7 +18,7 @@ class PasswordConfigTest {
     assertThat(passwordEncoder.matches(rawPassword, encodedPassword)).isTrue();
   }
 
-  @DisplayName("[M1-CRYPTO-01] rejectsIncorrectPassword")
+  @DisplayName("[보강] rejectsIncorrectPassword")
   @Test
   void rejectsIncorrectPassword() {
     var passwordEncoder = new PasswordConfig().passwordEncoder();
@@ -28,7 +28,7 @@ class PasswordConfigTest {
     assertThat(passwordEncoder.matches("incorrect-password", encodedPassword)).isFalse();
   }
 
-  @DisplayName("[M1-CRYPTO-01] encodesSamePasswordDifferently")
+  @DisplayName("[보강] encodesSamePasswordDifferently")
   @Test
   void encodesSamePasswordDifferently() {
     var passwordEncoder = new PasswordConfig().passwordEncoder();
@@ -39,7 +39,7 @@ class PasswordConfigTest {
     assertThat(encodedPassword1).isNotEqualTo(encodedPassword2);
   }
 
-  @DisplayName("[M1-CRYPTO-01] doesNotIncludeRawPassword")
+  @DisplayName("[보강] doesNotIncludeRawPassword")
   @Test
   void doesNotIncludeRawPassword() {
     var passwordEncoder = new PasswordConfig().passwordEncoder();

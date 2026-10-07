@@ -31,6 +31,7 @@ spotless {
 }
 
 dependencies {
+    implementation("com.github.f4b6a3:ulid-creator:5.2.4")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     implementation("org.springframework.boot:spring-boot-starter-security")

@@ -14,7 +14,7 @@ class RefreshRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownRefreshJsonField")
+  @DisplayName("[M1-DTO-08C] rejectsUnknownRefreshJsonField")
   @Test
   void rejectsUnknownRefreshJsonField() {
     String json =

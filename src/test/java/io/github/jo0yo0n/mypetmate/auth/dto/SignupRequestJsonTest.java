@@ -20,7 +20,7 @@ public class SignupRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @DisplayName("[M1-DTO-02] acceptsValidSignupJson")
+  @DisplayName("[보강] acceptsValidSignupJson")
   @Test
   void acceptsValidSignupJson() throws Exception {
     String json =
@@ -38,7 +38,7 @@ public class SignupRequestJsonTest {
                 IdentityVisibility.PUBLIC));
   }
 
-  @DisplayName("[M1-DTO-02] acceptsCoupleAndFamilySignupJsonWithoutGender")
+  @DisplayName("[보강] acceptsCoupleAndFamilySignupJsonWithoutGender")
   @Test
   void acceptsCoupleAndFamilySignupJsonWithoutGender() throws Exception {
     String coupleJson =
@@ -68,7 +68,7 @@ public class SignupRequestJsonTest {
                 IdentityVisibility.PUBLIC));
   }
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownSignupJsonField")
+  @DisplayName("[M1-DTO-08A] rejectsUnknownSignupJsonField")
   @Test
   void rejectsUnknownSignupJsonField() {
     String json =
@@ -81,19 +81,19 @@ public class SignupRequestJsonTest {
         .isInstanceOf(JsonProcessingException.class);
   }
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownProfileTypeInSignupJson")
+  @DisplayName("[M1-DTO-08D] rejectsUnknownProfileTypeInSignupJson")
   @Test
   void rejectsUnknownProfileTypeInSignupJson() {
     assertSignupJsonRejected("unknown", "female", "public", "profileType");
   }
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownGenderInSignupJson")
+  @DisplayName("[보강] rejectsUnknownGenderInSignupJson")
   @Test
   void rejectsUnknownGenderInSignupJson() {
     assertSignupJsonRejected("individual", "unknown", "public", "gender");
   }
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownIdentityVisibilityInSignupJson")
+  @DisplayName("[보강] rejectsUnknownIdentityVisibilityInSignupJson")
   @Test
   void rejectsUnknownIdentityVisibilityInSignupJson() {
     assertSignupJsonRejected("individual", "female", "unknown", "identityVisibility");

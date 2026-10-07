@@ -14,7 +14,7 @@ class LoginRequestJsonTest {
 
   @Autowired private ObjectMapper objectMapper;
 
-  @DisplayName("[M1-DTO-08] rejectsUnknownLoginJsonField")
+  @DisplayName("[M1-DTO-08B] rejectsUnknownLoginJsonField")
   @Test
   void rejectsUnknownLoginJsonField() {
     String json =

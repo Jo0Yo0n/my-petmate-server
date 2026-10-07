@@ -14,7 +14,7 @@ class TokenPropertiesTest {
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner().withUserConfiguration(TokenPropertiesConfiguration.class);
 
-  @DisplayName("[M1-CRYPTO-06] bindsTheTokenPolicy")
+  @DisplayName("[보강] bindsTheTokenPolicy")
   @Test
   void bindsTheTokenPolicy() {
     contextRunner
@@ -32,7 +32,7 @@ class TokenPropertiesTest {
             });
   }
 
-  @DisplayName("[M1-CRYPTO-06] failsToStartWhenTheAccessTokenTtlIsZero")
+  @DisplayName("[보강] failsToStartWhenTheAccessTokenTtlIsZero")
   @Test
   void failsToStartWhenTheAccessTokenTtlIsZero() {
     contextRunner
@@ -43,7 +43,7 @@ class TokenPropertiesTest {
         .run(context -> assertThat(context).hasFailed());
   }
 
-  @DisplayName("[M1-CRYPTO-06] failsToStartWhenTheRefreshTokenTtlIsNegative")
+  @DisplayName("[보강] failsToStartWhenTheRefreshTokenTtlIsNegative")
   @Test
   void failsToStartWhenTheRefreshTokenTtlIsNegative() {
     contextRunner

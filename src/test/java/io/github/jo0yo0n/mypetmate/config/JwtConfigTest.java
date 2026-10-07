@@ -44,7 +44,7 @@ class JwtConfigTest {
               "app.jwt.issuer=" + ISSUER,
               "app.jwt.audience=" + AUDIENCE);
 
-  @DisplayName("[M1-CRYPTO-02] encodesAndDecodesAnHs256JwtWithTheConfiguredIssuerAndAudience")
+  @DisplayName("[M1-CRYPTO-02B] encodesAndDecodesAnHs256JwtWithTheConfiguredIssuerAndAudience")
   @Test
   void encodesAndDecodesAnHs256JwtWithTheConfiguredIssuerAndAudience() {
     contextRunner.run(
@@ -63,7 +63,7 @@ class JwtConfigTest {
         });
   }
 
-  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithAnUnexpectedIssuer")
+  @DisplayName("[M1-CRYPTO-03A] rejectsJwtWithAnUnexpectedIssuer")
   @Test
   void rejectsJwtWithAnUnexpectedIssuer() {
     contextRunner.run(
@@ -77,7 +77,7 @@ class JwtConfigTest {
         });
   }
 
-  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithAnUnexpectedAudience")
+  @DisplayName("[M1-CRYPTO-03B] rejectsJwtWithAnUnexpectedAudience")
   @Test
   void rejectsJwtWithAnUnexpectedAudience() {
     contextRunner.run(
@@ -91,7 +91,7 @@ class JwtConfigTest {
         });
   }
 
-  @DisplayName("[M1-CRYPTO-03] rejectsExpiredJwtWithoutClockSkew")
+  @DisplayName("[M1-CRYPTO-03C] rejectsExpiredJwtWithoutClockSkew")
   @Test
   void rejectsExpiredJwtWithoutClockSkew() {
     contextRunner.run(
@@ -107,7 +107,7 @@ class JwtConfigTest {
         });
   }
 
-  @DisplayName("[M1-CRYPTO-03] rejectsJwtSignedWithAnAlgorithmOtherThanHs256")
+  @DisplayName("[M1-CRYPTO-03D] rejectsJwtSignedWithAnAlgorithmOtherThanHs256")
   @Test
   void rejectsJwtSignedWithAnAlgorithmOtherThanHs256() {
     contextRunner.run(
@@ -119,7 +119,7 @@ class JwtConfigTest {
         });
   }
 
-  @DisplayName("[M1-CRYPTO-03] rejectsJwtWithForgerySignature")
+  @DisplayName("[M1-CRYPTO-03E] rejectsJwtWithForgerySignature")
   @Test
   void rejectsJwtWithForgerySignature() {
     contextRunner.run(

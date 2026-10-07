@@ -17,7 +17,8 @@
 | REST 오류 본문·오류 코드·요청 ID          | [`error-response.md`](./error-response.md)                         | [응답 구조](./error-response.md#응답-구조), [오류 코드](./error-response.md#오류-코드), [요청 ID](./error-response.md#요청-id)                                                                 |
 | WebSocket 인증·이벤트·멱등성·재연결       | [`websocket-protocol.md`](./websocket-protocol.md)                 | [연결과 인증](./websocket-protocol.md#연결과-인증), [이벤트](./websocket-protocol.md#이벤트), [멱등성과 권한](./websocket-protocol.md#멱등성과-권한), [재연결](./websocket-protocol.md#재연결) |
 | M1 인증 구현 순서와 완료 점검             | [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md) | [구현 순서](./m1-auth-contract-checklist.md#구현-순서), [검증 게이트](./m1-auth-contract-checklist.md#검증-게이트)                                                                             |
-| M1 TDD 테스트 순서와 상세 케이스          | [`m1-test-cases.md`](./m1-test-cases.md)                           | [실행 순서](./m1-test-cases.md#실행-순서), [공통 Assertion 체크](./m1-test-cases.md#공통-assertion-체크)                                                                                      |
+| M1 테스트 ID와 검증 목적 | [`m1-test-cases.md`](./m1-test-cases.md) | [실행 순서](./m1-test-cases.md#실행-순서) |
+| M1 메서드별 검증 결과·공통 assertion | [`m1-test-cases-detail.md`](./m1-test-cases-detail.md) | [공통 Assertion 체크](./m1-test-cases-detail.md#공통-assertion-체크) |
 | 코드·브랜치·커밋·PR 규칙                  | [`development-conventions.md`](./development-conventions.md)       | [코드와 설계](./development-conventions.md#코드와-설계), [Git 작업](./development-conventions.md#git-작업), [Pull Request](./development-conventions.md#pull-request)                          |
 
 ## 문서별 역할
@@ -30,7 +31,8 @@
 | `error-response.md`             | 모든 REST 오류와 요청 ID의 공통 계약             | 개별 성공 응답                      |
 | `websocket-protocol.md`         | WebSocket 연결과 프레임 계약                     | REST 채팅 조회 계약                 |
 | `m1-auth-contract-checklist.md` | M1 작업 진입·검증·완료 여부                      | 계약 상세 설명의 재작성             |
-| `m1-test-cases.md`              | M1 TDD 순서, 테스트 계층과 상세 케이스            | 계약 상세 값, 완료 상태             |
+| `m1-test-cases.md` | M1 테스트 ID, 검증 목적과 상세 문서 링크 | 상세 검증 결과, 완료 상태 |
+| `m1-test-cases-detail.md` | 대응 메서드, 검증할 결과와 공통 assertion | 제품·API 계약의 재정의, 완료 상태 |
 | `development-conventions.md`    | 저장소 작업 방식과 검증 규칙                     | 기능 요구사항                       |
 
 ## 기능별 읽기 순서

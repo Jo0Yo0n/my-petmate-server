@@ -416,7 +416,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     then(accessTokenIssuer).should(never()).issue(any(), any());
   }
 
-  @DisplayName("[M1-AUTH-11] successLogoutWithValidToken")
+  @DisplayName("[M1-AUTH-11A] successLogoutWithValidToken")
   @Test
   @Transactional
   void successLogoutWithValidToken() {
@@ -448,7 +448,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(refreshTokenRepository.count()).isEqualTo(refreshTokenCountBefore);
   }
 
-  @DisplayName("[M1-AUTH-11] successLogoutWithInvalidTokens")
+  @DisplayName("[M1-AUTH-11B] successLogoutWithInvalidTokens")
   @ParameterizedTest
   @MethodSource("invalidRefreshTokenCasesForLogout")
   @Transactional

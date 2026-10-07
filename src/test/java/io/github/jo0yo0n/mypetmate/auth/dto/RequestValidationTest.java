@@ -23,7 +23,7 @@ class RequestValidationTest {
     validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 
-  @DisplayName("[M1-DTO-02] acceptsValidIndividualCoupleAndFamilySignupRequests")
+  @DisplayName("[M1-DTO-02A] acceptsValidIndividualCoupleAndFamilySignupRequests")
   @Test
   void acceptsValidIndividualCoupleAndFamilySignupRequests() {
     assertThat(violations(signup(ProfileType.INDIVIDUAL, Gender.FEMALE))).isEmpty();
@@ -31,7 +31,7 @@ class RequestValidationTest {
     assertThat(violations(signup(ProfileType.FAMILY, null))).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-02] requiresGenderForIndividualSignup")
+  @DisplayName("[M1-DTO-02B] requiresGenderForIndividualSignup")
   @Test
   void requiresGenderForIndividualSignup() {
     Set<ConstraintViolation<SignupRequest>> violations =
@@ -45,7 +45,7 @@ class RequestValidationTest {
             });
   }
 
-  @DisplayName("[M1-DTO-02] forbidsGenderForCoupleAndFamilySignup")
+  @DisplayName("[M1-DTO-02C] forbidsGenderForCoupleAndFamilySignup")
   @Test
   void forbidsGenderForCoupleAndFamilySignup() {
     assertThat(violations(signup(ProfileType.COUPLE, Gender.FEMALE)))
@@ -56,7 +56,7 @@ class RequestValidationTest {
         .contains("gender");
   }
 
-  @DisplayName("[M1-DTO-02] appliesTheSameProfileRuleToGuardianUpdates")
+  @DisplayName("[M1-DTO-02D] appliesTheSameProfileRuleToGuardianUpdates")
   @Test
   void appliesTheSameProfileRuleToGuardianUpdates() {
     assertThat(
@@ -92,14 +92,14 @@ class RequestValidationTest {
         .contains("gender");
   }
 
-  @DisplayName("[M1-DTO-03] acceptsPasswordContainingEveryRequiredAsciiCharacterGroup")
+  @DisplayName("[M1-DTO-03A] acceptsPasswordContainingEveryRequiredAsciiCharacterGroup")
   @Test
   void acceptsPasswordContainingEveryRequiredAsciiCharacterGroup() {
     assertThat(violations(signup("StrongPass123!"))).isEmpty();
     assertThat(violations(signup("Aa1!" + "a".repeat(68)))).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-03] acceptsMinimumLengthPasswordAndEachAllowedSpecialCharacter")
+  @DisplayName("[보강] acceptsMinimumLengthPasswordAndEachAllowedSpecialCharacter")
   @Test
   void acceptsMinimumLengthPasswordAndEachAllowedSpecialCharacter() {
     assertThat(violations(signup("Aa1!aaaa"))).isEmpty();
@@ -109,7 +109,7 @@ class RequestValidationTest {
     }
   }
 
-  @DisplayName("[M1-DTO-03] rejectsPasswordMissingAnyRequiredCharacterGroup")
+  @DisplayName("[M1-DTO-03B] rejectsPasswordMissingAnyRequiredCharacterGroup")
   @Test
   void rejectsPasswordMissingAnyRequiredCharacterGroup() {
     assertPasswordInvalid("strongpass123!");
@@ -118,7 +118,7 @@ class RequestValidationTest {
     assertPasswordInvalid("StrongPass123");
   }
 
-  @DisplayName("[M1-DTO-03] rejectsNonAsciiWhitespaceAndOutOfRangePasswords")
+  @DisplayName("[M1-DTO-03C] rejectsNonAsciiWhitespaceAndOutOfRangePasswords")
   @Test
   void rejectsNonAsciiWhitespaceAndOutOfRangePasswords() {
     assertPasswordInvalid("Strong한글123!");
@@ -129,13 +129,13 @@ class RequestValidationTest {
     assertPasswordInvalid("Aa1!" + "a".repeat(69));
   }
 
-  @DisplayName("[M1-DTO-03] rejectsSignupPasswordShorterThanEightCharacters")
+  @DisplayName("[보강] rejectsSignupPasswordShorterThanEightCharacters")
   @Test
   void rejectsSignupPasswordShorterThanEightCharacters() {
     assertPasswordInvalid("Aa1!aaa");
   }
 
-  @DisplayName("[M1-DTO-02, M1-DTO-03, M1-DTO-05] validatesEmailAndRequiredSignupFields")
+  @DisplayName("[M1-DTO-05C] validatesEmailAndRequiredSignupFields")
   @Test
   void validatesEmailAndRequiredSignupFields() {
     SignupRequest request = new SignupRequest("invalid", null, null, null, null);
@@ -145,7 +145,7 @@ class RequestValidationTest {
         .contains("email", "password", "profileType", "identityVisibility");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsMissingSignupEmail")
+  @DisplayName("[보강] rejectsMissingSignupEmail")
   @Test
   void rejectsMissingSignupEmail() {
     assertViolation(signupWithEmail(null), "email", "필수입니다.");
@@ -169,7 +169,7 @@ class RequestValidationTest {
     assertThat(violations(login)).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-05] validatesNormalizedEmailBlankAndLengthBoundaries")
+  @DisplayName("[M1-DTO-05A] validatesNormalizedEmailBlankAndLengthBoundaries")
   @Test
   void validatesNormalizedEmailBlankAndLengthBoundaries() {
     String longestValidEmail = longestValidEmail();
@@ -184,7 +184,7 @@ class RequestValidationTest {
         .contains("email");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsNonAsciiSignupAndLoginEmails")
+  @DisplayName("[M1-DTO-05B] rejectsNonAsciiSignupAndLoginEmails")
   @Test
   void rejectsNonAsciiSignupAndLoginEmails() {
     assertViolation(
@@ -195,94 +195,94 @@ class RequestValidationTest {
         "영문, 숫자, 기호로 구성된 이메일 주소만 사용할 수 있습니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsSignupEmailShorterThanThreeCharacters")
+  @DisplayName("[보강] rejectsSignupEmailShorterThanThreeCharacters")
   @Test
   void rejectsSignupEmailShorterThanThreeCharacters() {
     assertViolation(signupWithEmail("a@"), "email", "3자 이상 254자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-03] rejectsBlankSignupPassword")
+  @DisplayName("[M1-DTO-03D] rejectsBlankSignupPassword")
   @Test
   void rejectsBlankSignupPassword() {
     assertViolation(signup(""), "password", "8자 이상 72자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-06] loginDoesNotReapplySignupPasswordComplexity")
+  @DisplayName("[M1-DTO-06A] loginDoesNotReapplySignupPasswordComplexity")
   @Test
   void loginDoesNotReapplySignupPasswordComplexity() {
     assertThat(violations(new LoginRequest("guardian@example.com", "x"))).isEmpty();
     assertThat(violations(new LoginRequest("guardian@example.com", "x".repeat(72)))).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-07] acceptsValidRefreshToken")
+  @DisplayName("[보강] acceptsValidRefreshToken")
   @Test
   void acceptsValidRefreshToken() {
     assertThat(violations(new RefreshRequest("A".repeat(43)))).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-07] rejectsRefreshTokenShorterThan43Characters")
+  @DisplayName("[M1-DTO-07B] rejectsRefreshTokenShorterThan43Characters")
   @Test
   void rejectsRefreshTokenShorterThan43Characters() {
     assertViolation(new RefreshRequest("A".repeat(42)), "refreshToken", "43자이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-07] rejectsRefreshTokenLongerThan43Characters")
+  @DisplayName("[M1-DTO-07C] rejectsRefreshTokenLongerThan43Characters")
   @Test
   void rejectsRefreshTokenLongerThan43Characters() {
     assertViolation(new RefreshRequest("A".repeat(44)), "refreshToken", "43자이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-07] rejectsRefreshTokenWithNonBase64UrlCharacter")
+  @DisplayName("[M1-DTO-07D] rejectsRefreshTokenWithNonBase64UrlCharacter")
   @Test
   void rejectsRefreshTokenWithNonBase64UrlCharacter() {
     assertViolation(
         new RefreshRequest("+" + "A".repeat(42)), "refreshToken", "Base64 URL 형식이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-07] rejectsMissingRefreshToken")
+  @DisplayName("[M1-DTO-07E] rejectsMissingRefreshToken")
   @Test
   void rejectsMissingRefreshToken() {
     assertViolation(new RefreshRequest(null), "refreshToken", "필수입니다.");
   }
 
-  @DisplayName("[M1-DTO-07] rejectsEmptyRefreshToken")
+  @DisplayName("[M1-DTO-07F] rejectsEmptyRefreshToken")
   @Test
   void rejectsEmptyRefreshToken() {
     assertViolation(new RefreshRequest(""), "refreshToken", "43자이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsMissingLoginEmail")
+  @DisplayName("[보강] rejectsMissingLoginEmail")
   @Test
   void rejectsMissingLoginEmail() {
     assertViolation(new LoginRequest(null, "StringPass123!"), "email", "필수입니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsBlankLoginEmail")
+  @DisplayName("[보강] rejectsBlankLoginEmail")
   @Test
   void rejectsBlankLoginEmail() {
     assertViolation(new LoginRequest("", "StringPass123!"), "email", "필수입니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsLoginEmailBlankAfterNormalization")
+  @DisplayName("[보강] rejectsLoginEmailBlankAfterNormalization")
   @Test
   void rejectsLoginEmailBlankAfterNormalization() {
     assertViolation(new LoginRequest("  ", "StringPass123!"), "email", "필수입니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsInvalidLoginEmail")
+  @DisplayName("[보강] rejectsInvalidLoginEmail")
   @Test
   void rejectsInvalidLoginEmail() {
     assertViolation(
         new LoginRequest("not-an-email", "StringPass123!"), "email", "올바른 이메일 형식이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsLoginEmailShorterThanThreeCharacters")
+  @DisplayName("[보강] rejectsLoginEmailShorterThanThreeCharacters")
   @Test
   void rejectsLoginEmailShorterThanThreeCharacters() {
     assertViolation(new LoginRequest("a@", "StringPass123!"), "email", "3자 이상 254자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsLoginEmailLongerThan254Characters")
+  @DisplayName("[보강] rejectsLoginEmailLongerThan254Characters")
   @Test
   void rejectsLoginEmailLongerThan254Characters() {
     assertViolation(
@@ -291,7 +291,7 @@ class RequestValidationTest {
         "3자 이상 254자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-05] rejectsLoginEmailLongerThan254CharactersAfterNormalization")
+  @DisplayName("[보강] rejectsLoginEmailLongerThan254CharactersAfterNormalization")
   @Test
   void rejectsLoginEmailLongerThan254CharactersAfterNormalization() {
     assertViolation(
@@ -300,26 +300,26 @@ class RequestValidationTest {
         "3자 이상 254자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-07] acceptsRefreshTokenWithBase64UrlCharacters")
+  @DisplayName("[M1-DTO-07A] acceptsRefreshTokenWithBase64UrlCharacters")
   @Test
   void acceptsRefreshTokenWithBase64UrlCharacters() {
     assertThat(violations(new RefreshRequest("A".repeat(41) + "-_"))).isEmpty();
   }
 
-  @DisplayName("[M1-DTO-06] rejectsMissingLoginPassword")
+  @DisplayName("[M1-DTO-06B] rejectsMissingLoginPassword")
   @Test
   void rejectsMissingLoginPassword() {
     assertViolation(new LoginRequest("guardian@example.com", null), "password", "필수입니다.");
   }
 
-  @DisplayName("[M1-DTO-06] rejectsEmptyLoginPassword")
+  @DisplayName("[M1-DTO-06C] rejectsEmptyLoginPassword")
   @Test
   void rejectsEmptyLoginPassword() {
     assertViolation(
         new LoginRequest("guardian@example.com", ""), "password", "1자 이상 72자 이하이어야 합니다.");
   }
 
-  @DisplayName("[M1-DTO-06] rejectsLoginPasswordLongerThan72Characters")
+  @DisplayName("[M1-DTO-06D] rejectsLoginPasswordLongerThan72Characters")
   @Test
   void rejectsLoginPasswordLongerThan72Characters() {
     assertViolation(

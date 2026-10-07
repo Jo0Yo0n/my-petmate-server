@@ -23,3 +23,7 @@ app:
     access-token-ttl: 900s
     refresh-token-ttl: 2592000s
     token-type: Bearer
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{requestId}] %logger{36} - %msg%n"
