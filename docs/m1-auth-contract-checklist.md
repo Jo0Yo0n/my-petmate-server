@@ -82,12 +82,13 @@ M1 전체의 통과 여부는 완료
 - [x] `M1-W-DTO-03` `SignupRequest`와 `LoginRequest`의 email을 `info.x-email-policy`에 따라 null-safe하게
   정규화하고 검증한다.
     - 연관 테스트: M1-DTO-04, M1-DTO-05A ~ M1-DTO-05C
-- [x] `M1-W-DTO-04` refresh JSON 요청 DTO를 제거하고 Service의 refresh·logout 입력을 문자열로 전환한다.
-    - 검증: DTO 참조 제거 및 기존 Service 테스트. 쿠키 입력 검증은 API 단계에서 수행한다.
+- [x] `M1-W-DTO-04` `RefreshRequest`의 길이와 허용 문자 validation을 `components.schemas.RefreshRequest`와
+  일치시킨다.
+    - 연관 테스트: M1-DTO-07A ~ M1-DTO-07F
 - [x] `M1-W-DTO-05` 누락 필드, 빈 값, 길이 경계, login 비밀번호 규칙, 허용하지 않는 enum과 알 수 없는 JSON 필드의 처리 방식을 계약과
   일치시킨다.
     - 연관 테스트: M1-DTO-03A ~ M1-DTO-03D, M1-DTO-05A ~ M1-DTO-05C, M1-DTO-06A ~ M1-DTO-06D,
-      M1-DTO-08A ~ M1-DTO-08B, M1-DTO-08D
+      M1-DTO-08A ~ M1-DTO-08D
 
 #### 테스트 범위
 
@@ -111,8 +112,15 @@ M1 전체의 통과 여부는 완료
 - [x] [M1-DTO-06B](./m1-test-cases-detail.md#m1-dto-06b)
 - [x] [M1-DTO-06C](./m1-test-cases-detail.md#m1-dto-06c)
 - [x] [M1-DTO-06D](./m1-test-cases-detail.md#m1-dto-06d)
+- [x] [M1-DTO-07A](./m1-test-cases-detail.md#m1-dto-07a)
+- [x] [M1-DTO-07B](./m1-test-cases-detail.md#m1-dto-07b)
+- [x] [M1-DTO-07C](./m1-test-cases-detail.md#m1-dto-07c)
+- [x] [M1-DTO-07D](./m1-test-cases-detail.md#m1-dto-07d)
+- [x] [M1-DTO-07E](./m1-test-cases-detail.md#m1-dto-07e)
+- [x] [M1-DTO-07F](./m1-test-cases-detail.md#m1-dto-07f)
 - [x] [M1-DTO-08A](./m1-test-cases-detail.md#m1-dto-08a)
 - [x] [M1-DTO-08B](./m1-test-cases-detail.md#m1-dto-08b)
+- [x] [M1-DTO-08C](./m1-test-cases-detail.md#m1-dto-08c)
 - [x] [M1-DTO-08D](./m1-test-cases-detail.md#m1-dto-08d)
 
 #### 완료 조건
@@ -359,16 +367,18 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 
 ### 7. Stateless Security와 현재 Guardian 복원 구현
 
-JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사용해 현재 Guardian을 조회한다.
+JWT parsing을 직접 구현하지 않고 Resource Server가 access token을 검증하게 한다. 현재 Guardian 복원은 검증된 JWT subject 이후에
+수행한다.
 
 #### `M1-W-SEC` — stateless Security와 현재 Guardian 복원
 
 - [ ] `M1-W-SEC-01` stateless `SecurityFilterChain`을 구성하고 form login, HTTP Basic과 session 인증을 사용하지
   않는다.
     - 연관 테스트: M1-SEC-09
-    - [ ] 쿠키를 사용하는 인증 경로와 login CSRF를 고려해 CSRF 방어 방식·실패 응답 계약을 결정하고 검증한다.
-    - [ ] 배포 origin/site에 따른 CORS credentials와 쿠키 환경 정책을 확정한다. 상세 정책은 OpenAPI를 따른다.
-    - [ ] MVC 테스트의 CSRF 설정을 최종 Security 정책에 맞춘다. 기존 오류 검증을 우회하거나 일괄 제거하지 않는다.
+    - [ ] 브라우저가 자동으로 전송하는 쿠키·세션 인증을 사용하지 않는 현재 Bearer 인증 방식에 맞춰 CSRF 보호를 비활성화한다.
+    - [ ] `GlobalExceptionHandlerMvcTest`의 `@WebMvcTest`에도 CSRF 비활성화 설정이 적용되도록 구성한 뒤,
+      `.with(SecurityMockMvcRequestPostProcessors.csrf())` 호출과 사용하지 않는 import를 제거한다.
+      기존 POST·PUT 오류 테스트가 CSRF token 없이 기대한 MVC 오류 응답을 반환하는지 확인한다.
 - [ ] `M1-W-SEC-02` OpenAPI에서 `security: []`인 M1 method·path만 공개하고 나머지는 기본적으로 인증을 요구한다.
     - 연관 테스트: M1-SEC-01, M1-SEC-02
 - [ ] `M1-W-SEC-03` Resource Server의 `JwtDecoder`로 Bearer access token을 검증한다.
@@ -404,17 +414,13 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 ### 8. M1 API를 endpoint별로 연결
 
-- [ ] Controller에서 쿠키 입력의 길이·문자 형식을 검증하고 계약의 오류를 반환한다.
-- [ ] Service의 AuthResponse·TokenResponse는 내부 결과로 사용하고 refresh token을 제외한 HTTP 응답 DTO로 매핑한다.
-- [ ] 쿠키 발급·회전·삭제 속성과 JSON 원문 미노출을 API 테스트에서 검증한다.
-
 아래 endpoint는 나열된 순서대로 하나씩 연결하고, 각 endpoint의 정상·실패 통합 테스트를 통과한 뒤 다음 endpoint로 이동한다.
 
 #### `M1-W-API-SU` — 회원가입
 
 - [ ] `M1-W-API-SU-01` `POST /api/auth/signup` 요청을 validation하고 인증 service에 연결한다.
     - 연관 테스트: M1-API-SU-01, M1-API-SU-02A ~ M1-API-SU-02B
-- [ ] `M1-W-API-SU-02` 정상 응답의 status, JSON access token·Guardian과 Set-Cookie를 계약과 일치시킨다.
+- [ ] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-SU-01
 - [ ] `M1-W-API-SU-03` DTO validation 실패는 `VALIDATION_FAILED`, JSON 역직렬화 실패는 `MALFORMED_REQUEST`,
   정규화 email
@@ -432,10 +438,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-RF` — token 갱신
 
-- [ ] `M1-W-API-RF-01` `POST /api/auth/refresh`를 회전 transaction에 연결하고 쿠키에서 읽은 문자열을 Service에 전달하고 JSON access token과 새
-  Set-Cookie를 반환한다. 이전 refresh token은 폐기한다.
+- [ ] `M1-W-API-RF-01` `POST /api/auth/refresh`를 회전 transaction에 연결하고 성공 응답에는 새 token 쌍만 반환하며 이전
+  refresh token을 폐기한다.
     - 연관 테스트: M1-API-RF-01
-- [ ] `M1-W-API-RF-02` 쿠키 누락·만료·폐기·재사용·알 수 없는 token은 `AUTH_REFRESH_INVALID`로 반환한다.
+- [ ] `M1-W-API-RF-02` 만료·폐기·재사용·알 수 없는 token은 `AUTH_REFRESH_INVALID`로 반환한다.
     - 연관 테스트: M1-API-RF-02A ~ M1-API-RF-02B
 
 #### `M1-W-API-LO` — 로그아웃

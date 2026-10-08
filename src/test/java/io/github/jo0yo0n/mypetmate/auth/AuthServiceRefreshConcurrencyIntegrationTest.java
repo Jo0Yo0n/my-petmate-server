@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.clearInvocations;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
+import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
@@ -51,6 +52,7 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
 
     AuthResponse authResponse = authService.signup(signupRequest);
     String rawRefreshToken = authResponse.refreshToken();
+    RefreshRequest refreshRequest = new RefreshRequest(rawRefreshToken);
     long beforeRefreshCount = refreshTokenRepository.count();
 
     CountDownLatch bothReadyToRefresh = new CountDownLatch(2);
@@ -67,7 +69,7 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
                 bothReadyToRefresh.countDown();
                 await(releaseRefresh);
 
-                return authService.refresh(rawRefreshToken);
+                return authService.refresh(refreshRequest);
               });
       var secondTransaction =
           executor.submit(
@@ -75,7 +77,7 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
                 bothReadyToRefresh.countDown();
                 await(releaseRefresh);
 
-                return authService.refresh(rawRefreshToken);
+                return authService.refresh(refreshRequest);
               });
 
       await(bothReadyToRefresh);

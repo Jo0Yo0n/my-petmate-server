@@ -85,7 +85,7 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 | HTTP status | `code`                         | `type`                                                | `title`                     | 사용 조건 및 앱 동작                                                                                                                  |
 |-------------|--------------------------------|-------------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
 | 400         | `MALFORMED_REQUEST`            | `urn:my-petmate:problem:malformed-request`            | 잘못된 요청 형식            | JSON 문법 오류, 알 수 없는 필드·enum 값, 요청 DTO로 변환할 수 없는 타입이다. `fieldErrors`는 생략하며 앱은 요청 형식을 다시 확인한다. |
-| 400         | `VALIDATION_FAILED`            | `urn:my-petmate:problem:validation-failed`            | 입력값 검증 실패            | body/query/path/cookie validation 실패. `fieldErrors`를 폼에 표시한다.                                                                |
+| 400         | `VALIDATION_FAILED`            | `urn:my-petmate:problem:validation-failed`            | 입력값 검증 실패            | body/query/path validation 실패. `fieldErrors`를 폼에 표시한다.                                                                       |
 | 400         | `IDENTITY_DISCLOSURE_REQUIRED` | `urn:my-petmate:problem:identity-disclosure-required` | 보호자 정보 공개 필요       | 비공개 보호자가 `guardianIdentities`를 사용했다. 공개 설정 안내를 표시한다.                                                           |
 | 401         | `AUTH_TOKEN_EXPIRED`           | `urn:my-petmate:problem:auth-token-expired`           | access token 만료           | access token 만료. refresh를 한 번 수행하고 원 요청을 한 번 재시도한다.                                                               |
 | 401         | `AUTH_TOKEN_INVALID`           | `urn:my-petmate:problem:auth-token-invalid`           | 유효하지 않은 access token  | access token 누락·변조·오류. 자동 재시도하지 않고 로그인 상태를 정리한다.                                                             |
@@ -123,12 +123,3 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
   code는 별도 중앙 처리가 필요하다.
 - 내부 exception class, stack trace, SQL, token, 비밀번호, 정확한 위치는 `detail`이나 `fieldErrors`에 포함하지 않는다.
 - HTTP 응답 status와 body의 `status`는 반드시 같아야 한다.
-
-## Refresh 쿠키 입력 오류
-
-refresh·logout의 쿠키 입력 검증은 Controller의 HTTP 입력 경계에서 수행한다.
-
-- refresh 쿠키 누락은 401 AUTH_REFRESH_INVALID다.
-- 쿠키가 있지만 빈 값·길이·문자 형식이 잘못되면 400 VALIDATION_FAILED다. fieldErrors.field는 refreshToken이며 원문은 포함하지 않는다.
-- logout 쿠키 누락은 오류가 아니다. 구체적인 성공·삭제 동작은 OpenAPI의 logout 계약을 따른다.
-- CSRF 방어 방식과 실패 응답의 status·code 매핑은 Security 구현 전에 결정한다. 현재 권한 오류와 임의로 동일시하지 않는다.

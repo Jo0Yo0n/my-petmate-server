@@ -206,6 +206,54 @@ writer는 전달받은 ProblemDetail의 직렬화를 검증한다. 요청 ID 생
 | 메서드 | `rejectsLoginPasswordLongerThan72Characters()`       |
 | 검증   | 계약의 최대 길이를 초과한 login 비밀번호를 거부한다. |
 
+### M1-DTO-07A
+
+| 항목   | 내용                                                             |
+|--------|------------------------------------------------------------------|
+| 클래스 | `RequestValidationTest`                                          |
+| 메서드 | `acceptsRefreshTokenWithBase64UrlCharacters()`                   |
+| 검증   | 계약의 길이와 Base64 URL 문자로 구성된 refresh token을 허용한다. |
+
+### M1-DTO-07B
+
+| 항목   | 내용                                           |
+|--------|------------------------------------------------|
+| 클래스 | `RequestValidationTest`                        |
+| 메서드 | `rejectsRefreshTokenShorterThan43Characters()` |
+| 검증   | 계약 길이보다 짧은 refresh token을 거부한다.   |
+
+### M1-DTO-07C
+
+| 항목   | 내용                                          |
+|--------|-----------------------------------------------|
+| 클래스 | `RequestValidationTest`                       |
+| 메서드 | `rejectsRefreshTokenLongerThan43Characters()` |
+| 검증   | 계약 길이보다 긴 refresh token을 거부한다.    |
+
+### M1-DTO-07D
+
+| 항목   | 내용                                                                |
+|--------|---------------------------------------------------------------------|
+| 클래스 | `RequestValidationTest`                                             |
+| 메서드 | `rejectsRefreshTokenWithNonBase64UrlCharacter()`                    |
+| 검증   | Base64 URL 형식에 없는 대표 문자를 포함한 refresh token을 거부한다. |
+
+### M1-DTO-07E
+
+| 항목   | 내용                           |
+|--------|--------------------------------|
+| 클래스 | `RequestValidationTest`        |
+| 메서드 | `rejectsMissingRefreshToken()` |
+| 검증   | null refresh token을 거부한다. |
+
+### M1-DTO-07F
+
+| 항목   | 내용                         |
+|--------|------------------------------|
+| 클래스 | `RequestValidationTest`      |
+| 메서드 | `rejectsEmptyRefreshToken()` |
+| 검증   | 빈 refresh token을 거부한다. |
+
 ### M1-DTO-08A
 
 | 항목   | 내용                                                        |
@@ -221,6 +269,14 @@ writer는 전달받은 ProblemDetail의 직렬화를 검증한다. 요청 ID 생
 | 클래스 | `LoginRequestJsonTest`                                     |
 | 메서드 | `rejectsUnknownLoginJsonField()`                           |
 | 검증   | login JSON의 알 수 없는 필드를 역직렬화 단계에서 거부한다. |
+
+### M1-DTO-08C
+
+| 항목   | 내용                                                         |
+|--------|--------------------------------------------------------------|
+| 클래스 | `RefreshRequestJsonTest`                                     |
+| 메서드 | `rejectsUnknownRefreshJsonField()`                           |
+| 검증   | refresh JSON의 알 수 없는 필드를 역직렬화 단계에서 거부한다. |
 
 ### M1-DTO-08D
 
@@ -420,8 +476,6 @@ token·설정 자체로 완료하며 auth service·endpoint는 필요하지 않�
 | 메서드 | `applicationTokenPolicyAndResponseConstantsMatchTheOpenApiContract()`           |
 | 검증 1 | 설정의 access/refresh TTL 및 응답 token type·수명 값이 OpenAPI 정책과 일치한다. |
 | 검증 2 | 실제 auth endpoint나 AuthService 구현 없이 확인한다.                            |
-
-쿠키 전환 회귀 검증으로 응답 스키마의 refresh token 부재, 쿠키 TTL과 설정의 일치, refresh·logout 쿠키 입력과 인증 성공 응답의 Set-Cookie 연결도 확인한다.
 
 ## 4. 인증 Application Service
 
@@ -831,7 +885,7 @@ DB 구성요소로 검증한다.
 |--------|----------------------------------------------------------------------------------------|
 | 클래스 | `AuthControllerIntegrationTest`                                                        |
 | 메서드 | `returnsCreatedAuthResponseForSignup()`                                                |
-| 검증 1 | 201 JSON access token·Guardian과 Set-Cookie가 계약과 맞고 JSON에 refresh token이 없다. |
+| 검증 1 | 201 AuthResponse의 token 값·canonical email·대표 Guardian 유형의 필드가 계약과 맞는다. |
 | 검증 2 | active Guardian과 refresh token hash가 저장되고 공통 성공 응답 검증을 만족한다.        |
 
 ### M1-API-SU-02A
@@ -863,12 +917,12 @@ DB 구성요소로 검증한다.
 
 ### M1-API-LI-01
 
-| 항목   | 내용                                                                                                                       |
-|--------|----------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                                                                                            |
-| 메서드 | `returnsAuthResponseForValidLogin()`                                                                                       |
-| 검증 1 | 200 JSON access token·Guardian과 Set-Cookie가 계약과 맞고 새 refresh token hash가 저장된다. JSON에는 refresh token이 없다. |
-| 검증 2 | 공통 성공 응답 검증을 만족한다.                                                                                            |
+| 항목   | 내용                                                                              |
+|--------|-----------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                   |
+| 메서드 | `returnsAuthResponseForValidLogin()`                                              |
+| 검증 1 | 200 AuthResponse의 Guardian·token이 계약과 맞고 새 refresh token hash가 저장된다. |
+| 검증 2 | 공통 성공 응답 검증을 만족한다.                                                   |
 
 ### M1-API-LI-02
 
@@ -881,37 +935,37 @@ DB 구성요소로 검증한다.
 
 ### M1-API-RF-01
 
-| 항목   | 내용                                                                                                                                                 |
-|--------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                                                                                                                      |
-| 메서드 | `rotatesRefreshTokenAndRejectsReuse()`                                                                                                               |
-| 검증 1 | body 없는 쿠키 요청에 200 JSON access token과 새 Set-Cookie를 반환한다. JSON에는 refresh token이 없고 이전 쿠키 재사용은 401 AUTH_REFRESH_INVALID다. |
-| 검증 2 | 성공·오류 공통 응답 검증을 만족한다.                                                                                                                 |
+| 항목   | 내용                                                                               |
+|--------|------------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                    |
+| 메서드 | `rotatesRefreshTokenAndRejectsReuse()`                                             |
+| 검증 1 | 첫 요청은 200 새 TokenResponse이고 이전 token 재사용은 401 AUTH_REFRESH_INVALID다. |
+| 검증 2 | 성공·오류 공통 응답 검증을 만족한다.                                               |
 
 ### M1-API-RF-02A
 
-| 항목   | 내용                                                                                              |
-|--------|---------------------------------------------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                                                                   |
-| 메서드 | `returnsValidationErrorForMalformedRefreshToken()`                                                |
-| 검증   | 빈 값·짧거나 긴 값·비허용 문자를 가진 쿠키는 400 VALIDATION_FAILED이며 공통 오류 검증을 만족한다. |
+| 항목   | 내용                                                                   |
+|--------|------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                        |
+| 메서드 | `returnsValidationErrorForMalformedRefreshToken()`                     |
+| 검증   | 형식 오류 token은 400 VALIDATION_FAILED이며 공통 오류 검증을 만족한다. |
 
 ### M1-API-RF-02B
 
-| 항목   | 내용                                                                                              |
-|--------|---------------------------------------------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                                                                   |
-| 메서드 | `returnsInvalidRefreshForUnknownToken()`                                                          |
-| 검증   | 누락 쿠키 및 올바른 형식의 미등록 token은 401 AUTH_REFRESH_INVALID이며 공통 오류 검증을 만족한다. |
+| 항목   | 내용                                                                                 |
+|--------|--------------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                      |
+| 메서드 | `returnsInvalidRefreshForUnknownToken()`                                             |
+| 검증   | 올바른 형식의 미등록 token은 401 AUTH_REFRESH_INVALID이며 공통 오류 검증을 만족한다. |
 
 ### M1-API-LO-01
 
-| 항목   | 내용                                                                                       |
-|--------|--------------------------------------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                                                            |
-| 메서드 | `returnsNoContentForRepeatedLogout()`                                                      |
-| 검증 1 | 최초·반복·쿠키 누락 logout은 모두 body 없는 204다. Set-Cookie 삭제 속성이 계약과 일치한다. |
-| 검증 2 | 이후 기존 token의 refresh는 거부되며 응답에 요청 ID가 있다.                                |
+| 항목   | 내용                                                        |
+|--------|-------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                             |
+| 메서드 | `returnsNoContentForRepeatedLogout()`                       |
+| 검증 1 | 최초·반복 logout은 모두 body 없는 204다.                    |
+| 검증 2 | 이후 기존 token의 refresh는 거부되며 응답에 요청 ID가 있다. |
 
 ### M1-API-ME-01
 
@@ -1003,13 +1057,3 @@ DB 구성요소로 검증한다.
 
 완료 여부는 [M1 인증 계약 체크리스트](./m1-auth-contract-checklist.md)에서 관리한다. ID 재분류만으로 미검증 항목을 완료로 바꾸지 않는다.
 M1 종료 시 전체 회귀·계약 확인·수동 흐름과 사람 검토를 마친다.
-
-## 쿠키 전환 후 API·Security 검증
-
-Controller·Security 구현 시 다음 항목을 검증한다. 현재 Service 테스트의 완료와 구분한다.
-
-- signup·login·refresh의 Set-Cookie 속성은 OpenAPI 정책과 일치하고 JSON에는 refresh token 원문이 없다.
-- refresh·logout은 JSON body 없이 쿠키를 읽는다. 입력 경계 검증은 M1-API-RF-02A ~ M1-API-RF-02B에서 수행한다.
-- logout 삭제 쿠키는 발급 쿠키와 이름·Path·Domain이 같고, 쿠키 누락 logout도 성공한다. 잘못된 형식은 계약의 오류다.
-- CSRF 방어와 CORS credentials를 결정한 뒤 정상 origin 및 거부 대상 요청, 실패 응답의 ProblemDetail·requestId를 검증한다.
-- 서비스 결과의 token 쌍 검증은 HTTP 응답 body 검증과 분리한다.

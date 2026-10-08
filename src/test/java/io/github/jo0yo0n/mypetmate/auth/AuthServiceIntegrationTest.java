@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
@@ -271,7 +272,8 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     Guardian guardian = guardianRepository.findByEmail("guardian@example.com").orElseThrow();
 
     // when
-    TokenResponse tokenResponse = authService.refresh(authResponse.refreshToken());
+    TokenResponse tokenResponse =
+        authService.refresh(new RefreshRequest(authResponse.refreshToken()));
 
     entityManager.flush();
     entityManager.clear();
@@ -381,7 +383,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
             refreshTokenRepository.save(refreshToken);
 
-            authService.refresh(generatedRefreshToken);
+            authService.refresh(new RefreshRequest(generatedRefreshToken));
 
             yield new RefreshFixture(generatedRefreshToken, refreshTokenRepository.count());
           }
@@ -407,7 +409,8 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
         };
 
     clearInvocations(accessTokenIssuer);
-    assertThatThrownBy(() -> authService.refresh(refreshFixture.rawRefreshToken))
+    assertThatThrownBy(
+            () -> authService.refresh(new RefreshRequest(refreshFixture.rawRefreshToken)))
         .isInstanceOf(InvalidRefreshTokenException.class);
     assertThat(refreshTokenRepository.count()).isEqualTo(refreshFixture.countBefore);
     then(accessTokenIssuer).should(never()).issue(any(), any());
@@ -432,7 +435,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
             NOW));
     long refreshTokenCountBefore = refreshTokenRepository.count();
 
-    authService.logout(generatedRefreshToken);
+    authService.logout(new RefreshRequest(generatedRefreshToken));
 
     entityManager.flush();
     entityManager.clear();
@@ -470,7 +473,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
         long refreshTokenCountBefore = refreshTokenRepository.count();
 
-        authService.logout(generatedRefreshToken);
+        authService.logout(new RefreshRequest(generatedRefreshToken));
 
         entityManager.flush();
         entityManager.clear();
@@ -496,7 +499,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
         long refreshTokenCountBefore = refreshTokenRepository.count();
 
-        authService.logout(generatedRefreshToken);
+        authService.logout(new RefreshRequest(generatedRefreshToken));
 
         entityManager.flush();
         entityManager.clear();
@@ -522,7 +525,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
         long refreshTokenCountBefore = refreshTokenRepository.count();
 
-        authService.logout(generatedRefreshToken);
+        authService.logout(new RefreshRequest(generatedRefreshToken));
 
         entityManager.flush();
         entityManager.clear();
@@ -550,7 +553,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
         long refreshTokenCountBefore = refreshTokenRepository.count();
 
-        authService.logout(refreshTokenGenerator.generate());
+        authService.logout(new RefreshRequest(refreshTokenGenerator.generate()));
 
         entityManager.flush();
         entityManager.clear();
