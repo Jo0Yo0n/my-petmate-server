@@ -42,11 +42,51 @@ class TokenPolicyContractTest {
                   .isEqualTo(openApiTokenPolicy(openApi, "tokenType"));
               assertResponseConstantsMatch(openApi, "TokenResponse", tokenProperties);
               assertResponseConstantsMatch(openApi, "AuthResponse", tokenProperties);
+              assertTokenDeliveryMatchesContract(openApi, tokenProperties);
             });
   }
 
   private PropertySource<?> loadYaml(String name, String path) throws IOException {
     return new YamlPropertySourceLoader().load(name, new FileSystemResource(path)).getFirst();
+  }
+
+  private void assertTokenDeliveryMatchesContract(
+      PropertySource<?> openApi, TokenProperties tokenProperties) {
+    assertThat(openApiTokenPolicy(openApi, "accessTokenDelivery")).isEqualTo("json-body");
+    assertThat(openApiTokenPolicy(openApi, "refreshTokenDelivery")).isEqualTo("httponly-cookie");
+    assertThat(openApiTokenPolicy(openApi, "refreshTokenCookie.httpOnly")).isEqualTo(true);
+    assertThat(openApiTokenPolicy(openApi, "refreshTokenCookie.maxAgeSeconds"))
+        .isEqualTo(Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()));
+    for (String response : new String[] {"AuthResponse", "TokenResponse"}) {
+      assertThat(
+              openApi.getProperty(
+                  "components.schemas." + response + ".properties.refreshToken.type"))
+          .isNull();
+    }
+    assertThat(openApi.getProperty("components.schemas.RefreshRequest.type")).isNull();
+    for (String endpoint : new String[] {"refresh", "logout"}) {
+      String prefix = "paths./api/auth/" + endpoint + ".post.";
+      assertThat(openApi.getProperty(prefix + "requestBody.required")).isNull();
+      assertThat(openApi.getProperty(prefix + "parameters[0].$ref"))
+          .isEqualTo("#/components/parameters/RefreshTokenCookie");
+    }
+    for (String[] success :
+        new String[][] {
+          {"signup", "201"}, {"login", "200"}, {"refresh", "200"}, {"logout", "204"}
+        }) {
+      assertThat(
+              openApi.getProperty(
+                  "paths./api/auth/"
+                      + success[0]
+                      + ".post.responses."
+                      + success[1]
+                      + ".headers.Set-Cookie.$ref"))
+          .isEqualTo(
+              "#/components/headers/"
+                  + (success[0].equals("logout")
+                      ? "RefreshTokenClearCookie"
+                      : "RefreshTokenSetCookie"));
+    }
   }
 
   private long openApiSeconds(PropertySource<?> openApi, String name) {

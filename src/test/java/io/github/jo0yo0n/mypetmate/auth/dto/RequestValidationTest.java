@@ -214,43 +214,6 @@ class RequestValidationTest {
     assertThat(violations(new LoginRequest("guardian@example.com", "x".repeat(72)))).isEmpty();
   }
 
-  @DisplayName("[보강] acceptsValidRefreshToken")
-  @Test
-  void acceptsValidRefreshToken() {
-    assertThat(violations(new RefreshRequest("A".repeat(43)))).isEmpty();
-  }
-
-  @DisplayName("[M1-DTO-07B] rejectsRefreshTokenShorterThan43Characters")
-  @Test
-  void rejectsRefreshTokenShorterThan43Characters() {
-    assertViolation(new RefreshRequest("A".repeat(42)), "refreshToken", "43자이어야 합니다.");
-  }
-
-  @DisplayName("[M1-DTO-07C] rejectsRefreshTokenLongerThan43Characters")
-  @Test
-  void rejectsRefreshTokenLongerThan43Characters() {
-    assertViolation(new RefreshRequest("A".repeat(44)), "refreshToken", "43자이어야 합니다.");
-  }
-
-  @DisplayName("[M1-DTO-07D] rejectsRefreshTokenWithNonBase64UrlCharacter")
-  @Test
-  void rejectsRefreshTokenWithNonBase64UrlCharacter() {
-    assertViolation(
-        new RefreshRequest("+" + "A".repeat(42)), "refreshToken", "Base64 URL 형식이어야 합니다.");
-  }
-
-  @DisplayName("[M1-DTO-07E] rejectsMissingRefreshToken")
-  @Test
-  void rejectsMissingRefreshToken() {
-    assertViolation(new RefreshRequest(null), "refreshToken", "필수입니다.");
-  }
-
-  @DisplayName("[M1-DTO-07F] rejectsEmptyRefreshToken")
-  @Test
-  void rejectsEmptyRefreshToken() {
-    assertViolation(new RefreshRequest(""), "refreshToken", "43자이어야 합니다.");
-  }
-
   @DisplayName("[보강] rejectsMissingLoginEmail")
   @Test
   void rejectsMissingLoginEmail() {
@@ -298,12 +261,6 @@ class RequestValidationTest {
         new LoginRequest(" " + longestValidEmail() + " x", "StringPass123!"),
         "email",
         "3자 이상 254자 이하이어야 합니다.");
-  }
-
-  @DisplayName("[M1-DTO-07A] acceptsRefreshTokenWithBase64UrlCharacters")
-  @Test
-  void acceptsRefreshTokenWithBase64UrlCharacters() {
-    assertThat(violations(new RefreshRequest("A".repeat(41) + "-_"))).isEmpty();
   }
 
   @DisplayName("[M1-DTO-06B] rejectsMissingLoginPassword")

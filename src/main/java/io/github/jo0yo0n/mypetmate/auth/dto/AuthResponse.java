@@ -2,6 +2,7 @@ package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 
+/** Service result containing tokens; map to the HTTP response body before serialization. */
 public record AuthResponse(
     String accessToken,
     String refreshToken,

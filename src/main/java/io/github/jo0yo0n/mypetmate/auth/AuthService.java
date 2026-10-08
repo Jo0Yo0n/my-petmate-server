@@ -2,7 +2,6 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
@@ -122,14 +121,13 @@ public class AuthService {
   }
 
   @Transactional
-  TokenResponse refresh(RefreshRequest refreshRequest) {
+  TokenResponse refresh(String rawRefreshToken) {
 
     Instant now = clock.instant();
 
     RefreshToken legacyRefreshToken =
         refreshTokenRepository
-            .findByTokenHashWithPessimisticWriteLock(
-                refreshTokenGenerator.hash(refreshRequest.refreshToken()))
+            .findByTokenHashWithPessimisticWriteLock(refreshTokenGenerator.hash(rawRefreshToken))
             .orElseThrow(InvalidRefreshTokenException::new);
 
     Guardian guardian = legacyRefreshToken.getGuardian();
@@ -159,11 +157,11 @@ public class AuthService {
   }
 
   @Transactional
-  void logout(RefreshRequest logoutRequest) {
+  void logout(String rawRefreshToken) {
 
     Instant now = clock.instant();
     refreshTokenRepository
-        .findByTokenHash(refreshTokenGenerator.hash(logoutRequest.refreshToken()))
+        .findByTokenHash(refreshTokenGenerator.hash(rawRefreshToken))
         .ifPresent(
             refreshToken -> {
               if (!refreshToken.getExpiresAt().isAfter(now)) {

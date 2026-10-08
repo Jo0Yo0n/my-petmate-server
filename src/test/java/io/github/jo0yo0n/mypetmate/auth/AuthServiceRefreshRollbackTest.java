@@ -7,7 +7,6 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
-import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
@@ -47,7 +46,7 @@ public class AuthServiceRefreshRollbackTest extends PostgreSqlIntegrationTestSup
         .given(refreshTokenRepository)
         .save(any());
 
-    assertThatThrownBy(() -> authService.refresh(new RefreshRequest(authResponse.refreshToken())))
+    assertThatThrownBy(() -> authService.refresh(authResponse.refreshToken()))
         .isInstanceOf(DataAccessException.class);
 
     assertRefreshTokenRotationWasRolledBack(authResponse, beforeRefreshTokenCount);
@@ -61,7 +60,7 @@ public class AuthServiceRefreshRollbackTest extends PostgreSqlIntegrationTestSup
     willReturn(authResponse.refreshToken()).given(refreshTokenGenerator).generate();
     long beforeRefreshTokenCount = refreshTokenRepository.count();
 
-    assertThatThrownBy(() -> authService.refresh(new RefreshRequest(authResponse.refreshToken())))
+    assertThatThrownBy(() -> authService.refresh(authResponse.refreshToken()))
         .isInstanceOf(DataIntegrityViolationException.class);
 
     assertRefreshTokenRotationWasRolledBack(authResponse, beforeRefreshTokenCount);
