@@ -874,6 +874,49 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 검증 1 | 세션 cookie 없이 같은 access token으로 연속 요청을 인증한다.            |
 | 검증 2 | HTTP session을 생성하지 않으며 form login·HTTP Basic을 사용하지 않는다. |
 
+### M1-DBFILTER-01
+
+| 항목   | 내용                                                                                                                                                                                                  |
+|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `DataAccessExceptionFilterTest`                                                                                                                                                                       |
+| 메서드 | `returnsSafeProblemDetailAndLogsDatabaseFailure()`                                                                                                                                                    |
+| 검증   | DB 접근 예외에 공통 500 ProblemDetail을 반환하고 header·body의 요청 ID가 일치한다. 로그에 요청 ID·예외 타입·스택 위치를 기록하며 DB 예외 메시지의 SQL·비밀번호·token은 로그와 응답에 포함하지 않는다. |
+
+### M1-DBFILTER-02
+
+| 항목   | 내용                                       |
+|--------|--------------------------------------------|
+| 클래스 | `DataAccessExceptionFilterTest`            |
+| 메서드 | `preservesSuccessfulResponse()`            |
+| 검증   | 정상 처리가 반환한 상태와 본문을 유지한다. |
+
+### M1-DBFILTER-03
+
+| 항목   | 내용                                                  |
+|--------|-------------------------------------------------------|
+| 클래스 | `DataAccessExceptionFilterTest`                       |
+| 메서드 | `propagatesUnrelatedException()`                      |
+| 검증   | DB 접근 예외가 아닌 예외는 원래 객체 그대로 전파한다. |
+
+### M1-DBFILTER-04
+
+| 항목   | 내용                                                                                                                                                     |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                     |
+| 메서드 | `handlesRepositoryFailureInSecurityChain()`                                                                                                              |
+| 검증   | 실제 JWT 인증 과정의 Repository에 DB 장애를 주입하면 등록된 필터가 공통 500과 일치하는 요청 ID를 반환한다. 실제 DB 중단 대신 Repository 예외를 주입한다. |
+
+### M1-DBFILTER-05
+
+| 항목   | 내용                                                                                                                                                                                                                                                                      |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                                                                                                                      |
+| 메서드 | `handlesTransactionCreationFailureInSecurityChain()`                                                                                                                                                                                                                      |
+| 검증   | JWT 인증 과정의 Repository에 `CannotCreateTransactionException`을 주입하면 공통 500과 일치하는 요청 ID를 반환한다. 로그에 요청 ID와 예외 타입을 기록하며 예외와 원인 메시지의 SQL·비밀번호·token은 응답과 로그에 포함하지 않는다. 실제 DB 연결 중단 대신 예외를 주입한다. |
+
+M1-SEC-07은 테스트 전용 deny 규칙의 SecurityFilterChain으로 운영 EntryPoint·AccessDeniedHandler와 요청 ID 연결을 검증한다.
+나머지 보안 항목은 운영 SecurityFilterChain, 실제 JWT encoder·decoder와 PostgreSQL을 사용한다.
+
 ## 7. M1 API
 
 signup → login → refresh → logout → GET me → PATCH me 순서로 연결한다. 현재 endpoint와 앞서 연결한 endpoint 또는 이전
