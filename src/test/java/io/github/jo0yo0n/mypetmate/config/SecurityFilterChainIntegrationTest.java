@@ -67,13 +67,26 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Test
   @DisplayName("[M1-SEC-01] allowsPublicAuthRequestsWithoutAccessToken")
   void allowsPublicAuthRequestsWithoutAccessToken() throws Exception {
-    for (String endpoint : new String[] {"signup", "login", "refresh", "logout"}) {
+    mvc.perform(
+            post("/api/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"email":"guardian@example.com","password":"StrongPass123!",
+                     "profileType":"individual","gender":"female","identityVisibility":"public"}
+                    """))
+        .andExpect(status().isCreated());
+    assertProblemResponse(
+        post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("{}"),
+        400,
+        "VALIDATION_FAILED");
+    for (String endpoint : new String[] {"login", "refresh", "logout"}) {
       mvc.perform(
               post("/api/auth/" + endpoint)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content("{\"value\":\"ok\"}"))
           .andExpect(status().isOk());
-      problem(
+      assertProblemResponse(
           post("/api/auth/" + endpoint)
               .contentType(MediaType.APPLICATION_JSON)
               .content("{\"value\":\"\"}"),
@@ -85,9 +98,9 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Test
   @DisplayName("[M1-SEC-02] returnsProblemDetailWhenAccessTokenIsMissing")
   void returnsProblemDetailWhenAccessTokenIsMissing() throws Exception {
-    problem(get("/test/secured"), 401, "AUTH_TOKEN_INVALID");
-    problem(get("/api/auth/login"), 401, "AUTH_TOKEN_INVALID");
-    problem(
+    assertProblemResponse(get("/test/secured"), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(get("/api/auth/login"), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(
         get("/test/secured").header(HttpHeaders.AUTHORIZATION, "Basic dXNlcjpwYXNz"),
         401,
         "AUTH_TOKEN_INVALID");
@@ -102,7 +115,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
         token.substring(0, start)
             + (token.charAt(start) == 'A' ? 'B' : 'A')
             + token.substring(start + 1);
-    problem(bearer("/test/secured", tampered), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(bearer("/test/secured", tampered), 401, "AUTH_TOKEN_INVALID");
   }
 
   @ParameterizedTest
@@ -110,7 +123,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @ValueSource(strings = {" ", "not-a-uuid"})
   @DisplayName("[M1-SEC-03B] rejectsMalformedGuardianSubject")
   void rejectsMalformedGuardianSubject(String subject) throws Exception {
-    problem(
+    assertProblemResponse(
         bearer("/test/secured", token(subject, NOW.plusSeconds(900))), 401, "AUTH_TOKEN_INVALID");
   }
 
@@ -118,7 +131,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @DisplayName("[M1-SEC-04] returnsExpiredTokenProblemDetail")
   void returnsExpiredTokenProblemDetail() throws Exception {
     for (Instant expiration : new Instant[] {NOW.minusSeconds(1), NOW}) {
-      problem(
+      assertProblemResponse(
           bearer("/test/secured", token(UUID.randomUUID().toString(), expiration)),
           401,
           "AUTH_TOKEN_EXPIRED");
@@ -138,18 +151,18 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
         .andExpect(status().isOk())
         .andExpect(content().string(id.toString()));
     jdbc.update("UPDATE guardian SET status = ? WHERE id = ?", "withdrawn", id);
-    problem(bearer("/test/secured", token), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(bearer("/test/secured", token), 401, "AUTH_TOKEN_INVALID");
   }
 
   @Test
   @DisplayName("[M1-SEC-06] rejectsMissingOrWithdrawnGuardian")
   void rejectsMissingOrWithdrawnGuardian() throws Exception {
-    problem(
+    assertProblemResponse(
         bearer("/test/secured", token(UUID.randomUUID().toString(), NOW.plusSeconds(900))),
         401,
         "AUTH_TOKEN_INVALID");
     UUID id = saveGuardian(GuardianStatus.WITHDRAWN);
-    problem(
+    assertProblemResponse(
         bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
         401,
         "AUTH_TOKEN_INVALID");
@@ -158,7 +171,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Test
   @DisplayName("[M1-SEC-07] returnsProblemDetailWhenAccessIsDenied")
   void returnsProblemDetailWhenAccessIsDenied() throws Exception {
-    problem(
+    assertProblemResponse(
         bearer("/test/denied", token(UUID.randomUUID().toString(), NOW.plusSeconds(900))),
         403,
         "FORBIDDEN");
@@ -185,7 +198,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
         .when(guardians)
         .findById(id);
     try {
-      problem(
+      assertProblemResponse(
           bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
           500,
           "INTERNAL_SERVER_ERROR");
@@ -206,7 +219,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
         .when(guardians)
         .findById(id);
     try {
-      problem(
+      assertProblemResponse(
           bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
           500,
           "INTERNAL_SERVER_ERROR");
@@ -246,8 +259,8 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
     return get(path).header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
   }
 
-  private MvcResult problem(MockHttpServletRequestBuilder request, int status, String code)
-      throws Exception {
+  private MvcResult assertProblemResponse(
+      MockHttpServletRequestBuilder request, int status, String code) throws Exception {
     var result =
         mvc.perform(request)
             .andExpect(status().is(status))
@@ -310,7 +323,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   static class TestController {
     record Input(@NotBlank String value) {}
 
-    @PostMapping({"/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout"})
+    @PostMapping({"/api/auth/login", "/api/auth/refresh", "/api/auth/logout"})
     String publicAuth(@Valid @RequestBody Input input) {
       return input.value();
     }
