@@ -3,7 +3,6 @@ package io.github.jo0yo0n.mypetmate.web.error;
 import io.github.jo0yo0n.mypetmate.error.BusinessException;
 import io.github.jo0yo0n.mypetmate.error.ErrorCode;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.slf4j.Logger;
@@ -232,12 +231,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             getRequestURI(request),
             getRequestId(request));
 
-    log.error(
-        "event=unexpected_error code={} requestId={} exceptionType={} stackTrace={}",
-        ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
-        getRequestId(request),
-        ex.getClass().getName(),
-        Arrays.toString(ex.getStackTrace()));
+    UnexpectedErrorLogger.log(log, ex, getRequestId(request));
     return new ResponseEntity<>(problemDetail, HttpHeaders.EMPTY, problemDetail.getStatus());
   }
 
