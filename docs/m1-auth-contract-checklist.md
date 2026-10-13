@@ -367,50 +367,50 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 
 ### 7. Stateless Security와 현재 Guardian 복원 구현
 
-JWT parsing을 직접 구현하지 않고 Resource Server가 access token을 검증하게 한다. 현재 Guardian 복원은 검증된 JWT subject 이후에
-수행한다.
+JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사용해 현재 Guardian을 조회한다.
 
 #### `M1-W-SEC` — stateless Security와 현재 Guardian 복원
 
-- [ ] `M1-W-SEC-01` stateless `SecurityFilterChain`을 구성하고 form login, HTTP Basic과 session 인증을 사용하지
-  않는다.
+- [x] `M1-W-SEC-01` stateless `SecurityFilterChain`을 구성하고 form login, HTTP Basic, CSRF 보호와 session
+  인증을 사용하지 않는다.
     - 연관 테스트: M1-SEC-09
-    - [ ] 브라우저가 자동으로 전송하는 쿠키·세션 인증을 사용하지 않는 현재 Bearer 인증 방식에 맞춰 CSRF 보호를 비활성화한다.
-    - [ ] `GlobalExceptionHandlerMvcTest`의 `@WebMvcTest`에도 CSRF 비활성화 설정이 적용되도록 구성한 뒤,
-      `.with(SecurityMockMvcRequestPostProcessors.csrf())` 호출과 사용하지 않는 import를 제거한다.
-      기존 POST·PUT 오류 테스트가 CSRF token 없이 기대한 MVC 오류 응답을 반환하는지 확인한다.
-- [ ] `M1-W-SEC-02` OpenAPI에서 `security: []`인 M1 method·path만 공개하고 나머지는 기본적으로 인증을 요구한다.
+- [x] `M1-W-SEC-02` OpenAPI에서 `security: []`인 M1 method·path만 공개하고 나머지는 기본적으로 인증을 요구한다.
     - 연관 테스트: M1-SEC-01, M1-SEC-02
-- [ ] `M1-W-SEC-03` Resource Server의 `JwtDecoder`로 Bearer access token을 검증한다.
+- [x] `M1-W-SEC-03` Resource Server의 `JwtDecoder`로 Bearer access token을 검증한다.
     - 연관 테스트: M1-SEC-03A ~ M1-SEC-03B, M1-SEC-04
-- [ ] `M1-W-SEC-04` 검증된 JWT subject를 UUID로 변환하고 현재 Guardian을 DB에서 조회하는 경계를 구현한다.
+- [x] `M1-W-SEC-04` 검증된 JWT subject를 UUID로 변환하고 현재 Guardian을 DB에서 조회하는 경계를 구현한다.
     - 연관 테스트: M1-SEC-05, M1-SEC-06
-- [ ] `M1-W-SEC-05` Guardian이 없거나 `withdrawn`이면 인증을 거부하고, `temporarily_restricted`는 인증 상태를 유지하게 한다.
+- [x] `M1-W-SEC-05` Guardian이 없거나 `withdrawn`이면 인증을 거부하고, `temporarily_restricted`는 인증 상태를 유지하게 한다.
     - 연관 테스트: M1-SEC-05, M1-SEC-06
-- [ ] `M1-W-SEC-06` access token 만료와 그 밖의 누락·변조·오류를 계약의 서로 다른 code로 매핑한다.
+- [x] `M1-W-SEC-06` access token 만료와 그 밖의 누락·변조·오류를 계약의 서로 다른 code로 매핑한다.
     - 연관 테스트: M1-SEC-03A ~ M1-SEC-03B, M1-SEC-04
-- [ ] `M1-W-SEC-07` `AuthenticationEntryPoint`와 `AccessDeniedHandler`가 6단계의 공통 factory·writer를 사용하고
+- [x] `M1-W-SEC-07` `AuthenticationEntryPoint`와 `AccessDeniedHandler`가 6단계의 공통 factory·writer를 사용하고
   요청 ID filter가 401·403 처리보다 먼저 실행되게 한다.
     - 연관 테스트: M1-SEC-02, M1-SEC-07
 
 #### 테스트 범위
 
-- [ ] [M1-SEC-01](./m1-test-cases-detail.md#m1-sec-01)
-- [ ] [M1-SEC-02](./m1-test-cases-detail.md#m1-sec-02)
-- [ ] [M1-SEC-03A](./m1-test-cases-detail.md#m1-sec-03a)
-- [ ] [M1-SEC-03B](./m1-test-cases-detail.md#m1-sec-03b)
-- [ ] [M1-SEC-04](./m1-test-cases-detail.md#m1-sec-04)
-- [ ] [M1-SEC-05](./m1-test-cases-detail.md#m1-sec-05)
-- [ ] [M1-SEC-06](./m1-test-cases-detail.md#m1-sec-06)
-- [ ] [M1-SEC-07](./m1-test-cases-detail.md#m1-sec-07)
-- [ ] [M1-SEC-09](./m1-test-cases-detail.md#m1-sec-09)
+- [x] [M1-SEC-01](./m1-test-cases-detail.md#m1-sec-01)
+- [x] [M1-SEC-02](./m1-test-cases-detail.md#m1-sec-02)
+- [x] [M1-SEC-03A](./m1-test-cases-detail.md#m1-sec-03a)
+- [x] [M1-SEC-03B](./m1-test-cases-detail.md#m1-sec-03b)
+- [x] [M1-SEC-04](./m1-test-cases-detail.md#m1-sec-04)
+- [x] [M1-SEC-05](./m1-test-cases-detail.md#m1-sec-05)
+- [x] [M1-SEC-06](./m1-test-cases-detail.md#m1-sec-06)
+- [x] [M1-SEC-07](./m1-test-cases-detail.md#m1-sec-07)
+- [x] [M1-SEC-09](./m1-test-cases-detail.md#m1-sec-09)
+- [x] [M1-DBFILTER-01](./m1-test-cases-detail.md#m1-dbfilter-01)
+- [x] [M1-DBFILTER-02](./m1-test-cases-detail.md#m1-dbfilter-02)
+- [x] [M1-DBFILTER-03](./m1-test-cases-detail.md#m1-dbfilter-03)
+- [x] [M1-DBFILTER-04](./m1-test-cases-detail.md#m1-dbfilter-04)
+- [x] [M1-DBFILTER-05](./m1-test-cases-detail.md#m1-dbfilter-05)
 
 #### 완료 조건
 
-- [ ] 공개·보호 경로와 Security 오류 계약 테스트가 모두 통과한다.
-- [ ] 직접 작성한 JWT parsing 또는 access token blacklist가 없다.
-- [ ] 사람 개발자가 key 주입, filter 순서, 공개 경로와 Guardian 복원 방식을 검토했다.
-- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [x] 공개·보호 경로와 Security 오류 계약 테스트가 모두 통과한다.
+- [x] 직접 작성한 JWT parsing 또는 access token blacklist가 없다.
+- [x] 사람 개발자가 key 주입, filter 순서, 공개 경로와 Guardian 복원 방식을 검토했다.
+- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 8. M1 API를 endpoint별로 연결
 

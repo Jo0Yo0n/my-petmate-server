@@ -16,7 +16,7 @@ public class SecurityProblemDetailWriter {
     this.objectMapper = objectMapper;
   }
 
-  void write(ProblemDetail problemDetail, HttpServletResponse response) throws IOException {
+  public void write(ProblemDetail problemDetail, HttpServletResponse response) throws IOException {
 
     response.setStatus(problemDetail.getStatus());
     response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);

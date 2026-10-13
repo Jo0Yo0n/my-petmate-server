@@ -12,6 +12,10 @@ public enum ErrorCode {
       URI.create("urn:my-petmate:problem:auth-token-invalid"),
       "유효하지 않은 access token",
       HttpStatus.UNAUTHORIZED),
+  AUTH_TOKEN_EXPIRED(
+      URI.create("urn:my-petmate:problem:auth-token-expired"),
+      "access token 만료",
+      HttpStatus.UNAUTHORIZED),
   AUTH_REFRESH_INVALID(
       URI.create("urn:my-petmate:problem:refresh-token-invalid"),
       "유효하지 않은 refresh token",
@@ -20,6 +24,7 @@ public enum ErrorCode {
       URI.create("urn:my-petmate:problem:invalid-credentials"),
       "유효하지 않은 로그인 정보",
       HttpStatus.UNAUTHORIZED),
+  FORBIDDEN(URI.create("urn:my-petmate:problem:forbidden"), "접근 권한 없음", HttpStatus.FORBIDDEN),
   EMAIL_ALREADY_EXISTS(
       URI.create("urn:my-petmate:problem:email-already-exists"), "이미 가입된 이메일", HttpStatus.CONFLICT),
   RESOURCE_NOT_FOUND(

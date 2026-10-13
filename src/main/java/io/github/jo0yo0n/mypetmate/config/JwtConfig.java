@@ -4,13 +4,17 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,7 +23,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwtEncodingException;
-import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
@@ -54,10 +57,29 @@ public class JwtConfig {
   }
 
   private OAuth2TokenValidator<Jwt> jwtValidator(JwtProperties jwtProperties, Clock clock) {
-    JwtTimestampValidator timestampValidator = new JwtTimestampValidator(CLOCK_SKEW);
-    timestampValidator.setClock(clock);
+    OAuth2TokenValidator<Jwt> timestampValidator =
+        jwt -> {
+          Instant now = clock.instant();
+          List<OAuth2Error> errors = new ArrayList<>();
+
+          Instant expiresAt = jwt.getExpiresAt();
+          if (expiresAt != null && !now.isBefore(expiresAt)) {
+            errors.add(new OAuth2Error("access_token_expired", "Access token expired", null));
+          }
+
+          Instant notBefore = jwt.getNotBefore();
+          if (notBefore != null && now.isBefore(notBefore)) {
+            errors.add(new OAuth2Error("invalid_token", "Access token is not yet valid", null));
+          }
+
+          return errors.isEmpty()
+              ? OAuth2TokenValidatorResult.success()
+              : OAuth2TokenValidatorResult.failure(errors.toArray(OAuth2Error[]::new));
+        };
+
     JwtClaimValidator<String> issuerValidator =
         new JwtClaimValidator<>("iss", jwtProperties.issuer()::equals);
+
     JwtClaimValidator<List<String>> audienceValidator =
         new JwtClaimValidator<>(
             "aud", audience -> audience != null && audience.contains(jwtProperties.audience()));
