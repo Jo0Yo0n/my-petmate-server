@@ -418,11 +418,11 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-SU` — 회원가입
 
-- [ ] `M1-W-API-SU-01` `POST /api/auth/signup` 요청을 validation하고 인증 service에 연결한다.
+- [x] `M1-W-API-SU-01` `POST /api/auth/signup` 요청을 validation하고 인증 service에 연결한다.
     - 연관 테스트: M1-API-SU-01, M1-API-SU-02A ~ M1-API-SU-02B
-- [ ] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
+- [x] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-SU-01
-- [ ] `M1-W-API-SU-03` DTO validation 실패는 `VALIDATION_FAILED`, JSON 역직렬화 실패는 `MALFORMED_REQUEST`,
+- [x] `M1-W-API-SU-03` DTO validation 실패는 `VALIDATION_FAILED`, JSON 역직렬화 실패는 `MALFORMED_REQUEST`,
   정규화 email
   중복은 `EMAIL_ALREADY_EXISTS`로 반환하고 비밀번호 원문을 DB·로그·응답에 남기지 않는다.
     - 연관 테스트: M1-API-SU-02A ~ M1-API-SU-02B, M1-API-SU-03; 공통 오류 변환은 M1-ERR-03A ~ M1-ERR-03B,
@@ -465,10 +465,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 테스트 범위
 
-- [ ] [M1-API-SU-01](./m1-test-cases-detail.md#m1-api-su-01)
-- [ ] [M1-API-SU-02A](./m1-test-cases-detail.md#m1-api-su-02a)
-- [ ] [M1-API-SU-02B](./m1-test-cases-detail.md#m1-api-su-02b)
-- [ ] [M1-API-SU-03](./m1-test-cases-detail.md#m1-api-su-03)
+- [x] [M1-API-SU-01](./m1-test-cases-detail.md#m1-api-su-01)
+- [x] [M1-API-SU-02A](./m1-test-cases-detail.md#m1-api-su-02a)
+- [x] [M1-API-SU-02B](./m1-test-cases-detail.md#m1-api-su-02b)
+- [x] [M1-API-SU-03](./m1-test-cases-detail.md#m1-api-su-03)
 - [ ] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
 - [ ] [M1-API-LI-02](./m1-test-cases-detail.md#m1-api-li-02)
 - [ ] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
