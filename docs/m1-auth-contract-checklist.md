@@ -446,10 +446,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-LO` — 로그아웃
 
-- [ ] `M1-W-API-LO-01` `POST /api/auth/logout`을 멱등 폐기 동작에 연결하고 최초·반복·알 수 없는 token 요청이 모두 계약의 성공
+- [x] `M1-W-API-LO-01` `POST /api/auth/logout`을 멱등 폐기 동작에 연결하고 최초·반복·알 수 없는 token 요청이 모두 계약의 성공
   status를 반환하게 한다.
     - 연관 테스트: M1-API-LO-01
-- [ ] `M1-W-API-LO-02` 로그아웃 응답 body를 반환하지 않는다.
+- [x] `M1-W-API-LO-02` 로그아웃 응답 body를 반환하지 않는다.
     - 연관 테스트: M1-API-LO-01
 
 #### `M1-W-API-ME` — 현재 Guardian 조회와 수정
@@ -474,7 +474,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
 - [x] [M1-API-RF-02A](./m1-test-cases-detail.md#m1-api-rf-02a)
 - [x] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)
-- [ ] [M1-API-LO-01](./m1-test-cases-detail.md#m1-api-lo-01)
+- [x] [M1-API-LO-01](./m1-test-cases-detail.md#m1-api-lo-01)
 - [ ] [M1-API-ME-01](./m1-test-cases-detail.md#m1-api-me-01)
 - [ ] [M1-API-ME-02](./m1-test-cases-detail.md#m1-api-me-02)
 - [ ] [M1-API-ME-03](./m1-test-cases-detail.md#m1-api-me-03)

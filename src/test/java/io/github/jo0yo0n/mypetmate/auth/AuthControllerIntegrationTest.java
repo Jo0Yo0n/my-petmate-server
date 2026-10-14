@@ -32,6 +32,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private static final String SIGNUP_PATH = "/api/auth/signup";
   private static final String LOGIN_PATH = "/api/auth/login";
   private static final String REFRESH_PATH = "/api/auth/refresh";
+  private static final String LOGOUT_PATH = "/api/auth/logout";
   private static final String EMAIL = "guardian@example.com";
   private static final String PASSWORD = "StrongPass123!";
   private static final String REQUEST_ID = "My-Petmate-Request-Id";
@@ -275,6 +276,38 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     assertThat(error.has("fieldErrors")).isFalse();
   }
 
+  @Test
+  @DisplayName("[M1-API-LO-01] returnsNoContentForRepeatedLogout")
+  void returnsNoContentForRepeatedLogout() throws Exception {
+    JsonNode signedUp =
+        mapper.readTree(
+            signup(request("individual", "female", "public"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    String token = signedUp.path("refreshToken").asText();
+
+    for (String logoutToken : List.of(token, token, "a".repeat(43))) {
+      MvcResult result =
+          logout(refreshRequest(logoutToken))
+              .andExpect(status().isNoContent())
+              .andExpect(content().string(""))
+              .andReturn();
+      assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    }
+
+    JsonNode error =
+        assertProblemResponse(
+            REFRESH_PATH,
+            refreshRequest(token),
+            401,
+            "AUTH_REFRESH_INVALID",
+            "refresh-token-invalid",
+            "유효하지 않은 refresh token");
+    assertThat(error.has("fieldErrors")).isFalse();
+  }
+
   private ObjectNode request(String type, String gender, String visibility) {
     ObjectNode request = mapper.createObjectNode();
     request.put("email", "  Guardian@Example.COM  ");
@@ -310,6 +343,13 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private ResultActions refresh(ObjectNode request) throws Exception {
     return mvc.perform(
         post(REFRESH_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsBytes(request)));
+  }
+
+  private ResultActions logout(ObjectNode request) throws Exception {
+    return mvc.perform(
+        post(LOGOUT_PATH)
             .contentType(MediaType.APPLICATION_JSON)
             .content(mapper.writeValueAsBytes(request)));
   }

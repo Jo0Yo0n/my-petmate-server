@@ -11,8 +11,6 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.*;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -302,13 +300,6 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
 
   @RestController
   static class TestController {
-    record Input(@NotBlank String value) {}
-
-    @PostMapping("/api/auth/logout")
-    String publicAuth(@Valid @RequestBody Input input) {
-      return input.value();
-    }
-
     @GetMapping("/test/secured")
     String secured(@AuthenticationPrincipal UUID id) {
       return id.toString();
