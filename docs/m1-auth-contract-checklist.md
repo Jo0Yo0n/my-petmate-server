@@ -430,9 +430,9 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-LI` — 로그인
 
-- [ ] `M1-W-API-LI-01` `POST /api/auth/login`을 인증 service에 연결하고 성공 응답을 계약과 일치시킨다.
+- [x] `M1-W-API-LI-01` `POST /api/auth/login`을 인증 service에 연결하고 성공 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-LI-01
-- [ ] `M1-W-API-LI-02` 잘못된 email·비밀번호는 모두 `AUTH_INVALID_CREDENTIALS`로 반환하고 signup 전용 비밀번호 복잡도 규칙을
+- [x] `M1-W-API-LI-02` 잘못된 email·비밀번호는 모두 `AUTH_INVALID_CREDENTIALS`로 반환하고 signup 전용 비밀번호 복잡도 규칙을
   login에 다시 적용하지 않는다.
     - 연관 테스트: M1-API-LI-02
 
@@ -469,8 +469,8 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-API-SU-02A](./m1-test-cases-detail.md#m1-api-su-02a)
 - [x] [M1-API-SU-02B](./m1-test-cases-detail.md#m1-api-su-02b)
 - [x] [M1-API-SU-03](./m1-test-cases-detail.md#m1-api-su-03)
-- [ ] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
-- [ ] [M1-API-LI-02](./m1-test-cases-detail.md#m1-api-li-02)
+- [x] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
+- [x] [M1-API-LI-02](./m1-test-cases-detail.md#m1-api-li-02)
 - [ ] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
 - [ ] [M1-API-RF-02A](./m1-test-cases-detail.md#m1-api-rf-02a)
 - [ ] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)

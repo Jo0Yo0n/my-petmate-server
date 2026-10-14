@@ -64,35 +64,16 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Autowired JdbcTemplate jdbc;
   @MockitoSpyBean GuardianRepository guardians;
 
-  @Test
+  @ParameterizedTest
+  @ValueSource(strings = {"signup", "login", "refresh", "logout"})
   @DisplayName("[M1-SEC-01] allowsPublicAuthRequestsWithoutAccessToken")
-  void allowsPublicAuthRequestsWithoutAccessToken() throws Exception {
-    mvc.perform(
-            post("/api/auth/signup")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(
-                    """
-                    {"email":"guardian@example.com","password":"StrongPass123!",
-                     "profileType":"individual","gender":"female","identityVisibility":"public"}
-                    """))
-        .andExpect(status().isCreated());
+  void allowsPublicAuthRequestsWithoutAccessToken(String endpoint) throws Exception {
+
+    // 400 응답은 access token 없이 Security를 통과해 MVC 입력 검증에 도달했음을 확인한다.
     assertProblemResponse(
-        post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("{}"),
+        post("/api/auth/" + endpoint).contentType(MediaType.APPLICATION_JSON).content("{}"),
         400,
         "VALIDATION_FAILED");
-    for (String endpoint : new String[] {"login", "refresh", "logout"}) {
-      mvc.perform(
-              post("/api/auth/" + endpoint)
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"value\":\"ok\"}"))
-          .andExpect(status().isOk());
-      assertProblemResponse(
-          post("/api/auth/" + endpoint)
-              .contentType(MediaType.APPLICATION_JSON)
-              .content("{\"value\":\"\"}"),
-          400,
-          "VALIDATION_FAILED");
-    }
   }
 
   @Test
@@ -323,7 +304,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   static class TestController {
     record Input(@NotBlank String value) {}
 
-    @PostMapping({"/api/auth/login", "/api/auth/refresh", "/api/auth/logout"})
+    @PostMapping({"/api/auth/refresh", "/api/auth/logout"})
     String publicAuth(@Valid @RequestBody Input input) {
       return input.value();
     }

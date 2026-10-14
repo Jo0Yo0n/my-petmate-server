@@ -2,6 +2,7 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,7 +29,8 @@ import org.springframework.test.web.servlet.ResultActions;
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
-  private static final String PATH = "/api/auth/signup";
+  private static final String SIGNUP_PATH = "/api/auth/signup";
+  private static final String LOGIN_PATH = "/api/auth/login";
   private static final String EMAIL = "guardian@example.com";
   private static final String PASSWORD = "StrongPass123!";
   private static final String REQUEST_ID = "My-Petmate-Request-Id";
@@ -91,7 +93,8 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     long guardians = count("guardian");
     long refreshTokens = count("refresh_token");
     JsonNode error =
-        assertProblemResponse(request, 400, "VALIDATION_FAILED", "validation-failed", "입력값 검증 실패");
+        assertProblemResponse(
+            SIGNUP_PATH, request, 400, "VALIDATION_FAILED", "validation-failed", "입력값 검증 실패");
     assertThat(error.path("fieldErrors").isArray()).isTrue();
     assertThat(error.path("fieldErrors")).isNotEmpty();
     List<String> errorFields = new ArrayList<>();
@@ -111,7 +114,8 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     long guardians = count("guardian");
     long refreshTokens = count("refresh_token");
     JsonNode error =
-        assertProblemResponse(request, 400, "MALFORMED_REQUEST", "malformed-request", "잘못된 요청 형식");
+        assertProblemResponse(
+            SIGNUP_PATH, request, 400, "MALFORMED_REQUEST", "malformed-request", "잘못된 요청 형식");
     assertThat(error.has("fieldErrors")).isFalse();
     assertCountUnchanged(guardians, refreshTokens);
   }
@@ -126,6 +130,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     long refreshTokens = count("refresh_token");
     JsonNode error =
         assertProblemResponse(
+            SIGNUP_PATH,
             request("individual", "female", "public"),
             409,
             "EMAIL_ALREADY_EXISTS",
@@ -133,6 +138,64 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             "이미 가입된 이메일");
     assertThat(error.has("fieldErrors")).isFalse();
     assertCountUnchanged(guardians, refreshTokens);
+  }
+
+  @Test
+  @DisplayName("[M1-API-LI-01] returnsAuthResponseForValidLogin")
+  void returnsAuthResponseForValidLogin() throws Exception {
+    JsonNode signedUp =
+        mapper.readTree(
+            signup(request("individual", "female", "public"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    long refreshTokens = count("refresh_token");
+
+    MvcResult result =
+        login(loginRequest("  Guardian@Example.COM  ", PASSWORD))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andReturn();
+
+    assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
+    assertThat(fields(body))
+        .containsExactlyInAnyOrder(
+            "accessToken",
+            "refreshToken",
+            "tokenType",
+            "expiresIn",
+            "refreshExpiresIn",
+            "guardian");
+    assertThat(body.path("accessToken").isTextual()).isTrue();
+    assertThat(body.path("refreshToken").isTextual()).isTrue();
+    assertThat(body.path("tokenType").isTextual()).isTrue();
+    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("guardian").isObject()).isTrue();
+    assertThat(body.path("guardian")).isEqualTo(signedUp.path("guardian"));
+
+    assertThat(count("refresh_token")).isEqualTo(refreshTokens + 1);
+  }
+
+  @Test
+  @DisplayName("[M1-API-LI-02] returnsSameErrorForInvalidLoginCredentials")
+  void returnsSameErrorForInvalidLoginCredentials() throws Exception {
+    signup(request("individual", "female", "public")).andExpect(status().isCreated());
+
+    for (String email : List.of("missing@example.com", EMAIL)) {
+      // 유효 길이지만 signup 복잡도에는 맞지 않는 비밀번호도 인증 단계까지 전달
+      JsonNode error =
+          assertProblemResponse(
+              LOGIN_PATH,
+              loginRequest(email, "simple"),
+              401,
+              "AUTH_INVALID_CREDENTIALS",
+              "invalid-credentials",
+              "유효하지 않은 로그인 정보");
+      assertThat(error.has("fieldErrors")).isFalse();
+    }
   }
 
   private ObjectNode request(String type, String gender, String visibility) {
@@ -147,15 +210,32 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   private ResultActions signup(ObjectNode request) throws Exception {
     return mvc.perform(
-        post(PATH)
+        post(SIGNUP_PATH)
             .contentType(MediaType.APPLICATION_JSON)
             .content(mapper.writeValueAsBytes(request)));
   }
 
-  // 비정상 request 필요
+  private ObjectNode loginRequest(String email, String password) {
+    return mapper.createObjectNode().put("email", email).put("password", password);
+  }
+
+  private ResultActions login(ObjectNode request) throws Exception {
+    return mvc.perform(
+        post(LOGIN_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsBytes(request)));
+  }
+
   private JsonNode assertProblemResponse(
-      ObjectNode request, int status, String code, String type, String title) throws Exception {
-    MvcResult result = signup(request).andExpect(status().is(status)).andReturn();
+      String path, ObjectNode request, int status, String code, String type, String title)
+      throws Exception {
+    MvcResult result =
+        mvc.perform(
+                post(path)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(mapper.writeValueAsBytes(request)))
+            .andExpect(status().is(status))
+            .andReturn();
     assertThat(
             MediaType.parseMediaType(Objects.requireNonNull(result.getResponse().getContentType()))
                 .isCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -166,9 +246,9 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     assertThat(error.path("type").asText()).isEqualTo("urn:my-petmate:problem:" + type);
     assertThat(error.path("title").asText()).isEqualTo(title);
     assertThat(error.path("detail").asText()).isNotBlank();
-    assertThat(error.path("instance").asText()).isEqualTo(PATH);
+    assertThat(error.path("instance").asText()).isEqualTo(path);
     String requestId = result.getResponse().getHeader(REQUEST_ID);
-    assertThat(requestId).isNotBlank();
+    assertThat(requestId).matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
     assertThat(error.path("requestId").asText()).isNotBlank().isEqualTo(requestId);
     return error;
   }
