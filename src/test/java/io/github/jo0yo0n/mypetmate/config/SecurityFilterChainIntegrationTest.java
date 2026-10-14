@@ -304,7 +304,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   static class TestController {
     record Input(@NotBlank String value) {}
 
-    @PostMapping({"/api/auth/refresh", "/api/auth/logout"})
+    @PostMapping("/api/auth/logout")
     String publicAuth(@Valid @RequestBody Input input) {
       return input.value();
     }

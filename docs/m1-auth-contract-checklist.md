@@ -438,10 +438,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-RF` — token 갱신
 
-- [ ] `M1-W-API-RF-01` `POST /api/auth/refresh`를 회전 transaction에 연결하고 성공 응답에는 새 token 쌍만 반환하며 이전
+- [x] `M1-W-API-RF-01` `POST /api/auth/refresh`를 회전 transaction에 연결하고 성공 응답에는 새 token 쌍만 반환하며 이전
   refresh token을 폐기한다.
     - 연관 테스트: M1-API-RF-01
-- [ ] `M1-W-API-RF-02` 만료·폐기·재사용·알 수 없는 token은 `AUTH_REFRESH_INVALID`로 반환한다.
+- [x] `M1-W-API-RF-02` 만료·폐기·재사용·알 수 없는 token은 `AUTH_REFRESH_INVALID`로 반환한다.
     - 연관 테스트: M1-API-RF-02A ~ M1-API-RF-02B
 
 #### `M1-W-API-LO` — 로그아웃
@@ -471,9 +471,9 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-API-SU-03](./m1-test-cases-detail.md#m1-api-su-03)
 - [x] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
 - [x] [M1-API-LI-02](./m1-test-cases-detail.md#m1-api-li-02)
-- [ ] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
-- [ ] [M1-API-RF-02A](./m1-test-cases-detail.md#m1-api-rf-02a)
-- [ ] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)
+- [x] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
+- [x] [M1-API-RF-02A](./m1-test-cases-detail.md#m1-api-rf-02a)
+- [x] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)
 - [ ] [M1-API-LO-01](./m1-test-cases-detail.md#m1-api-lo-01)
 - [ ] [M1-API-ME-01](./m1-test-cases-detail.md#m1-api-me-01)
 - [ ] [M1-API-ME-02](./m1-test-cases-detail.md#m1-api-me-02)

@@ -2,7 +2,9 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
+import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,5 +31,10 @@ class AuthController {
   @PostMapping("/login")
   AuthResponse login(@Valid @RequestBody LoginRequest request) {
     return authService.login(request);
+  }
+
+  @PostMapping("/refresh")
+  TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
+    return authService.refresh(request);
   }
 }

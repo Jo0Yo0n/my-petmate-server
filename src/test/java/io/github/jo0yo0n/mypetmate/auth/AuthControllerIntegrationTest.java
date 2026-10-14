@@ -31,6 +31,7 @@ import org.springframework.test.web.servlet.ResultActions;
 class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private static final String SIGNUP_PATH = "/api/auth/signup";
   private static final String LOGIN_PATH = "/api/auth/login";
+  private static final String REFRESH_PATH = "/api/auth/refresh";
   private static final String EMAIL = "guardian@example.com";
   private static final String PASSWORD = "StrongPass123!";
   private static final String REQUEST_ID = "My-Petmate-Request-Id";
@@ -198,6 +199,82 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     }
   }
 
+  @Test
+  @DisplayName("[M1-API-RF-01] rotatesRefreshTokenAndRejectsReuse")
+  void rotatesRefreshTokenAndRejectsReuse() throws Exception {
+    JsonNode signedUp =
+        mapper.readTree(
+            signup(request("individual", "female", "public"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    String previousToken = signedUp.path("refreshToken").asText();
+
+    MvcResult result =
+        refresh(refreshRequest(previousToken))
+            .andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andReturn();
+
+    assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
+    assertThat(fields(body))
+        .containsExactlyInAnyOrder(
+            "accessToken", "refreshToken", "tokenType", "expiresIn", "refreshExpiresIn");
+    assertThat(body.path("accessToken").isTextual()).isTrue();
+    assertThat(body.path("refreshToken").isTextual()).isTrue();
+    assertThat(body.path("tokenType").isTextual()).isTrue();
+    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("refreshToken").asText()).isNotBlank().isNotEqualTo(previousToken);
+
+    JsonNode error =
+        assertProblemResponse(
+            REFRESH_PATH,
+            refreshRequest(previousToken),
+            401,
+            "AUTH_REFRESH_INVALID",
+            "refresh-token-invalid",
+            "유효하지 않은 refresh token");
+    assertThat(error.has("fieldErrors")).isFalse();
+  }
+
+  @Test
+  @DisplayName("[M1-API-RF-02A] returnsValidationErrorForMalformedRefreshToken")
+  void returnsValidationErrorForMalformedRefreshToken() throws Exception {
+    JsonNode error =
+        assertProblemResponse(
+            REFRESH_PATH,
+            refreshRequest("invalid-token"),
+            400,
+            "VALIDATION_FAILED",
+            "validation-failed",
+            "입력값 검증 실패");
+    assertThat(error.path("fieldErrors").isArray()).isTrue();
+    assertThat(error.path("fieldErrors")).isNotEmpty();
+    List<String> errorFields = new ArrayList<>();
+    for (JsonNode field : error.path("fieldErrors")) {
+      errorFields.add(field.path("field").asText());
+      assertThat(field.path("reason").asText()).isNotBlank();
+    }
+    assertThat(errorFields).contains("refreshToken");
+  }
+
+  @Test
+  @DisplayName("[M1-API-RF-02B] returnsInvalidRefreshForUnknownToken")
+  void returnsInvalidRefreshForUnknownToken() throws Exception {
+    JsonNode error =
+        assertProblemResponse(
+            REFRESH_PATH,
+            refreshRequest("a".repeat(43)),
+            401,
+            "AUTH_REFRESH_INVALID",
+            "refresh-token-invalid",
+            "유효하지 않은 refresh token");
+    assertThat(error.has("fieldErrors")).isFalse();
+  }
+
   private ObjectNode request(String type, String gender, String visibility) {
     ObjectNode request = mapper.createObjectNode();
     request.put("email", "  Guardian@Example.COM  ");
@@ -222,6 +299,17 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private ResultActions login(ObjectNode request) throws Exception {
     return mvc.perform(
         post(LOGIN_PATH)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(mapper.writeValueAsBytes(request)));
+  }
+
+  private ObjectNode refreshRequest(String token) {
+    return mapper.createObjectNode().put("refreshToken", token);
+  }
+
+  private ResultActions refresh(ObjectNode request) throws Exception {
+    return mvc.perform(
+        post(REFRESH_PATH)
             .contentType(MediaType.APPLICATION_JSON)
             .content(mapper.writeValueAsBytes(request)));
   }
