@@ -45,15 +45,11 @@ class RequestValidationTest {
             });
   }
 
-  @DisplayName("[M1-DTO-02C] forbidsGenderForCoupleAndFamilySignup")
+  @DisplayName("[M1-DTO-02C] acceptsGenderForCoupleAndFamilySignup")
   @Test
-  void forbidsGenderForCoupleAndFamilySignup() {
-    assertThat(violations(signup(ProfileType.COUPLE, Gender.FEMALE)))
-        .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("gender");
-    assertThat(violations(signup(ProfileType.FAMILY, Gender.MALE)))
-        .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("gender");
+  void acceptsGenderForCoupleAndFamilySignup() {
+    assertThat(violations(signup(ProfileType.COUPLE, Gender.FEMALE))).isEmpty();
+    assertThat(violations(signup(ProfileType.FAMILY, Gender.MALE))).isEmpty();
   }
 
   @DisplayName("[M1-DTO-02D] appliesTheSameProfileRuleToGuardianUpdates")
@@ -82,14 +78,12 @@ class RequestValidationTest {
             violations(
                 new GuardianUpdateRequest(
                     ProfileType.COUPLE, Gender.FEMALE, IdentityVisibility.PUBLIC)))
-        .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("gender");
+        .isEmpty();
     assertThat(
             violations(
                 new GuardianUpdateRequest(
                     ProfileType.FAMILY, Gender.FEMALE, IdentityVisibility.PUBLIC)))
-        .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("gender");
+        .isEmpty();
   }
 
   @DisplayName("[M1-DTO-03A] acceptsPasswordContainingEveryRequiredAsciiCharacterGroup")

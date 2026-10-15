@@ -42,7 +42,15 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Autowired JdbcTemplate jdbc;
 
   @ParameterizedTest
-  @CsvSource({"individual,female,public", "couple,,private", "family,,public"})
+  @CsvSource({
+    "individual,female,public",
+    "couple,,private",
+    "family,,public",
+    "couple,female,public",
+    "couple,male,private",
+    "family,female,private",
+    "family,male,public",
+  })
   @DisplayName("[M1-API-SU-01] returnsCreatedAuthResponseForSignup")
   void returnsCreatedAuthResponseForSignup(String profileType, String gender, String visibility)
       throws Exception {
@@ -71,14 +79,18 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
     JsonNode guardian = body.path("guardian");
     List<String> expectedFields =
-        new ArrayList<>(List.of("id", "email", "profileType", "identityVisibility", "status"));
-    if (gender != null) expectedFields.add("gender");
+        List.of("id", "email", "profileType", "gender", "identityVisibility", "status");
     assertThat(fields(guardian)).containsExactlyInAnyOrderElementsOf(expectedFields);
     assertThat(guardian.path("email").asText()).isEqualTo(EMAIL);
     assertThat(guardian.path("profileType").asText()).isEqualTo(profileType);
     assertThat(guardian.path("identityVisibility").asText()).isEqualTo(visibility);
     assertThat(guardian.path("status").asText()).isEqualTo("active");
-    if (gender != null) assertThat(guardian.path("gender").asText()).isEqualTo(gender);
+    String expectedGender = "individual".equals(profileType) ? gender : null;
+    if (expectedGender == null) {
+      assertThat(guardian.path("gender").isNull()).isTrue();
+    } else {
+      assertThat(guardian.path("gender").asText()).isEqualTo(expectedGender);
+    }
 
     assertThat(count("guardian")).isEqualTo(1);
     assertThat(count("refresh_token")).isEqualTo(1);
@@ -86,6 +98,8 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     UUID id = UUID.fromString(guardian.path("id").asText());
     assertThat(jdbc.queryForObject("SELECT status FROM guardian WHERE id = ?", String.class, id))
         .isEqualTo("active");
+    assertThat(jdbc.queryForObject("SELECT gender FROM guardian WHERE id = ?", String.class, id))
+        .isEqualTo(expectedGender);
   }
 
   @Test
@@ -200,6 +214,27 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "temporarily_restricted,ACCOUNT_RESTRICTED,account-restricted,정지된 계정",
+    "withdrawn,ACCOUNT_WITHDRAWN,account-withdrawn,탈퇴한 계정"
+  })
+  @DisplayName("[M1-API-LI-03] returnsAccountStatusErrorForValidLogin")
+  void returnsAccountStatusErrorForValidLogin(
+      String accountStatus, String code, String type, String title) throws Exception {
+    signup(request("individual", "female", "public")).andExpect(status().isCreated());
+    jdbc.update("UPDATE guardian SET status = ? WHERE email = ?", accountStatus, EMAIL);
+    long refreshTokens = count("refresh_token");
+
+    JsonNode error =
+        assertProblemResponse(LOGIN_PATH, loginRequest(EMAIL, PASSWORD), 403, code, type, title);
+
+    assertThat(error.has("fieldErrors")).isFalse();
+    assertThat(error.has("accessToken")).isFalse();
+    assertThat(error.has("refreshToken")).isFalse();
+    assertThat(count("refresh_token")).isEqualTo(refreshTokens);
+  }
+
   @Test
   @DisplayName("[M1-API-RF-01] rotatesRefreshTokenAndRejectsReuse")
   void rotatesRefreshTokenAndRejectsReuse() throws Exception {
@@ -274,6 +309,40 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             "refresh-token-invalid",
             "유효하지 않은 refresh token");
     assertThat(error.has("fieldErrors")).isFalse();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "temporarily_restricted,ACCOUNT_RESTRICTED,account-restricted,정지된 계정",
+    "withdrawn,ACCOUNT_WITHDRAWN,account-withdrawn,탈퇴한 계정"
+  })
+  @DisplayName("[M1-API-RF-03] returnsAccountStatusErrorForValidRefresh")
+  void returnsAccountStatusErrorForValidRefresh(
+      String accountStatus, String code, String type, String title) throws Exception {
+    JsonNode signedUp =
+        mapper.readTree(
+            signup(request("individual", "female", "public"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    jdbc.update("UPDATE guardian SET status = ? WHERE email = ?", accountStatus, EMAIL);
+    var tokensBefore = jdbc.queryForList("SELECT * FROM refresh_token ORDER BY id");
+
+    JsonNode error =
+        assertProblemResponse(
+            REFRESH_PATH,
+            refreshRequest(signedUp.path("refreshToken").asText()),
+            403,
+            code,
+            type,
+            title);
+
+    assertThat(error.has("fieldErrors")).isFalse();
+    assertThat(error.has("accessToken")).isFalse();
+    assertThat(error.has("refreshToken")).isFalse();
+    assertThat(jdbc.queryForList("SELECT * FROM refresh_token ORDER BY id"))
+        .isEqualTo(tokensBefore);
   }
 
   @Test

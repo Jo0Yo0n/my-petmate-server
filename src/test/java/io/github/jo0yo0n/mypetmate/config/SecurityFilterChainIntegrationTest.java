@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,10 +78,10 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Test
   @DisplayName("[M1-SEC-02] returnsProblemDetailWhenAccessTokenIsMissing")
   void returnsProblemDetailWhenAccessTokenIsMissing() throws Exception {
-    assertProblemResponse(get("/test/secured"), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(get("/api/guardians/me"), 401, "AUTH_TOKEN_INVALID");
     assertProblemResponse(get("/api/auth/login"), 401, "AUTH_TOKEN_INVALID");
     assertProblemResponse(
-        get("/test/secured").header(HttpHeaders.AUTHORIZATION, "Basic dXNlcjpwYXNz"),
+        get("/api/guardians/me").header(HttpHeaders.AUTHORIZATION, "Basic dXNlcjpwYXNz"),
         401,
         "AUTH_TOKEN_INVALID");
   }
@@ -126,11 +127,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
         .andExpect(status().isOk())
         .andExpect(content().string(id.toString()));
     jdbc.update("UPDATE guardian SET status = ? WHERE id = ?", "temporarily_restricted", id);
-    mvc.perform(bearer("/test/secured", token))
-        .andExpect(status().isOk())
-        .andExpect(content().string(id.toString()));
-    jdbc.update("UPDATE guardian SET status = ? WHERE id = ?", "withdrawn", id);
-    assertProblemResponse(bearer("/test/secured", token), 401, "AUTH_TOKEN_INVALID");
+    assertProblemResponse(bearer("/test/secured", token), 403, "ACCOUNT_RESTRICTED");
   }
 
   @Test
@@ -138,11 +135,6 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   void rejectsMissingOrWithdrawnGuardian() throws Exception {
     assertProblemResponse(
         bearer("/test/secured", token(UUID.randomUUID().toString(), NOW.plusSeconds(900))),
-        401,
-        "AUTH_TOKEN_INVALID");
-    UUID id = saveGuardian(GuardianStatus.WITHDRAWN);
-    assertProblemResponse(
-        bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
         401,
         "AUTH_TOKEN_INVALID");
   }
@@ -167,6 +159,36 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
       assertThat(result.getRequest().getSession(false)).isNull();
       assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
     }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "TEMPORARILY_RESTRICTED, ACCOUNT_RESTRICTED, 일시 정지된 계정은 이용할 수 없습니다.",
+    "WITHDRAWN, ACCOUNT_WITHDRAWN, 탈퇴한 계정은 이용할 수 없습니다."
+  })
+  @DisplayName("[M1-SEC-10] rejectsInactiveGuardianWithAccountStatusError")
+  void rejectsInactiveGuardianWithAccountStatusError(
+      GuardianStatus status, String code, String detail) throws Exception {
+    UUID id = saveGuardian(status);
+    MvcResult result =
+        assertProblemResponse(
+            bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))), 403, code);
+    assertThat(mapper.readTree(result.getResponse().getContentAsString()).path("detail").asText())
+        .isEqualTo(detail);
+    assertThat(result.getRequest().getSession(false)).isNull();
+
+    assertProblemResponse(
+        bearer("/test/secured", token(id.toString(), NOW.minusSeconds(1))),
+        401,
+        "AUTH_TOKEN_EXPIRED");
+
+    String validToken = token(id.toString(), NOW.plusSeconds(900));
+    int signatureStart = validToken.lastIndexOf('.') + 1;
+    String tampered =
+        validToken.substring(0, signatureStart)
+            + (validToken.charAt(signatureStart) == 'A' ? 'B' : 'A')
+            + validToken.substring(signatureStart + 1);
+    assertProblemResponse(bearer("/test/secured", tampered), 401, "AUTH_TOKEN_INVALID");
   }
 
   @Test
@@ -254,6 +276,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
     assertThat(body.path("detail").asText()).isNotBlank();
     assertThat(body.path("instance").asText()).isEqualTo(result.getRequest().getRequestURI());
     String requestId = result.getResponse().getHeader("My-Petmate-Request-Id");
+    assertThat(requestId).matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
     assertThat(body.path("requestId").asText()).isEqualTo(requestId);
     if (status != 400) assertThat(body.has("fieldErrors")).isFalse();
     assertThat(result.getResponse().getContentAsString())

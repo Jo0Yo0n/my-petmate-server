@@ -1,8 +1,9 @@
 package io.github.jo0yo0n.mypetmate.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.mockingDetails;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
@@ -10,6 +11,7 @@ import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
@@ -53,17 +55,18 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
             Gender.MALE,
             IdentityVisibility.PUBLIC);
 
-    CountDownLatch bothPassedDuplicateCheck = new CountDownLatch(2);
-    CountDownLatch allowSignupToContinue = new CountDownLatch(1);
+    CountDownLatch bothReadyToSave = new CountDownLatch(2);
+    CountDownLatch allowSave = new CountDownLatch(1);
+    var delegate = mockingDetails(guardianRepository).getMockCreationSettings().getDefaultAnswer();
 
     willAnswer(
             invocation -> {
-              bothPassedDuplicateCheck.countDown();
-              await(allowSignupToContinue);
-              return false;
+              bothReadyToSave.countDown();
+              await(allowSave);
+              return delegate.answer(invocation);
             })
         .given(guardianRepository)
-        .existsByEmail(anyString());
+        .saveAndFlush(any(Guardian.class));
 
     try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
       long beforeGuardianCount = guardianRepository.count();
@@ -73,14 +76,13 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
       var firstTransaction = executor.submit(() -> authService.signup(signupRequest));
       var secondTransaction = executor.submit(() -> authService.signup(signupRequest));
 
-      await(bothPassedDuplicateCheck);
-      allowSignupToContinue.countDown();
+      await(bothReadyToSave);
+      allowSave.countDown();
 
       // then
       Result firstResult = getResult(firstTransaction);
       Result secondResult = getResult(secondTransaction);
 
-      Throwable failure = firstResult.failure != null ? firstResult.failure : secondResult.failure;
       AuthResponse authResponse =
           firstResult.authResponse != null ? firstResult.authResponse : secondResult.authResponse;
 

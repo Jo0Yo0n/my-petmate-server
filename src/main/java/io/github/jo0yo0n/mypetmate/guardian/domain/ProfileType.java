@@ -4,25 +4,19 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ProfileType {
-  INDIVIDUAL("individual", true),
-  COUPLE("couple", false),
-  FAMILY("family", false);
+  INDIVIDUAL("individual"),
+  COUPLE("couple"),
+  FAMILY("family");
 
   private final String value;
-  private final boolean genderRequired;
 
-  ProfileType(String value, boolean genderRequired) {
+  ProfileType(String value) {
     this.value = value;
-    this.genderRequired = genderRequired;
   }
 
   @JsonValue
   public String value() {
     return value;
-  }
-
-  public boolean requiresGender() {
-    return genderRequired;
   }
 
   @JsonCreator

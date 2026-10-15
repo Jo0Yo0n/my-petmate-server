@@ -25,6 +25,10 @@ public enum ErrorCode {
       "유효하지 않은 로그인 정보",
       HttpStatus.UNAUTHORIZED),
   FORBIDDEN(URI.create("urn:my-petmate:problem:forbidden"), "접근 권한 없음", HttpStatus.FORBIDDEN),
+  ACCOUNT_RESTRICTED(
+      URI.create("urn:my-petmate:problem:account-restricted"), "정지된 계정", HttpStatus.FORBIDDEN),
+  ACCOUNT_WITHDRAWN(
+      URI.create("urn:my-petmate:problem:account-withdrawn"), "탈퇴한 계정", HttpStatus.FORBIDDEN),
   EMAIL_ALREADY_EXISTS(
       URI.create("urn:my-petmate:problem:email-already-exists"), "이미 가입된 이메일", HttpStatus.CONFLICT),
   RESOURCE_NOT_FOUND(

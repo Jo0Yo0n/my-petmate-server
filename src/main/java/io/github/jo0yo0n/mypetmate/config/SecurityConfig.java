@@ -1,5 +1,6 @@
 package io.github.jo0yo0n.mypetmate.config;
 
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountStatusAuthenticationException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -85,8 +86,9 @@ public class SecurityConfig {
             .findById(guardianId)
             .orElseThrow(() -> new InvalidBearerTokenException("Invalid guardian"));
 
-    if (guardian.getStatus() == GuardianStatus.WITHDRAWN) {
-      throw new InvalidBearerTokenException("access denied");
+    if (guardian.getStatus() == GuardianStatus.WITHDRAWN
+        || guardian.getStatus() == GuardianStatus.TEMPORARILY_RESTRICTED) {
+      throw new AccountStatusAuthenticationException(guardian.getStatus());
     }
 
     return UsernamePasswordAuthenticationToken.authenticated(guardian.getId(), null, List.of());

@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountRestrictedException;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountWithdrawnException;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.config.RequestIdConfig;
 import io.github.jo0yo0n.mypetmate.error.ErrorCode;
@@ -18,9 +20,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import java.util.Map.Entry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -158,6 +163,28 @@ class GlobalExceptionHandlerMvcTest {
         ErrorCode.EMAIL_ALREADY_EXISTS.getCode());
   }
 
+  @DisplayName("[M1-ERR-02E] mapsAccountStatusExceptionsToForbidden")
+  @ParameterizedTest
+  @CsvSource({
+    "/test/restricted, ACCOUNT_RESTRICTED, urn:my-petmate:problem:account-restricted, 정지된 계정",
+    "/test/withdrawn, ACCOUNT_WITHDRAWN, urn:my-petmate:problem:account-withdrawn, 탈퇴한 계정"
+  })
+  @WithMockUser
+  void mapsAccountStatusExceptionsToForbidden(String path, String code, String type, String title)
+      throws Exception {
+    MvcResult result =
+        assertProblem(
+            post(path).with(SecurityMockMvcRequestPostProcessors.csrf()), path, 403, code);
+
+    JsonNode problemDetail = objectMapper.readTree(result.getResponse().getContentAsString());
+    assertThat(problemDetail.path("type").asText()).isEqualTo(type);
+    assertThat(problemDetail.path("title").asText()).isEqualTo(title);
+    assertThat(problemDetail.properties())
+        .extracting(Entry::getKey)
+        .containsExactlyInAnyOrder(
+            "type", "title", "status", "detail", "instance", "code", "requestId");
+  }
+
   @DisplayName("[M1-ERR-03A] mapsInvalidReturnValueToInternalServerError")
   @Test
   @WithMockUser
@@ -281,7 +308,7 @@ class GlobalExceptionHandlerMvcTest {
     String body = result.getResponse().getContentAsString();
     JsonNode problemDetail = objectMapper.readTree(body);
     assertThat(problemDetail.properties())
-        .extracting(entry -> entry.getKey())
+        .extracting(Entry::getKey)
         .containsExactlyInAnyOrder(
             "type", "title", "status", "detail", "instance", "code", "requestId");
     assertThat(body)
@@ -337,6 +364,16 @@ class ErrorTestController {
   @PostMapping("/test/duplicated-email")
   void duplicatedEmail(@Valid @RequestBody EmailRequest request) {
     throw new EmailAlreadyExistsException();
+  }
+
+  @PostMapping("/test/withdrawn")
+  void withdrawn() {
+    throw new AccountWithdrawnException();
+  }
+
+  @PostMapping("/test/restricted")
+  void restricted() {
+    throw new AccountRestrictedException();
   }
 
   @GetMapping("/test/parameter-validation")

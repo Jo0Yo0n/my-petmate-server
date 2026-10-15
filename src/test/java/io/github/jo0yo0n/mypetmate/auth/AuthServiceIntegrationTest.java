@@ -12,10 +12,13 @@ import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountRestrictedException;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountWithdrawnException;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
+import io.github.jo0yo0n.mypetmate.error.BusinessException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
@@ -37,6 +40,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -139,7 +143,6 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
 
   @DisplayName("[M1-AUTH-02] rejectsSignupWithSameEmail")
   @Test
-  @Transactional
   void rejectsSignupWithSameEmail() {
     String existEmail = "guardian@example.com";
     String rawPassword = "StrongPass123!";
@@ -208,51 +211,41 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(refreshTokenRepository.count()).isEqualTo(refreshTokenCountBefore + 1);
   }
 
-  @DisplayName("[M1-AUTH-06] loginRejectsWithdrawnGuardianAndAllowsTemporarilyRestrictedGuardian")
+  @DisplayName("[M1-AUTH-06] loginRejectsWithdrawnGuardianAndTemporarilyRestrictedGuardian")
   @ParameterizedTest
   @MethodSource("loginCases")
   @Transactional
-  void loginRejectsWithdrawnGuardianAndAllowsTemporarilyRestrictedGuardian(LoginCase loginCase) {
+  void loginRejectsWithdrawnGuardianAndTemporarilyRestrictedGuardian(LoginCase loginCase) {
 
     String email = "guardian@example.com";
     String rawPassword = "StrongPassword!1";
     String hashedPassword = passwordEncoder.encode(rawPassword);
     LoginRequest loginRequest = new LoginRequest(email, rawPassword);
 
+    GuardianStatus status =
+        loginCase == LoginCase.WITHDRAWN
+            ? GuardianStatus.WITHDRAWN
+            : GuardianStatus.TEMPORARILY_RESTRICTED;
+
+    guardianRepository.saveAndFlush(newGuardian(status, hashedPassword));
+
     switch (loginCase) {
-      case WITHDRAWN -> {
-        guardianRepository.saveAndFlush(newGuardian(GuardianStatus.WITHDRAWN, hashedPassword));
-
-        assertThatThrownBy(() -> authService.login(loginRequest))
-            .isInstanceOf(InvalidCredentialsException.class);
-
-        then(accessTokenIssuer).should(never()).issue(any(), any());
-        assertThat(refreshTokenRepository.count()).isEqualTo(0);
-      }
-
-      case TEMPORARILY_RESTRICT -> {
-        guardianRepository.saveAndFlush(
-            newGuardian(GuardianStatus.TEMPORARILY_RESTRICTED, hashedPassword));
-        Guardian guardian = guardianRepository.findByEmail(email).orElseThrow();
-
-        AuthResponse authResponse = authService.login(loginRequest);
-        assertThat(authResponse).isNotNull();
-        assertThat(guardian.getId()).isEqualTo(authResponse.guardian().id());
-        assertThat(authResponse.guardian().status())
-            .isEqualTo(GuardianStatus.TEMPORARILY_RESTRICTED);
-        assertThat(jwtDecoder.decode(authResponse.accessToken()).getSubject())
-            .isEqualTo(guardian.getId().toString());
-
-        RefreshToken refreshToken =
-            refreshTokenRepository
-                .findByTokenHash(refreshTokenGenerator.hash(authResponse.refreshToken()))
-                .orElseThrow();
-        assertThat(refreshToken.getGuardian().getId()).isEqualTo(guardian.getId());
-
-        then(accessTokenIssuer).should().issue(any(), any());
-        assertThat(refreshTokenRepository.count()).isEqualTo(1);
-      }
+      case WITHDRAWN:
+        {
+          assertThatThrownBy(() -> authService.login(loginRequest))
+              .isInstanceOf(AccountWithdrawnException.class);
+          break;
+        }
+      case TEMPORARILY_RESTRICT:
+        {
+          assertThatThrownBy(() -> authService.login(loginRequest))
+              .isInstanceOf(AccountRestrictedException.class);
+          break;
+        }
     }
+
+    then(accessTokenIssuer).should(never()).issue(any(), any());
+    assertThat(refreshTokenRepository.count()).isEqualTo(0);
   }
 
   @DisplayName("[M1-AUTH-07] successRefresh")
@@ -566,11 +559,125 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
         assertThat(refreshToken.getRevokedAt()).isNull();
         assertThat(refreshTokenRepository.count()).isEqualTo(refreshTokenCountBefore);
       }
-
-      case null, default -> {
-        throw new IllegalArgumentException("Unsupported Enum value");
-      }
     }
+  }
+
+  @DisplayName("[M1-AUTH-13] rejectsRefreshForInactiveGuardian")
+  @ParameterizedTest
+  @EnumSource(
+      value = GuardianStatus.class,
+      names = {"TEMPORARILY_RESTRICTED", "WITHDRAWN"})
+  void rejectsRefreshForInactiveGuardian(GuardianStatus status) {
+    Guardian guardian = guardianRepository.saveAndFlush(newGuardian(status, "hashed-password"));
+    String rawToken = refreshTokenGenerator.generate();
+    RefreshToken token = saveRefreshToken(guardian, rawToken, NOW.plusSeconds(60), null);
+    long tokenCount = refreshTokenRepository.count();
+    String expectedCode =
+        status == GuardianStatus.WITHDRAWN ? "ACCOUNT_WITHDRAWN" : "ACCOUNT_RESTRICTED";
+
+    assertThatThrownBy(() -> authService.refresh(new RefreshRequest(rawToken)))
+        .isInstanceOfSatisfying(
+            BusinessException.class,
+            exception -> assertThat(exception.getErrorCode().getCode()).isEqualTo(expectedCode));
+
+    then(accessTokenIssuer).should(never()).issue(any(), any());
+    assertRefreshTokenUnchanged(token, tokenCount, status);
+  }
+
+  @DisplayName("[M1-AUTH-14] rejectsInvalidPasswordWithoutDisclosingAccountStatus")
+  @ParameterizedTest
+  @EnumSource(
+      value = GuardianStatus.class,
+      names = {"TEMPORARILY_RESTRICTED", "WITHDRAWN"})
+  void rejectsInvalidPasswordWithoutDisclosingAccountStatus(GuardianStatus status) {
+    Guardian guardian =
+        guardianRepository.saveAndFlush(
+            newGuardian(status, passwordEncoder.encode("StrongPassword1!")));
+    String rawToken = refreshTokenGenerator.generate();
+    RefreshToken token = saveRefreshToken(guardian, rawToken, NOW.plusSeconds(60), null);
+    long tokenCount = refreshTokenRepository.count();
+
+    assertThatThrownBy(
+            () -> authService.login(new LoginRequest(CANONICAL_EMAIL, "WrongPassword1!")))
+        .isExactlyInstanceOf(InvalidCredentialsException.class)
+        .isInstanceOfSatisfying(
+            BusinessException.class,
+            exception ->
+                assertThat(exception.getErrorCode().getCode())
+                    .isEqualTo("AUTH_INVALID_CREDENTIALS"));
+
+    then(accessTokenIssuer).should(never()).issue(any(), any());
+    assertRefreshTokenUnchanged(token, tokenCount, status);
+  }
+
+  @DisplayName("[M1-AUTH-15] rejectsExpiredRefreshWithoutDisclosingAccountStatus")
+  @ParameterizedTest
+  @EnumSource(
+      value = GuardianStatus.class,
+      names = {"TEMPORARILY_RESTRICTED", "WITHDRAWN"})
+  void rejectsExpiredRefreshWithoutDisclosingAccountStatus(GuardianStatus status) {
+    Guardian guardian = guardianRepository.saveAndFlush(newGuardian(status, "hashed-password"));
+    String rawToken = refreshTokenGenerator.generate();
+    RefreshToken token = saveRefreshToken(guardian, rawToken, NOW.minusSeconds(1), null);
+    long tokenCount = refreshTokenRepository.count();
+
+    assertThatThrownBy(() -> authService.refresh(new RefreshRequest(rawToken)))
+        .isExactlyInstanceOf(InvalidRefreshTokenException.class)
+        .isInstanceOfSatisfying(
+            BusinessException.class,
+            exception ->
+                assertThat(exception.getErrorCode().getCode()).isEqualTo("AUTH_REFRESH_INVALID"));
+
+    then(accessTokenIssuer).should(never()).issue(any(), any());
+    assertRefreshTokenUnchanged(token, tokenCount, status);
+  }
+
+  @DisplayName("[M1-AUTH-16] rejectsRevokedRefreshWithoutDisclosingAccountStatus")
+  @ParameterizedTest
+  @EnumSource(
+      value = GuardianStatus.class,
+      names = {"TEMPORARILY_RESTRICTED", "WITHDRAWN"})
+  void rejectsRevokedRefreshWithoutDisclosingAccountStatus(GuardianStatus status) {
+    Guardian guardian = guardianRepository.saveAndFlush(newGuardian(status, "hashed-password"));
+    String rawToken = refreshTokenGenerator.generate();
+    RefreshToken token =
+        saveRefreshToken(guardian, rawToken, NOW.plusSeconds(60), NOW.minusSeconds(1));
+    long tokenCount = refreshTokenRepository.count();
+
+    assertThatThrownBy(() -> authService.refresh(new RefreshRequest(rawToken)))
+        .isExactlyInstanceOf(InvalidRefreshTokenException.class)
+        .isInstanceOfSatisfying(
+            BusinessException.class,
+            exception ->
+                assertThat(exception.getErrorCode().getCode()).isEqualTo("AUTH_REFRESH_INVALID"));
+
+    then(accessTokenIssuer).should(never()).issue(any(), any());
+    assertRefreshTokenUnchanged(token, tokenCount, status);
+  }
+
+  private RefreshToken saveRefreshToken(
+      Guardian guardian, String rawToken, Instant expiresAt, Instant revokedAt) {
+    return refreshTokenRepository.saveAndFlush(
+        new RefreshToken(
+            UUID.randomUUID(),
+            guardian,
+            refreshTokenGenerator.hash(rawToken),
+            expiresAt,
+            revokedAt,
+            NOW.minusSeconds(120)));
+  }
+
+  private void assertRefreshTokenUnchanged(
+      RefreshToken before, long tokenCount, GuardianStatus status) {
+    assertThat(refreshTokenRepository.count()).isEqualTo(tokenCount);
+    RefreshToken after = refreshTokenRepository.findById(before.getId()).orElseThrow();
+    assertThat(after.getTokenHash()).isEqualTo(before.getTokenHash());
+    assertThat(after.getExpiresAt()).isEqualTo(before.getExpiresAt());
+    assertThat(after.getRevokedAt()).isEqualTo(before.getRevokedAt());
+    assertThat(after.getCreatedAt()).isEqualTo(before.getCreatedAt());
+    assertThat(after.getGuardian().getId()).isEqualTo(before.getGuardian().getId());
+    assertThat(guardianRepository.findById(before.getGuardian().getId()).orElseThrow().getStatus())
+        .isEqualTo(status);
   }
 
   private Guardian newGuardian(GuardianStatus status, String hashedPassword) {

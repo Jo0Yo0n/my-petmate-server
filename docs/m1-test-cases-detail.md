@@ -98,7 +98,7 @@ writer는 전달받은 ProblemDetail의 직렬화를 검증한다. 요청 ID 생
 | 항목   | 내용                                                               |
 |--------|--------------------------------------------------------------------|
 | 클래스 | `RequestValidationTest`                                            |
-| 메서드 | `forbidsGenderForCoupleAndFamilySignup()`                          |
+| 메서드 | `acceptsGenderForCoupleAndFamilySignup()`                          |
 | 검증   | 커플·가족 유형에 유효한 성별을 지정해도 DTO validation은 성공한다. |
 
 ### M1-DTO-02D
@@ -529,7 +529,7 @@ application service와 이전 구성요소로 완료한다. controller와 Securi
 | 항목   | 내용                                                                                                               |
 |--------|--------------------------------------------------------------------------------------------------------------------|
 | 클래스 | `AuthServiceIntegrationTest`                                                                                       |
-| 메서드 | `loginRejectsWithdrawnGuardianAndAllowsTemporarilyRestrictedGuardian()`                                            |
+| 메서드 | `loginRejectsWithdrawnGuardianAndTemporarilyRestrictedGuardian()`                                                  |
 | 검증   | 올바른 비밀번호의 정지·탈퇴 계정은 각각 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN으로 거부하고 token을 발급하지 않는다. |
 
 ### M1-AUTH-07
@@ -614,21 +614,21 @@ application service와 이전 구성요소로 완료한다. controller와 Securi
 
 ### M1-AUTH-15
 
-| 항목   | 내용                                                                 |
-|--------|----------------------------------------------------------------------|
-| 클래스 | `AuthServiceIntegrationTest`                                         |
-| 메서드 | `rejectsExpiredRefreshWithoutDisclosingAccountStatus()`              |
-| 검증 1 | 정지·탈퇴 계정의 미폐기·만료 refresh token은 AUTH_REFRESH_INVALID다. |
-| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.         |
+| 항목   | 내용                                                          |
+|--------|---------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                  |
+| 메서드 | `rejectsExpiredRefreshWithoutDisclosingAccountStatus()`       |
+| 검증 1 | 정지·탈퇴 계정의 만료 refresh token은 AUTH_REFRESH_INVALID다. |
+| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.  |
 
 ### M1-AUTH-16
 
-| 항목   | 내용                                                                 |
-|--------|----------------------------------------------------------------------|
-| 클래스 | `AuthServiceIntegrationTest`                                         |
-| 메서드 | `rejectsRevokedRefreshWithoutDisclosingAccountStatus()`              |
-| 검증 1 | 정지·탈퇴 계정의 미만료·폐기 refresh token은 AUTH_REFRESH_INVALID다. |
-| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.         |
+| 항목   | 내용                                                          |
+|--------|---------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                  |
+| 메서드 | `rejectsRevokedRefreshWithoutDisclosingAccountStatus()`       |
+| 검증 1 | 정지·탈퇴 계정의 폐기 refresh token은 AUTH_REFRESH_INVALID다. |
+| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.  |
 
 ## 5. 요청 ID와 공통 REST 오류
 
@@ -921,12 +921,11 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 
 ### M1-SEC-10
 
-| 항목   | 내용                                                                                                              |
-|--------|-------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `SecurityFilterChainIntegrationTest`                                                                              |
-| 메서드 | `rejectsInactiveGuardianWithAccountStatusError()`                                                                 |
-| 검증 1 | 서명·만료·subject가 유효한 JWT의 Guardian이 정지·탈퇴 상태이면 각각 403 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN이다. |
-| 검증 2 | 공통 오류 응답과 요청 ID를 검증하며 세션의 이전 계정 상태를 사용하지 않는다.                                      |
+| 항목   | 내용                                                                                                                                          |
+|--------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                          |
+| 메서드 | `rejectsInactiveGuardianWithAccountStatusError()`                                                                                             |
+| 검증   | 정지·탈퇴 계정의 JWT라도 만료되면 401 AUTH_TOKEN_EXPIRED, 서명이 변조되면 401 AUTH_TOKEN_INVALID다. 계정 상태 오류보다 token 오류가 우선한다. |
 
 ### M1-DBFILTER-01
 
