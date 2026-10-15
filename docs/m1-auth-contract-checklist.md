@@ -31,10 +31,6 @@ M1 전체의 통과 여부는 완료
 
 ## 설계 검토 결과
 
-2026-08-24에 사람 개발자가 다음 M1 설계를 검토하고 승인했다. REST wire format과 token·email 정책의 상세 값은
-[`openapi.yaml`](./openapi.yaml), 오류와 요청 ID의 상세 규칙은 [`error-response.md`](./error-response.md)를 기준으로
-한다.
-
 | 주제              | 승인한 결정                                                                                                                                                                                                                                                                              |
 |-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 영속성            | `Guardian`과 `RefreshToken` JPA entity를 직접 매핑한다. UUID는 애플리케이션에서 생성하고 시간은 `Instant`와 주입 가능한 `Clock`으로 계산한다. 범용 base entity나 별도 계층은 추가하지 않는다. 기존 V1 migration은 수정하지 않고 email 정책에 필요한 DB 제약은 V2 migration으로 추가한다. |
@@ -44,19 +40,14 @@ M1 전체의 통과 여부는 완료
 | refresh token     | 256-bit 무작위 opaque token을 padding 없는 Base64 URL 형식으로 반환하고 DB에는 SHA-256 hash만 저장한다. 상세 형식과 수명은 `openapi.yaml`의 `info.x-token-policy`를 따른다.                                                                                                              |
 | token 회전        | refresh token row를 pessimistic write lock으로 조회하고 기존 token 폐기와 새 token 저장을 하나의 transaction에서 수행한다. 동시 요청은 먼저 잠근 하나만 성공하며 폐기·회전된 token 재사용은 거부한다. token family와 기기·세션 관리는 M1에 추가하지 않는다.                              |
 | logout            | 이미 폐기됐거나 저장되지 않은 refresh token에도 성공을 반환하는 멱등 동작으로 처리한다. access token blacklist는 두지 않고 짧은 TTL 만료를 사용한다.                                                                                                                                     |
-| 인증 복원         | stateless Security를 사용하고 JWT `sub`로 매 요청 현재 Guardian을 DB에서 복원한다. `withdrawn`은 인증을 거부하고 `temporarily_restricted`는 제한 대상 기능에서 권한을 검사한다.                                                                                                          |
+| 인증 복원         | stateless Security를 사용하고 JWT `sub`로 매 요청 현재 Guardian을 DB에서 복원한다. active만 인증을 허용하며 상세 상태·오류 규칙은 OpenAPI의 계정 접근 정책을 따른다.                                                                                                                     |
 | 요청 ID           | Security보다 먼저 실행되는 `OncePerRequestFilter`에서 서버 ULID를 생성하고 request attribute, MDC, 응답 header에 전달한다. 처리 후 `finally`에서 MDC의 이전 값을 복원하거나 제거한다.                                                                                                    |
 | REST 오류         | MVC advice, `AuthenticationEntryPoint`, `AccessDeniedHandler`가 작은 공통 ProblemDetail factory와 writer를 공유한다. 오류별 범용 exception 계층은 만들지 않는다.                                                                                                                         |
 | 입력 email 정규화 | `SignupRequest`와 `LoginRequest`가 같은 null-safe 정규화를 사용하도록 `guardian.support.EmailNormalizer`를 둔다. 각 record에 정규화를 중복하면 정책 변경 시 불일치할 수 있으므로 제외한다. 별도 service나 mapper 계층은 추가하지 않는다.                                                 |
 | 검증              | H2 대신 PostgreSQL Testcontainers로 Flyway, DB 제약, repository와 token 회전 동시성을 검증한다.                                                                                                                                                                                          |
-
-### 새 의존성 검토
-
-| 필요 기능      | 승인한 선택과 이유                                                                                          | 제외한 대안의 이유                                                         |
-|----------------|-------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| JWT            | Spring Security OAuth2 Resource Server/Jose를 사용해 표준 Bearer token 처리와 Nimbus JWT 검증을 재사용한다. | JWT parsing과 인증 filter 직접 구현은 보안 검증 중복과 오류 가능성이 크다. |
-| ULID           | 요청 ID 정규식을 정확히 구현하는 검증된 소형 ULID 라이브러리를 사용한다.                                    | Crockford Base32와 128-bit 범위를 직접 구현하면 계약 오류 위험이 크다.     |
-| DB 통합 테스트 | PostgreSQL Testcontainers를 test scope에만 추가한다.                                                        | H2는 PostgreSQL 정규식 제약과 row lock 동작을 동일하게 검증하지 못한다.    |
+| JWT               | Spring Security OAuth2 Resource Server/Jose를 사용해 표준 Bearer token 처리와 Nimbus JWT 검증을 재사용한다.                                                                                                                                                                              |
+| ULID              | 요청 ID 정규식을 정확히 구현하는 검증된 소형 ULID 라이브러리를 사용한다.                                                                                                                                                                                                                 |
+| DB 통합 테스트    | PostgreSQL Testcontainers를 test scope에만 추가한다.                                                                                                                                                                                                                                     |
 
 이 검토는 구현 전 설계 승인이다. 구현 후 보안·인증·데이터베이스·트랜잭션 동작에 대한 사람 검토와 수동 검증은 검증 게이트에서 별도로 수행한다.
 
@@ -77,7 +68,7 @@ M1 전체의 통과 여부는 완료
 
 - [x] `M1-W-DTO-01` Guardian enum의 JSON 값과 DB converter를 OpenAPI·V1 migration의 값과 정확히 일치시킨다.
     - 연관 테스트: M1-DTO-01A ~ M1-DTO-01D
-- [x] `M1-W-DTO-02` signup 비밀번호와 보호자 유형·성별 조합 validation을 요청 DTO에 적용한다.
+- [ ] `M1-W-DTO-02` signup 비밀번호와 보호자 유형·성별 조합 validation을 요청 DTO에 적용한다.
     - 연관 테스트: M1-DTO-02A ~ M1-DTO-02D, M1-DTO-03A ~ M1-DTO-03D
 - [x] `M1-W-DTO-03` `SignupRequest`와 `LoginRequest`의 email을 `info.x-email-policy`에 따라 null-safe하게
   정규화하고 검증한다.
@@ -98,8 +89,8 @@ M1 전체의 통과 여부는 완료
 - [x] [M1-DTO-01D](./m1-test-cases-detail.md#m1-dto-01d)
 - [x] [M1-DTO-02A](./m1-test-cases-detail.md#m1-dto-02a)
 - [x] [M1-DTO-02B](./m1-test-cases-detail.md#m1-dto-02b)
-- [x] [M1-DTO-02C](./m1-test-cases-detail.md#m1-dto-02c)
-- [x] [M1-DTO-02D](./m1-test-cases-detail.md#m1-dto-02d)
+- [ ] [M1-DTO-02C](./m1-test-cases-detail.md#m1-dto-02c)
+- [ ] [M1-DTO-02D](./m1-test-cases-detail.md#m1-dto-02d)
 - [x] [M1-DTO-03A](./m1-test-cases-detail.md#m1-dto-03a)
 - [x] [M1-DTO-03B](./m1-test-cases-detail.md#m1-dto-03b)
 - [x] [M1-DTO-03C](./m1-test-cases-detail.md#m1-dto-03c)
@@ -125,9 +116,9 @@ M1 전체의 통과 여부는 완료
 
 #### 완료 조건
 
-- [x] 요청 DTO 테스트가 모두 통과한다.
-- [x] DTO의 validation 규칙과 OpenAPI 스키마 사이에 알려진 차이가 없다.
-- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [ ] 요청 DTO 테스트가 모두 통과한다.
+- [ ] DTO의 validation 규칙과 OpenAPI 스키마 사이에 알려진 차이가 없다.
+- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 2. PostgreSQL migration과 통합 테스트 기반 완성
 
@@ -149,21 +140,25 @@ M1 전체의 통과 여부는 완료
 - [x] `M1-W-DB-06` 테스트 profile에서도 Hibernate schema 자동 생성 대신 `ddl-auto=validate`를 사용한다.
     - 검증: 테스트 profile의 `ddl-auto=validate` 설정 확인
 
+- [ ] `M1-W-DB-07` 기존 migration을 수정하지 않고 후속 migration으로 최신 Guardian 스키마의 성별 제약을 반영한다. 유효 enum과 개인
+  유형의 필수 값 제약은 유지한다.
+    - 연관 테스트: M1-DB-02A ~ M1-DB-02B
+
 #### 테스트 범위
 
 - [x] [M1-DB-01](./m1-test-cases-detail.md#m1-db-01)
-- [x] [M1-DB-02A](./m1-test-cases-detail.md#m1-db-02a)
-- [x] [M1-DB-02B](./m1-test-cases-detail.md#m1-db-02b)
+- [ ] [M1-DB-02A](./m1-test-cases-detail.md#m1-db-02a)
+- [ ] [M1-DB-02B](./m1-test-cases-detail.md#m1-db-02b)
 - [x] [M1-DB-03](./m1-test-cases-detail.md#m1-db-03)
 - [x] [M1-DB-04](./m1-test-cases-detail.md#m1-db-04)
 - [x] [M1-DB-05](./m1-test-cases-detail.md#m1-db-05)
 
 #### 완료 조건
 
-- [x] H2 없이 실제 PostgreSQL에서 migration·제약 테스트가 통과한다.
-- [x] migration과 OpenAPI email 정책 사이에 알려진 차이가 없다.
-- [x] 사람 개발자가 V2 migration과 기존 데이터 영향을 검토했다.
-- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [ ] H2 없이 실제 PostgreSQL에서 migration·제약 테스트가 통과한다.
+- [ ] migration과 OpenAPI email 정책 사이에 알려진 차이가 없다.
+- [ ] 사람 개발자가 V2 migration과 기존 데이터 영향을 검토했다.
+- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 3. Guardian·RefreshToken 영속성 모델 구현
 
@@ -258,16 +253,16 @@ M1 전체의 통과 여부는 완료
 
 #### `M1-W-AUTH-LI` — 로그인 application service
 
-- [x] `M1-W-AUTH-LI-01` login이 정규화 email로 Guardian을 조회하고, email 존재 여부와 무관하게 같은 자격 증명 오류를 반환하게 한다.
-    - 연관 테스트: M1-AUTH-04, M1-AUTH-05, M1-AUTH-06
+- [ ] `M1-W-AUTH-LI-01` login이 정규화 email로 Guardian을 조회하고, email 존재 여부와 무관하게 같은 자격 증명 오류를 반환하게 한다.
+    - 연관 테스트: M1-AUTH-04, M1-AUTH-05, M1-AUTH-06, M1-AUTH-14
 
 #### `M1-W-AUTH-RF` — refresh token 회전
 
 - [x] `M1-W-AUTH-RF-01` refresh가 token hash row를 pessimistic write lock으로 조회하고 기존 token 검증·폐기와 새
   token hash 저장을 하나의 transaction에서 처리하게 한다.
     - 연관 테스트: M1-AUTH-07, M1-AUTH-10
-- [x] `M1-W-AUTH-RF-02` 만료·폐기·회전·알 수 없는 refresh token을 같은 `AUTH_REFRESH_INVALID` 결과로 변환한다.
-    - 연관 테스트: M1-AUTH-08
+- [ ] `M1-W-AUTH-RF-02` token 검증과 GuardianStatus 정책에 따른 갱신 거부를 오류 계약에 연결한다.
+    - 연관 테스트: M1-AUTH-08, M1-AUTH-13, M1-AUTH-15 ~ M1-AUTH-16
 - [x] `M1-W-AUTH-RF-03` 동시에 같은 refresh token을 사용하면 먼저 lock을 획득한 요청 하나만 성공하게 한다.
     - 연관 테스트: M1-AUTH-09
 
@@ -285,7 +280,7 @@ M1 전체의 통과 여부는 완료
 - [x] [M1-AUTH-03](./m1-test-cases-detail.md#m1-auth-03)
 - [x] [M1-AUTH-04](./m1-test-cases-detail.md#m1-auth-04)
 - [x] [M1-AUTH-05](./m1-test-cases-detail.md#m1-auth-05)
-- [x] [M1-AUTH-06](./m1-test-cases-detail.md#m1-auth-06)
+- [ ] [M1-AUTH-06](./m1-test-cases-detail.md#m1-auth-06)
 - [x] [M1-AUTH-07](./m1-test-cases-detail.md#m1-auth-07)
 - [x] [M1-AUTH-08](./m1-test-cases-detail.md#m1-auth-08)
 - [x] [M1-AUTH-09](./m1-test-cases-detail.md#m1-auth-09)
@@ -293,12 +288,16 @@ M1 전체의 통과 여부는 완료
 - [x] [M1-AUTH-11A](./m1-test-cases-detail.md#m1-auth-11a)
 - [x] [M1-AUTH-11B](./m1-test-cases-detail.md#m1-auth-11b)
 - [x] [M1-AUTH-12](./m1-test-cases-detail.md#m1-auth-12)
+- [ ] [M1-AUTH-13](./m1-test-cases-detail.md#m1-auth-13)
+- [ ] [M1-AUTH-14](./m1-test-cases-detail.md#m1-auth-14)
+- [ ] [M1-AUTH-15](./m1-test-cases-detail.md#m1-auth-15)
+- [ ] [M1-AUTH-16](./m1-test-cases-detail.md#m1-auth-16)
 
 #### 완료 조건
 
-- [x] 인증 service 테스트가 정상·실패·동시성·rollback 경로를 모두 통과한다.
-- [x] 사람 개발자가 signup과 refresh의 transaction 경계 및 lock 순서를 검토했다.
-- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [ ] 인증 service 테스트가 정상·실패·동시성·rollback 경로를 모두 통과한다.
+- [ ] 사람 개발자가 signup과 refresh의 transaction 경계 및 lock 순서를 검토했다.
+- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 6. 요청 ID와 공통 REST 오류 기반 구현
 
@@ -320,8 +319,8 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 
 #### `M1-W-ERR` — 공통 REST 오류 응답
 
-- [x] `M1-W-ERR-01` 오류 code별 안정적인 metadata와 `ProblemDetail`을 만드는 작은 factory를 구현한다.
-    - 연관 테스트: M1-ERR-01A ~ M1-ERR-01E, M1-ERR-02A ~ M1-ERR-02D, M1-ERR-03A ~ M1-ERR-03B,
+- [ ] `M1-W-ERR-01` 오류 code별 안정적인 metadata와 `ProblemDetail`을 만드는 작은 factory를 구현한다.
+    - 연관 테스트: M1-ERR-01A ~ M1-ERR-01E, M1-ERR-02A ~ M1-ERR-02E, M1-ERR-03A ~ M1-ERR-03B,
       M1-ERR-04A ~ M1-ERR-04B, M1-ERR-05
 - [x] `M1-W-ERR-02` Security 오류를 MVC 오류와 동일한 ProblemDetail 계약 (application/problem+json)으로 직렬화하는
   writer를 구현한다.
@@ -329,9 +328,9 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 - [x] `M1-W-ERR-03` `ResponseEntityExceptionHandler` 기반 advice에서 Bean Validation과 query·path type
   오류는 `VALIDATION_FAILED`로, 잘못된 JSON·enum은 `MALFORMED_REQUEST`로 변환한다.
     - 연관 테스트: M1-ERR-01A ~ M1-ERR-01E, M1-ERR-04A ~ M1-ERR-04B, M1-ERR-05
-- [x] `M1-W-ERR-04` email 중복, 리소스 없음, 상태 충돌과 예상하지 못한 오류를 계약 code로 변환하고 민감정보가 detail·fieldErrors에
+- [ ] `M1-W-ERR-04` email 중복, 리소스 없음, 상태 충돌과 예상하지 못한 오류를 계약 code로 변환하고 민감정보가 detail·fieldErrors에
   노출되지 않게 한다.
-    - 연관 테스트: M1-ERR-02A ~ M1-ERR-02D, M1-ERR-03A ~ M1-ERR-03B
+    - 연관 테스트: M1-ERR-02A ~ M1-ERR-02E, M1-ERR-03A ~ M1-ERR-03B
 
 #### 테스트 범위
 
@@ -351,6 +350,7 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 - [x] [M1-ERR-02B](./m1-test-cases-detail.md#m1-err-02b)
 - [x] [M1-ERR-02C](./m1-test-cases-detail.md#m1-err-02c)
 - [x] [M1-ERR-02D](./m1-test-cases-detail.md#m1-err-02d)
+- [ ] [M1-ERR-02E](./m1-test-cases-detail.md#m1-err-02e)
 - [x] [M1-ERR-03A](./m1-test-cases-detail.md#m1-err-03a)
 - [x] [M1-ERR-03B](./m1-test-cases-detail.md#m1-err-03b)
 - [x] [M1-ERR-04A](./m1-test-cases-detail.md#m1-err-04a)
@@ -360,10 +360,10 @@ Security 401·403도 같은 형식을 사용해야 하므로 실제 API와 Secur
 
 #### 완료 조건
 
-- [x] MVC 정상·오류 경로의 요청 ID와 ProblemDetail 테스트가 모두 통과한다.
-- [x] writer 직렬화를 테스트로 확인하고 요청 ID filter의 선행 등록 설정을 코드 검토했다.
-- [x] 오류 응답 snapshot 또는 필드 단위 검증이 OpenAPI·오류 계약과 일치한다.
-- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [ ] MVC 정상·오류 경로의 요청 ID와 ProblemDetail 테스트가 모두 통과한다.
+- [ ] writer 직렬화를 테스트로 확인하고 요청 ID filter의 선행 등록 설정을 코드 검토했다.
+- [ ] 오류 응답 snapshot 또는 필드 단위 검증이 OpenAPI·오류 계약과 일치한다.
+- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 7. Stateless Security와 현재 Guardian 복원 구현
 
@@ -379,14 +379,14 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] `M1-W-SEC-03` Resource Server의 `JwtDecoder`로 Bearer access token을 검증한다.
     - 연관 테스트: M1-SEC-03A ~ M1-SEC-03B, M1-SEC-04
 - [x] `M1-W-SEC-04` 검증된 JWT subject를 UUID로 변환하고 현재 Guardian을 DB에서 조회하는 경계를 구현한다.
-    - 연관 테스트: M1-SEC-05, M1-SEC-06
-- [x] `M1-W-SEC-05` Guardian이 없거나 `withdrawn`이면 인증을 거부하고, `temporarily_restricted`는 인증 상태를 유지하게 한다.
-    - 연관 테스트: M1-SEC-05, M1-SEC-06
+    - 연관 테스트: M1-SEC-05, M1-SEC-06, M1-SEC-10
+- [ ] `M1-W-SEC-05` Guardian 존재와 상태에 따른 거부를 오류 계약의 401·403으로 구분한다.
+    - 연관 테스트: M1-SEC-05, M1-SEC-06, M1-SEC-10
 - [x] `M1-W-SEC-06` access token 만료와 그 밖의 누락·변조·오류를 계약의 서로 다른 code로 매핑한다.
     - 연관 테스트: M1-SEC-03A ~ M1-SEC-03B, M1-SEC-04
-- [x] `M1-W-SEC-07` `AuthenticationEntryPoint`와 `AccessDeniedHandler`가 6단계의 공통 factory·writer를 사용하고
+- [ ] `M1-W-SEC-07` `AuthenticationEntryPoint`와 `AccessDeniedHandler`가 6단계의 공통 factory·writer를 사용하고
   요청 ID filter가 401·403 처리보다 먼저 실행되게 한다.
-    - 연관 테스트: M1-SEC-02, M1-SEC-07
+    - 연관 테스트: M1-SEC-02, M1-SEC-07, M1-SEC-10
 
 #### 테스트 범위
 
@@ -395,10 +395,11 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-SEC-03A](./m1-test-cases-detail.md#m1-sec-03a)
 - [x] [M1-SEC-03B](./m1-test-cases-detail.md#m1-sec-03b)
 - [x] [M1-SEC-04](./m1-test-cases-detail.md#m1-sec-04)
-- [x] [M1-SEC-05](./m1-test-cases-detail.md#m1-sec-05)
-- [x] [M1-SEC-06](./m1-test-cases-detail.md#m1-sec-06)
+- [ ] [M1-SEC-05](./m1-test-cases-detail.md#m1-sec-05)
+- [ ] [M1-SEC-06](./m1-test-cases-detail.md#m1-sec-06)
 - [x] [M1-SEC-07](./m1-test-cases-detail.md#m1-sec-07)
 - [x] [M1-SEC-09](./m1-test-cases-detail.md#m1-sec-09)
+- [ ] [M1-SEC-10](./m1-test-cases-detail.md#m1-sec-10)
 - [x] [M1-DBFILTER-01](./m1-test-cases-detail.md#m1-dbfilter-01)
 - [x] [M1-DBFILTER-02](./m1-test-cases-detail.md#m1-dbfilter-02)
 - [x] [M1-DBFILTER-03](./m1-test-cases-detail.md#m1-dbfilter-03)
@@ -407,10 +408,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 완료 조건
 
-- [x] 공개·보호 경로와 Security 오류 계약 테스트가 모두 통과한다.
-- [x] 직접 작성한 JWT parsing 또는 access token blacklist가 없다.
-- [x] 사람 개발자가 key 주입, filter 순서, 공개 경로와 Guardian 복원 방식을 검토했다.
-- [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
+- [ ] 공개·보호 경로와 Security 오류 계약 테스트가 모두 통과한다.
+- [ ] 직접 작성한 JWT parsing 또는 access token blacklist가 없다.
+- [ ] 사람 개발자가 key 주입, filter 순서, 공개 경로와 Guardian 복원 방식을 검토했다.
+- [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 8. M1 API를 endpoint별로 연결
 
@@ -418,9 +419,9 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-SU` — 회원가입
 
-- [x] `M1-W-API-SU-01` `POST /api/auth/signup` 요청을 validation하고 인증 service에 연결한다.
+- [ ] `M1-W-API-SU-01` `POST /api/auth/signup` 요청을 validation하고 인증 service에 연결한다.
     - 연관 테스트: M1-API-SU-01, M1-API-SU-02A ~ M1-API-SU-02B
-- [x] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
+- [ ] `M1-W-API-SU-02` 정상 응답의 status, token 필드와 정규화된 Guardian 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-SU-01
 - [x] `M1-W-API-SU-03` DTO validation 실패는 `VALIDATION_FAILED`, JSON 역직렬화 실패는 `MALFORMED_REQUEST`,
   정규화 email
@@ -430,19 +431,19 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-LI` — 로그인
 
-- [x] `M1-W-API-LI-01` `POST /api/auth/login`을 인증 service에 연결하고 성공 응답을 계약과 일치시킨다.
+- [ ] `M1-W-API-LI-01` `POST /api/auth/login`을 인증 service에 연결하고 성공 응답을 계약과 일치시킨다.
     - 연관 테스트: M1-API-LI-01
-- [x] `M1-W-API-LI-02` 잘못된 email·비밀번호는 모두 `AUTH_INVALID_CREDENTIALS`로 반환하고 signup 전용 비밀번호 복잡도 규칙을
+- [ ] `M1-W-API-LI-02` 자격 증명과 계정 상태 오류를 오류 계약에 연결하고 signup 전용 비밀번호 복잡도 규칙을
   login에 다시 적용하지 않는다.
-    - 연관 테스트: M1-API-LI-02
+    - 연관 테스트: M1-API-LI-02, M1-API-LI-03
 
 #### `M1-W-API-RF` — token 갱신
 
 - [x] `M1-W-API-RF-01` `POST /api/auth/refresh`를 회전 transaction에 연결하고 성공 응답에는 새 token 쌍만 반환하며 이전
   refresh token을 폐기한다.
     - 연관 테스트: M1-API-RF-01
-- [x] `M1-W-API-RF-02` 만료·폐기·재사용·알 수 없는 token은 `AUTH_REFRESH_INVALID`로 반환한다.
-    - 연관 테스트: M1-API-RF-02A ~ M1-API-RF-02B
+- [ ] `M1-W-API-RF-02` token 오류와 계정 상태 오류를 오류 계약에 따라 구분한다.
+    - 연관 테스트: M1-API-RF-02A ~ M1-API-RF-03
 
 #### `M1-W-API-LO` — 로그아웃
 
@@ -455,36 +456,60 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 #### `M1-W-API-ME` — 현재 Guardian 조회와 수정
 
 - [ ] `M1-W-API-ME-01` `GET /api/guardians/me`가 Security에서 복원한 현재 Guardian을 계약의 discriminator 형태로
-  반환하고 개인 Guardian에만 gender, 모든 유형에 account status와 정규화된 email을 반환하게 한다.
-    - 연관 테스트: M1-API-ME-01, M1-API-ME-02
+  반환하고 모든 유형에 gender 필드를 포함한다. 성별·계정 상태·email 규칙은 OpenAPI를 따른다.
+    - 연관 테스트: M1-API-ME-01
 - [ ] `M1-W-API-ME-02` `PATCH /api/guardians/me`가 profile type, gender와 identity visibility만 수정하게 하고
-  개인·커플·가족의 조건부 validation을 적용한다.
-    - 연관 테스트: M1-API-ME-03, M1-API-ME-04A ~ M1-API-ME-04B
+  [openapi.yaml](./openapi.yaml) 의 GuardianUpdateRequest 규칙을 적용한다.
+    - 연관 테스트: M1-API-ME-03, M1-API-ME-04A ~ M1-API-ME-04B, M1-API-ME-06 ~ M1-API-ME-11
 - [ ] `M1-W-API-ME-03` 수정 대상을 현재 인증 Guardian으로 제한하고 성공 응답을 수정된 Guardian discriminator 형태와 일치시킨다.
     - 연관 테스트: M1-API-ME-03, M1-API-ME-05
 
+#### `M1-W-API-WD` — 현재 Guardian 탈퇴
+
+- [ ] `M1-W-API-WD-01` `POST /api/guardians/me/withdraw` 를 상태 변경 동작에 연결하고 현재 인증 Guardian으로 대상을 제한한다.
+    - 연관 테스트: M1-API-WD-01 ~ M1-API-WD-02, M1-API-WD-06 ~ M1-API-WD-09
+- [ ] `M1-W-API-WD-02` 상태 변경과 모든 refresh token 폐기를 하나의 transaction으로 수행하고 실패 시 rollback한다. 동시
+  refresh와의 경합에도 탈퇴 후 token 사용이 허용되지 않는지 검증한다.
+    - 연관 테스트: M1-API-WD-01, M1-API-WD-03 ~ M1-API-WD-05
+
 #### 테스트 범위
 
-- [x] [M1-API-SU-01](./m1-test-cases-detail.md#m1-api-su-01)
+- [ ] [M1-API-SU-01](./m1-test-cases-detail.md#m1-api-su-01)
 - [x] [M1-API-SU-02A](./m1-test-cases-detail.md#m1-api-su-02a)
 - [x] [M1-API-SU-02B](./m1-test-cases-detail.md#m1-api-su-02b)
 - [x] [M1-API-SU-03](./m1-test-cases-detail.md#m1-api-su-03)
-- [x] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
+- [ ] [M1-API-LI-01](./m1-test-cases-detail.md#m1-api-li-01)
 - [x] [M1-API-LI-02](./m1-test-cases-detail.md#m1-api-li-02)
+- [ ] [M1-API-LI-03](./m1-test-cases-detail.md#m1-api-li-03)
 - [x] [M1-API-RF-01](./m1-test-cases-detail.md#m1-api-rf-01)
 - [x] [M1-API-RF-02A](./m1-test-cases-detail.md#m1-api-rf-02a)
 - [x] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)
+- [ ] [M1-API-RF-03](./m1-test-cases-detail.md#m1-api-rf-03)
 - [x] [M1-API-LO-01](./m1-test-cases-detail.md#m1-api-lo-01)
 - [ ] [M1-API-ME-01](./m1-test-cases-detail.md#m1-api-me-01)
-- [ ] [M1-API-ME-02](./m1-test-cases-detail.md#m1-api-me-02)
 - [ ] [M1-API-ME-03](./m1-test-cases-detail.md#m1-api-me-03)
 - [ ] [M1-API-ME-04A](./m1-test-cases-detail.md#m1-api-me-04a)
 - [ ] [M1-API-ME-04B](./m1-test-cases-detail.md#m1-api-me-04b)
 - [ ] [M1-API-ME-05](./m1-test-cases-detail.md#m1-api-me-05)
+- [ ] [M1-API-ME-06](./m1-test-cases-detail.md#m1-api-me-06)
+- [ ] [M1-API-ME-07](./m1-test-cases-detail.md#m1-api-me-07)
+- [ ] [M1-API-ME-08](./m1-test-cases-detail.md#m1-api-me-08)
+- [ ] [M1-API-ME-09](./m1-test-cases-detail.md#m1-api-me-09)
+- [ ] [M1-API-ME-10](./m1-test-cases-detail.md#m1-api-me-10)
+- [ ] [M1-API-ME-11](./m1-test-cases-detail.md#m1-api-me-11)
+- [ ] [M1-API-WD-01](./m1-test-cases-detail.md#m1-api-wd-01)
+- [ ] [M1-API-WD-02](./m1-test-cases-detail.md#m1-api-wd-02)
+- [ ] [M1-API-WD-03](./m1-test-cases-detail.md#m1-api-wd-03)
+- [ ] [M1-API-WD-04](./m1-test-cases-detail.md#m1-api-wd-04)
+- [ ] [M1-API-WD-05](./m1-test-cases-detail.md#m1-api-wd-05)
+- [ ] [M1-API-WD-06](./m1-test-cases-detail.md#m1-api-wd-06)
+- [ ] [M1-API-WD-07](./m1-test-cases-detail.md#m1-api-wd-07)
+- [ ] [M1-API-WD-08](./m1-test-cases-detail.md#m1-api-wd-08)
+- [ ] [M1-API-WD-09](./m1-test-cases-detail.md#m1-api-wd-09)
 
 #### 완료 조건
 
-- [ ] M1 여섯 endpoint의 정상·실패 통합 테스트가 모두 통과한다.
+- [ ] M1 endpoint의 정상·실패 통합 테스트가 모두 통과한다.
 - [ ] OpenAPI에 없는 endpoint, 요청 필드 또는 응답 필드를 추가하지 않았다.
 - [ ] controller에 transaction, token 생성 또는 repository 접근 로직이 없다.
 - [ ] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.

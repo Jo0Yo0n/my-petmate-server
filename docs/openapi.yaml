@@ -158,6 +158,8 @@ paths:
           $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/InvalidCredentialsError"
+        "403":
+          $ref: "#/components/responses/AccountAccessError"
   /api/auth/refresh:
     post:
       tags: [Auth]
@@ -198,6 +200,8 @@ paths:
           $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/RefreshTokenError"
+        "403":
+          $ref: "#/components/responses/AccountAccessError"
   /api/auth/logout:
     post:
       tags: [Auth]
@@ -251,13 +255,12 @@ paths:
                 status: active
         "401":
           $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
     patch:
       tags: [Guardians]
       operationId: updateCurrentGuardian
       summary: 보호자 유형과 공개 설정 수정
-      description: |
-        `profileType=individual`이면 `gender`가 필수이고, `couple` 또는 `family`이면 생략하거나 `null`이어야 한다.
-        비공개를 원하는 보호자는 `identityVisibility=private`을 사용한다.
       requestBody:
         required: true
         content:
@@ -280,10 +283,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Guardian"
+        "409":
+          $ref: "#/components/responses/GuardianGenderConflictError"
         "400":
           $ref: "#/components/responses/RequestBodyError"
         "401":
           $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+  /api/guardians/me/withdraw:
+    post:
+      tags: [Guardians]
+      operationId: withdrawCurrentGuardian
+      summary: 현재 보호자 탈퇴
+      description: |
+        인증된 현재 Guardian을 withdrawn으로 변경하고 모든 미폐기 refresh token을 하나의 transaction에서 폐기한다.
+        요청 본문은 없으며 프로필 수정과 별도로 호출한다. 클라이언트는 성공 후 보관한 token을 삭제한다.
+        이후 인증은 GuardianStatus 정책을 따른다. 탈퇴 완료 후 유효한 기존 access token으로 재요청하면
+        403 ACCOUNT_WITHDRAWN이며 탈퇴 효과가 중복되지는 않는다.
+        이 API는 계정 상태 변경만 정의하며 개인정보의 물리 삭제·보관 기간은 정의하지 않는다.
+      responses:
+        "204":
+          $ref: "#/components/responses/WithdrawalCompleted"
+        "401":
+          $ref: "#/components/responses/AuthenticationError"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowedError"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+        "403":
+          $ref: "#/components/responses/AccountAccessError"
   /api/dogs:
     post:
       tags: [Dogs]
@@ -405,6 +434,8 @@ paths:
                     selfIntroduction: 천천히 인사하고 함께 걷는 것을 좋아해요.
         "401":
           $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
   /api/dogs/{dogId}:
     parameters:
       - $ref: "#/components/parameters/DogId"
@@ -717,6 +748,8 @@ paths:
                     createdAt: "2026-07-22T19:30:00+09:00"
         "401":
           $ref: "#/components/responses/AuthenticationError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
   /api/matches/{matchId}:
     parameters:
       - $ref: "#/components/parameters/MatchId"
@@ -799,7 +832,12 @@ paths:
       tags: [Chat]
       operationId: listMessages
       summary: 메시지를 cursor 기준 역방향 조회
-      description: items는 오래된 메시지부터 최신 메시지 순으로 반환한다.
+      description: |
+        items는 오래된 메시지부터 최신 메시지 순으로 반환한다.
+        요청자가 active인 매칭 참여자이면 상대방의 정지·탈퇴만을 이유로 기존 내역 조회를 거부하지 않는다.
+        요청자 본인이 정지·탈퇴 상태이면 GuardianStatus와 오류 계약에 따라 접근을 거부한다.
+        상대방의 상태 변경은 match의 closed·blocked 상태로 간주하지 않는다. 실제 종료·차단 및 비참여자 접근 규칙은 유지한다.
+        새 메시지 송수신 권한은 websocket-protocol.md의 멱등성과 권한을 따른다.
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -1092,6 +1130,8 @@ paths:
           $ref: "#/components/responses/AuthenticationError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
   /api/guardians/{guardianId}/reports:
     parameters:
       - $ref: "#/components/parameters/GuardianId"
@@ -1132,6 +1172,9 @@ paths:
           $ref: "#/components/responses/AuthenticationError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+        "403":
+          $ref: "#/components/responses/PermissionError"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1284,9 +1327,18 @@ components:
     IdentityVisibility:
       type: string
       enum: [public, private]
+    IgnoredGuardianGender:
+      type: [string, 'null']
+      enum: [female, male, null]
+      description: 커플·가족 요청에서 전달해도 무시한다. 가입 시 성별을 저장하지 않고 수정 시 기존 성별을 보존한다.
     GuardianStatus:
       type: string
       enum: [active, temporarily_restricted, withdrawn]
+      description: |
+        active 계정만 로그인, refresh 및 보호된 API 접근을 허용한다.
+        서버는 매 요청 DB의 현재 상태를 확인하며 정지·탈퇴 계정은 접근을 거부한다.
+        오류 구분과 검증 우선순위는 error-response.md의 계정 상태 오류 규칙을 따른다.
+        공개 endpoint의 security: [] 정책은 유지한다. MVP에서 탈퇴 복구는 지원하지 않는다.
     GuardianIdentity:
       type: string
       enum: [female, male, couple, family]
@@ -1315,6 +1367,9 @@ components:
         - other
       description: MVP에서 서버와 프론트가 공통으로 지원하는 견종 코드.
     Guardian:
+      description: |
+        본인 전용 응답이며 모든 유형에서 gender를 포함한다. 미설정은 null이고 유형 전환 후에도 최초 설정값을 반환한다.
+        보존된 성별을 다른 사용자에게 노출하지 않으며 상대 보호자 정보는 GuardianIdentity와 공개 정책을 따른다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardian"
         - $ref: "#/components/schemas/CoupleGuardian"
@@ -1350,7 +1405,7 @@ components:
     CoupleGuardian:
       type: object
       additionalProperties: false
-      required: [id, email, profileType, identityVisibility, status]
+      required: [id, email, profileType, gender, identityVisibility, status]
       properties:
         id:
           type: string
@@ -1363,6 +1418,9 @@ components:
           pattern: "^[!-~]+$"
         profileType:
           const: couple
+        gender:
+          type: [string, 'null']
+          enum: [female, male, null]
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
         status:
@@ -1370,7 +1428,7 @@ components:
     FamilyGuardian:
       type: object
       additionalProperties: false
-      required: [id, email, profileType, identityVisibility, status]
+      required: [id, email, profileType, gender, identityVisibility, status]
       properties:
         id:
           type: string
@@ -1383,6 +1441,9 @@ components:
           pattern: "^[!-~]+$"
         profileType:
           const: family
+        gender:
+          type: [string, 'null']
+          enum: [female, male, null]
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
         status:
@@ -1445,7 +1506,7 @@ components:
         profileType:
           const: couple
         gender:
-          type: "null"
+          $ref: "#/components/schemas/IgnoredGuardianGender"
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
     FamilySignupRequest:
@@ -1470,10 +1531,15 @@ components:
         profileType:
           const: family
         gender:
-          type: "null"
+          $ref: "#/components/schemas/IgnoredGuardianGender"
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
     GuardianUpdateRequest:
+      description: |
+        유형·성별·공개 설정만 수정하며 계정 상태는 받지 않는다. individual은 gender가 필수다.
+        individual 요청에 한해 DB의 gender가 null이면 최초 저장하고 기존 값과 같으면 허용한다.
+        individual 요청의 성별이 기존 값과 다르면 409 STATE_CONFLICT로 거부한다.
+        DB 확인과 저장은 동시 요청에서도 최초 성별이 덮어써지지 않도록 수행한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardianUpdateRequest"
         - $ref: "#/components/schemas/CoupleGuardianUpdateRequest"
@@ -1503,7 +1569,7 @@ components:
         profileType:
           const: couple
         gender:
-          type: "null"
+          $ref: "#/components/schemas/IgnoredGuardianGender"
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
     FamilyGuardianUpdateRequest:
@@ -1514,7 +1580,7 @@ components:
         profileType:
           const: family
         gender:
-          type: "null"
+          $ref: "#/components/schemas/IgnoredGuardianGender"
         identityVisibility:
           $ref: "#/components/schemas/IdentityVisibility"
     LoginRequest:
@@ -2305,6 +2371,7 @@ components:
         - AUTH_REFRESH_INVALID
         - FORBIDDEN
         - ACCOUNT_RESTRICTED
+        - ACCOUNT_WITHDRAWN
         - RESOURCE_NOT_FOUND
         - EMAIL_ALREADY_EXISTS
         - STATE_CONFLICT
@@ -2364,7 +2431,53 @@ components:
           description: |
             서버가 요청마다 생성하며 서버 로그와 사용자 문의를 연결하는 추적 식별자.
             같은 오류 응답의 `My-Petmate-Request-Id` header와 반드시 같은 값이다.
+  examples:
+    AccountRestricted:
+      value:
+        type: urn:my-petmate:problem:account-restricted
+        title: 정지된 계정
+        status: 403
+        detail: 일시 정지된 계정은 이용할 수 없습니다.
+        instance: /api/guardians/me
+        code: ACCOUNT_RESTRICTED
+        requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+    AccountWithdrawn:
+      value:
+        type: urn:my-petmate:problem:account-withdrawn
+        title: 탈퇴한 계정
+        status: 403
+        detail: 탈퇴한 계정은 이용할 수 없습니다.
+        instance: /api/guardians/me
+        code: ACCOUNT_WITHDRAWN
+        requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
   responses:
+    GuardianGenderConflictError:
+      description: 상태 충돌. 오류 조건은 GuardianUpdateRequest를 따른다.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: urn:my-petmate:problem:state-conflict
+            title: 상태 충돌
+            status: 409
+            detail: 최초 설정한 성별은 변경할 수 없습니다.
+            instance: /api/guardians/me
+            code: STATE_CONFLICT
+            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+    WithdrawalCompleted:
+      description: 탈퇴 완료. 응답 body 없음.
+    AccountAccessError:
+      description: 계정 상태에 따른 접근 거부. 오류별 규칙은 error-response.md를 따른다.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          examples:
+            restricted:
+              $ref: "#/components/examples/AccountRestricted"
+            withdrawn:
+              $ref: "#/components/examples/AccountWithdrawn"
     RequestBodyError:
       description: JSON 요청 본문의 역직렬화 또는 validation 실패
       content:
@@ -2439,7 +2552,7 @@ components:
                 code: IDENTITY_DISCLOSURE_REQUIRED
                 requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     AuthenticationError:
-      description: access token 누락, 오류 또는 만료
+      description: access token 누락, 오류, 만료 또는 Guardian 없음
       content:
         application/problem+json:
           schema:
@@ -2492,7 +2605,7 @@ components:
             code: AUTH_REFRESH_INVALID
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     PermissionError:
-      description: 인증됐지만 리소스 또는 기능에 대한 권한 없음
+      description: 계정 상태 또는 리소스·기능 권한에 따른 접근 거부
       content:
         application/problem+json:
           schema:
@@ -2507,15 +2620,10 @@ components:
                 instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
                 code: FORBIDDEN
                 requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
-            accountRestricted:
-              value:
-                type: urn:my-petmate:problem:account-restricted
-                title: 제한된 계정
-                status: 403
-                detail: 현재 계정은 추천 또는 채팅을 사용할 수 없습니다.
-                instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
-                code: ACCOUNT_RESTRICTED
-                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+            restricted:
+              $ref: "#/components/examples/AccountRestricted"
+            withdrawn:
+              $ref: "#/components/examples/AccountWithdrawn"
     NotFoundError:
       description: 리소스 없음
       content:

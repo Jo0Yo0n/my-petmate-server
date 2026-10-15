@@ -89,10 +89,11 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 | 400         | `IDENTITY_DISCLOSURE_REQUIRED` | `urn:my-petmate:problem:identity-disclosure-required` | 보호자 정보 공개 필요       | 비공개 보호자가 `guardianIdentities`를 사용했다. 공개 설정 안내를 표시한다.                                                           |
 | 401         | `AUTH_TOKEN_EXPIRED`           | `urn:my-petmate:problem:auth-token-expired`           | access token 만료           | access token 만료. refresh를 한 번 수행하고 원 요청을 한 번 재시도한다.                                                               |
 | 401         | `AUTH_TOKEN_INVALID`           | `urn:my-petmate:problem:auth-token-invalid`           | 유효하지 않은 access token  | access token 누락·변조·오류. 자동 재시도하지 않고 로그인 상태를 정리한다.                                                             |
-| 401         | `AUTH_INVALID_CREDENTIALS`     | `urn:my-petmate:problem:invalid-credentials`          | 유효하지 않은 로그인 정보   | 로그인 이메일 또는 비밀번호 오류. 어느 값이 틀렸는지는 구분해 노출하지 않는다.                                                        |
+| 401         | `AUTH_INVALID_CREDENTIALS`     | `urn:my-petmate:problem:invalid-credentials`          | 유효하지 않은 로그인 정보   | 로그인 이메일·비밀번호 오류. 어느 값이 틀렸는지는 구분해 노출하지 않는다.                                                             |
 | 401         | `AUTH_REFRESH_INVALID`         | `urn:my-petmate:problem:refresh-token-invalid`        | 유효하지 않은 refresh token | refresh token 만료·폐기·재사용·오류. token을 삭제하고 로그인 화면으로 이동한다.                                                       |
-| 403         | `FORBIDDEN`                    | `urn:my-petmate:problem:forbidden`                    | 접근 권한 없음              | 소유권 또는 참여자 권한 없음.                                                                                                         |
-| 403         | `ACCOUNT_RESTRICTED`           | `urn:my-petmate:problem:account-restricted`           | 제한된 계정                 | 임시 제한 계정이 추천 또는 채팅을 요청했다. 제한 안내를 표시한다.                                                                     |
+| 403         | `FORBIDDEN`                    | `urn:my-petmate:problem:forbidden`                    | 접근 권한 없음              | 소유권·참여자 권한 없음 또는 상대방의 상태로 해당 대화의 새 메시지 교환이 불가능함. 본인 계정 상태 오류와 구분한다.                                                                                                         |
+| 403         | `ACCOUNT_RESTRICTED`           | `urn:my-petmate:problem:account-restricted`           | 정지된 계정                 | 일시 정지 계정의 접근을 거부한다. 자동 refresh 없이 token을 삭제하고 정지 안내를 표시한다.                                            |
+| 403         | `ACCOUNT_WITHDRAWN`            | `urn:my-petmate:problem:account-withdrawn`            | 탈퇴한 계정                 | 탈퇴 계정의 접근을 거부한다. 자동 refresh 없이 token을 삭제하고 탈퇴 안내를 표시한다.                                                 |
 | 404         | `RESOURCE_NOT_FOUND`           | `urn:my-petmate:problem:resource-not-found`           | 리소스를 찾을 수 없음       | 대상 리소스가 없거나 공개하지 않기로 한 리소스다.                                                                                     |
 | 409         | `EMAIL_ALREADY_EXISTS`         | `urn:my-petmate:problem:email-already-exists`         | 이미 가입된 이메일          | 이미 가입된 이메일이다. 회원가입 이메일 필드에 표시한다.                                                                              |
 | 409         | `STATE_CONFLICT`               | `urn:my-petmate:problem:state-conflict`               | 상태 충돌                   | 별도 도메인 code가 없는 일반 상태·중복 충돌이다.                                                                                      |
@@ -106,6 +107,14 @@ My-Petmate-Request-Id: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
 | 405         | `METHOD_NOT_ALLOWED`           | `urn:my-petmate:problem:method-not-allowed`           | 지원하지 않는 HTTP 메서드   | 클라이언트 계약 오류이므로 사용자 재시도 대상이 아니다.                                                                               |
 | 406         | `NOT_ACCEPTABLE`               | `urn:my-petmate:problem:not-acceptable`               | 지원하지 않는 응답 형식     | 클라이언트가 지원하지 않는 응답 형식을 요구한다.                                                                                      |
 | 500         | `INTERNAL_SERVER_ERROR`        | `urn:my-petmate:problem:internal-server-error`        | 서버 내부 오류              | 일반 오류 화면과 재시도를 제공하고 `requestId`를 기록한다.                                                                            |
+
+## 계정 상태 오류의 검증 순서
+
+- 로그인은 이메일·비밀번호 확인 후, 보호 API는 JWT의 서명·만료·subject 및 Guardian 존재 확인 후 계정 상태를 판단한다.
+- refresh는 token 존재·만료·폐기 여부를 확인한 뒤 계정 상태를 판단한다.
+- 위 검증을 통과한 계정이 `temporarily_restricted`이면 `ACCOUNT_RESTRICTED`, `withdrawn`이면 `ACCOUNT_WITHDRAWN`을 반환한다. 둘 다 HTTP 403이다.
+- 자격 증명·token 검증에 실패하면 기존 401 오류를 유지하며 계정 상태를 노출하지 않는다. 탈퇴로 이미 폐기된 refresh token도 `AUTH_REFRESH_INVALID`다.
+- Spring Security 내부에서 인증 객체를 생성하지 못하더라도 유효한 JWT로 확인한 계정의 상태 거부는 위 403 계약을 따른다. MVC와 Security가 같은 factory·writer를 사용한다.
 
 ## Spring 적용 규칙
 
