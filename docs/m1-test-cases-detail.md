@@ -328,7 +328,7 @@ migration 검증은 DB schema에서, JPA 검증은 entity·repository에서 완�
 | 항목   | 내용                                                                                      |
 |--------|-------------------------------------------------------------------------------------------|
 | 클래스 | `DatabaseMigrationIntegrationTest`                                                        |
-| 메서드 | `refreshTokenRejectsInvalidHashTimesAndGuardian()`                                        |
+| 메서드 | `refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash()`                           |
 | 검증   | hash 형식·중복, 잘못된 생성·만료·폐기 시각 및 없는 Guardian FK를 각각 DB 제약이 거부한다. |
 
 ### M1-DB-05
@@ -445,12 +445,12 @@ token·설정 자체로 완료하며 auth service·endpoint는 필요하지 않�
 
 ### M1-CRYPTO-04B
 
-| 항목   | 내용                                                          |
-|--------|---------------------------------------------------------------|
-| 클래스 | `RefreshTokenGeneratorTest`                                   |
-| 메서드 | `createsADeterministicSha256HashForDatabaseStorage()`         |
-| 검증 1 | 같은 원문은 같은 SHA-256 hash가 되며 DB 저장 형식과 일치한다. |
-| 검증 2 | hash가 원문과 다르다.                                         |
+| 항목   | 내용                                                                                      |
+|--------|-------------------------------------------------------------------------------------------|
+| 클래스 | `RefreshTokenGeneratorTest`                                                               |
+| 메서드 | `createsADeterministicSha256HashForDatabaseStorage()`                                     |
+| 검증 1 | 고정 입력 abc의 hash를 알려진 SHA-256 기대값과 비교하고 반복 호출 결과가 같은지 확인한다. |
+| 검증 2 | hash가 원문과 다르다.                                                                     |
 
 ### M1-CRYPTO-05A
 
@@ -897,7 +897,7 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 항목   | 내용                                                                                                 |
 |--------|------------------------------------------------------------------------------------------------------|
 | 클래스 | `SecurityFilterChainIntegrationTest`                                                                 |
-| 메서드 | `rejectsMissingOrWithdrawnGuardian()`                                                                |
+| 메서드 | `rejectsMissingGuardian()`                                                                           |
 | 검증 1 | JWT subject의 Guardian이 없으면 401 AUTH_TOKEN_INVALID이다. 계정 상태 거부는 M1-SEC-10에서 검증한다. |
 | 검증 2 | 공통 오류 검증을 만족한다.                                                                           |
 
@@ -1099,6 +1099,7 @@ DB 구성요소로 검증한다.
 | 메서드 | `updatesCurrentGuardianWithValidProfile()`                                                   |
 | 검증 1 | 기존 성별과 같은 individual 요청 또는 커플·가족으로의 유효한 유형·공개 설정 변경이 저장된다. |
 | 검증 2 | 200 응답과 DB 상태가 같고 공통 성공 응답 검증을 만족한다.                                    |
+| 검증 3 | 개인 → 커플/가족 → 개인 왕복 시 각 응답과 DB에 최초 성별을 보존한다.                         |
 
 ### M1-API-ME-04A
 
@@ -1131,7 +1132,7 @@ DB 구성요소로 검증한다.
 
 | 항목   | 내용                                                                                             |
 |--------|--------------------------------------------------------------------------------------------------|
-| 클래스 | `GuardianProfileConcurrencyIntegrationTest`                                                      |
+| 클래스 | `GuardianControllerIntegrationTest`                                                              |
 | 메서드 | `preservesFirstGenderForConcurrentUpdates()`                                                     |
 | 검증 1 | 성별 미설정 계정에 서로 다른 성별의 individual 수정 요청이 경합하면 하나만 최초 저장에 성공한다. |
 | 검증 2 | 나머지는 409 STATE_CONFLICT이며 최초 저장값이 덮어써지지 않는다. 공통 HTTP 응답 검증을 만족한다. |
@@ -1147,39 +1148,21 @@ DB 구성요소로 검증한다.
 
 ### M1-API-ME-08
 
-| 항목   | 내용                                                                 |
-|--------|----------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                  |
-| 메서드 | `rejectsChangingPreviouslyStoredGender()`                            |
-| 검증 1 | 이미 저장된 성별과 다른 individual 수정 요청은 409 STATE_CONFLICT다. |
-| 검증 2 | 프로필 전체의 DB 상태가 보존되고 공통 오류 응답을 만족한다.          |
+| 항목   | 내용                                                                                                                                                                                   |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                                                                                    |
+| 메서드 | `rejectsChangingPreviouslyStoredGender()`                                                                                                                                              |
+| 검증 1 | 현재 유형이 individual·couple·family 중 무엇이든, 이미 저장된 성별과 다른 gender를 포함한 individual 수정 요청은 409 STATE_CONFLICT다. 각 유형에서 female→male·male→female을 검증한다. |
+| 검증 2 | 프로필 전체의 DB 상태가 보존되고 공통 오류 응답을 만족한다.                                                                                                                            |
 
 ### M1-API-ME-09
 
-| 항목   | 내용                                                                           |
-|--------|--------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                            |
-| 메서드 | `ignoresGenderForNonIndividualUpdate()`                                        |
-| 검증 1 | 성별이 저장된 계정의 커플·가족 수정 요청에 다른 유효 gender를 보내도 무시한다. |
-| 검증 2 | 기존 성별을 보존하고 유형·공개 설정만 수정한다. 응답과 DB를 비교한다.          |
-
-### M1-API-ME-10
-
-| 항목   | 내용                                                  |
-|--------|-------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                   |
-| 메서드 | `preservesGenderAcrossProfileTypeRoundTrip()`         |
-| 검증 1 | 개인 → 커플/가족 → 개인 전환 후 최초 성별이 보존된다. |
-| 검증 2 | 각 유형의 응답에 gender가 포함되고 저장값을 반환한다. |
-
-### M1-API-ME-11
-
-| 항목   | 내용                                                                           |
-|--------|--------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                            |
-| 메서드 | `ignoresGenderBeforeFirstIndividualProfile()`                                  |
-| 검증 1 | 성별 미설정 계정의 커플·가족 수정 요청에 유효 gender를 보내도 저장하지 않는다. |
-| 검증 2 | 응답과 DB의 gender는 null이며 유형·공개 설정만 수정된다.                       |
+| 항목   | 내용                                                                                 |
+|--------|--------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                  |
+| 메서드 | `ignoresGenderForNonIndividualUpdate()`                                              |
+| 검증 1 | 기존 성별 있음/없음 × 커플/가족을 매개변수화하고 다른 유효 gender를 보내도 무시한다. |
+| 검증 2 | 기존 성별(미설정은 null)을 보존하고 유형·공개 설정만 수정한다. 응답과 DB를 비교한다. |
 
 ### M1-API-WD-01
 

@@ -81,25 +81,25 @@
 
 ### 4. 인증 Application Service
 
-| ID            | 검증 목적                       | 상세                                               |
-|---------------|---------------------------------|----------------------------------------------------|
-| `M1-AUTH-01`  | signup 정상 처리                | [검증 항목](./m1-test-cases-detail.md#m1-auth-01)  |
-| `M1-AUTH-02`  | signup email 충돌               | [검증 항목](./m1-test-cases-detail.md#m1-auth-02)  |
-| `M1-AUTH-03`  | signup 부분 실패 rollback       | [검증 항목](./m1-test-cases-detail.md#m1-auth-03)  |
-| `M1-AUTH-04`  | login 정상 처리                 | [검증 항목](./m1-test-cases-detail.md#m1-auth-04)  |
-| `M1-AUTH-05`  | login 자격 증명 실패            | [검증 항목](./m1-test-cases-detail.md#m1-auth-05)  |
-| `M1-AUTH-06`  | 계정 상태별 login               | [검증 항목](./m1-test-cases-detail.md#m1-auth-06)  |
-| `M1-AUTH-07`  | refresh 회전 정상 처리          | [검증 항목](./m1-test-cases-detail.md#m1-auth-07)  |
-| `M1-AUTH-08`  | 유효하지 않은 refresh 거부      | [검증 항목](./m1-test-cases-detail.md#m1-auth-08)  |
-| `M1-AUTH-09`  | 동시 refresh                    | [검증 항목](./m1-test-cases-detail.md#m1-auth-09)  |
-| `M1-AUTH-10`  | refresh 부분 실패 rollback      | [검증 항목](./m1-test-cases-detail.md#m1-auth-10)  |
-| `M1-AUTH-11A` | 유효 token logout               | [검증 항목](./m1-test-cases-detail.md#m1-auth-11a) |
-| `M1-AUTH-11B` | 반복·미등록 token logout        | [검증 항목](./m1-test-cases-detail.md#m1-auth-11b) |
-| `M1-AUTH-12`  | 동시 signup                     | [검증 항목](./m1-test-cases-detail.md#m1-auth-12)  |
-| `M1-AUTH-13`  | 정지·탈퇴 계정 refresh 거부     | [검증 항목](./m1-test-cases-detail.md#m1-auth-13)  |
-| `M1-AUTH-14`  | 로그인 오류 우선순위            | [검증 항목](./m1-test-cases-detail.md#m1-auth-14)  |
-| `M1-AUTH-15`  | 만료 refresh 오류 우선순위      | [검증 항목](./m1-test-cases-detail.md#m1-auth-15)  |
-| `M1-AUTH-16`  | 폐기 refresh 오류 우선순위      | [검증 항목](./m1-test-cases-detail.md#m1-auth-16)  |
+| ID            | 검증 목적                   | 상세                                               |
+|---------------|-----------------------------|----------------------------------------------------|
+| `M1-AUTH-01`  | signup 정상 처리            | [검증 항목](./m1-test-cases-detail.md#m1-auth-01)  |
+| `M1-AUTH-02`  | signup email 충돌           | [검증 항목](./m1-test-cases-detail.md#m1-auth-02)  |
+| `M1-AUTH-03`  | signup 부분 실패 rollback   | [검증 항목](./m1-test-cases-detail.md#m1-auth-03)  |
+| `M1-AUTH-04`  | login 정상 처리             | [검증 항목](./m1-test-cases-detail.md#m1-auth-04)  |
+| `M1-AUTH-05`  | login 자격 증명 실패        | [검증 항목](./m1-test-cases-detail.md#m1-auth-05)  |
+| `M1-AUTH-06`  | 계정 상태별 login           | [검증 항목](./m1-test-cases-detail.md#m1-auth-06)  |
+| `M1-AUTH-07`  | refresh 회전 정상 처리      | [검증 항목](./m1-test-cases-detail.md#m1-auth-07)  |
+| `M1-AUTH-08`  | 유효하지 않은 refresh 거부  | [검증 항목](./m1-test-cases-detail.md#m1-auth-08)  |
+| `M1-AUTH-09`  | 동시 refresh                | [검증 항목](./m1-test-cases-detail.md#m1-auth-09)  |
+| `M1-AUTH-10`  | refresh 부분 실패 rollback  | [검증 항목](./m1-test-cases-detail.md#m1-auth-10)  |
+| `M1-AUTH-11A` | 유효 token logout           | [검증 항목](./m1-test-cases-detail.md#m1-auth-11a) |
+| `M1-AUTH-11B` | 반복·미등록 token logout    | [검증 항목](./m1-test-cases-detail.md#m1-auth-11b) |
+| `M1-AUTH-12`  | 동시 signup                 | [검증 항목](./m1-test-cases-detail.md#m1-auth-12)  |
+| `M1-AUTH-13`  | 정지·탈퇴 계정 refresh 거부 | [검증 항목](./m1-test-cases-detail.md#m1-auth-13)  |
+| `M1-AUTH-14`  | 로그인 오류 우선순위        | [검증 항목](./m1-test-cases-detail.md#m1-auth-14)  |
+| `M1-AUTH-15`  | 만료 refresh 오류 우선순위  | [검증 항목](./m1-test-cases-detail.md#m1-auth-15)  |
+| `M1-AUTH-16`  | 폐기 refresh 오류 우선순위  | [검증 항목](./m1-test-cases-detail.md#m1-auth-16)  |
 
 ### 5. 요청 ID와 공통 REST 오류
 
@@ -154,31 +154,29 @@
 
 ### 7. M1 API
 
-| ID              | 검증 목적                         | 상세                                                 |
-|-----------------|-----------------------------------|------------------------------------------------------|
-| `M1-API-SU-01`  | signup 정상 응답                  | [검증 항목](./m1-test-cases-detail.md#m1-api-su-01)  |
-| `M1-API-SU-02A` | signup validation 연결            | [검증 항목](./m1-test-cases-detail.md#m1-api-su-02a) |
-| `M1-API-SU-02B` | signup JSON 오류 연결             | [검증 항목](./m1-test-cases-detail.md#m1-api-su-02b) |
-| `M1-API-SU-03`  | signup email 충돌 연결            | [검증 항목](./m1-test-cases-detail.md#m1-api-su-03)  |
-| `M1-API-LI-01`  | login 정상 응답                   | [검증 항목](./m1-test-cases-detail.md#m1-api-li-01)  |
-| `M1-API-LI-02`  | login 인증 실패 연결              | [검증 항목](./m1-test-cases-detail.md#m1-api-li-02)  |
-| `M1-API-LI-03`  | 계정 상태별 로그인 오류 응답      | [검증 항목](./m1-test-cases-detail.md#m1-api-li-03)  |
-| `M1-API-RF-01`  | refresh 회전·재사용 거부 연결     | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-01)  |
-| `M1-API-RF-02A` | refresh 입력 validation 연결      | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-02a) |
-| `M1-API-RF-02B` | 미등록 refresh 연결               | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-02b) |
-| `M1-API-RF-03`  | 계정 상태별 refresh 오류 응답     | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-03)  |
-| `M1-API-LO-01`  | logout 멱등 응답 연결             | [검증 항목](./m1-test-cases-detail.md#m1-api-lo-01)  |
-| `M1-API-ME-01`  | 현재 Guardian 조회 응답           | [검증 항목](./m1-test-cases-detail.md#m1-api-me-01)  |
-| `M1-API-ME-03`  | 현재 Guardian 수정 응답           | [검증 항목](./m1-test-cases-detail.md#m1-api-me-03)  |
-| `M1-API-ME-04A` | 수정 validation 실패의 상태 보존  | [검증 항목](./m1-test-cases-detail.md#m1-api-me-04a) |
-| `M1-API-ME-04B` | 수정 JSON 오류의 상태 보존        | [검증 항목](./m1-test-cases-detail.md#m1-api-me-04b) |
-| `M1-API-ME-05`  | 사용자 간 수정 권한 경계          | [검증 항목](./m1-test-cases-detail.md#m1-api-me-05)  |
-| `M1-API-ME-06`  | 최초 성별 설정 동시성             | [검증 항목](./m1-test-cases-detail.md#m1-api-me-06)  |
-| `M1-API-ME-07`  | 개인 유형 최초 성별 설정          | [검증 항목](./m1-test-cases-detail.md#m1-api-me-07)  |
-| `M1-API-ME-08`  | 최초 성별 변경 거부               | [검증 항목](./m1-test-cases-detail.md#m1-api-me-08)  |
-| `M1-API-ME-09`  | 커플·가족 입력 성별 무시          | [검증 항목](./m1-test-cases-detail.md#m1-api-me-09)  |
-| `M1-API-ME-10`  | 유형 왕복 변경 시 성별 보존       | [검증 항목](./m1-test-cases-detail.md#m1-api-me-10)  |
-| `M1-API-ME-11`  | 미설정 성별 입력 무시             | [검증 항목](./m1-test-cases-detail.md#m1-api-me-11)  |
+| ID              | 검증 목적                               | 상세                                                 |
+|-----------------|-----------------------------------------|------------------------------------------------------|
+| `M1-API-SU-01`  | signup 정상 응답                        | [검증 항목](./m1-test-cases-detail.md#m1-api-su-01)  |
+| `M1-API-SU-02A` | signup validation 연결                  | [검증 항목](./m1-test-cases-detail.md#m1-api-su-02a) |
+| `M1-API-SU-02B` | signup JSON 오류 연결                   | [검증 항목](./m1-test-cases-detail.md#m1-api-su-02b) |
+| `M1-API-SU-03`  | signup email 충돌 연결                  | [검증 항목](./m1-test-cases-detail.md#m1-api-su-03)  |
+| `M1-API-LI-01`  | login 정상 응답                         | [검증 항목](./m1-test-cases-detail.md#m1-api-li-01)  |
+| `M1-API-LI-02`  | login 인증 실패 연결                    | [검증 항목](./m1-test-cases-detail.md#m1-api-li-02)  |
+| `M1-API-LI-03`  | 계정 상태별 로그인 오류 응답            | [검증 항목](./m1-test-cases-detail.md#m1-api-li-03)  |
+| `M1-API-RF-01`  | refresh 회전·재사용 거부 연결           | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-01)  |
+| `M1-API-RF-02A` | refresh 입력 validation 연결            | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-02a) |
+| `M1-API-RF-02B` | 미등록 refresh 연결                     | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-02b) |
+| `M1-API-RF-03`  | 계정 상태별 refresh 오류 응답           | [검증 항목](./m1-test-cases-detail.md#m1-api-rf-03)  |
+| `M1-API-LO-01`  | logout 멱등 응답 연결                   | [검증 항목](./m1-test-cases-detail.md#m1-api-lo-01)  |
+| `M1-API-ME-01`  | 현재 Guardian 조회 응답                 | [검증 항목](./m1-test-cases-detail.md#m1-api-me-01)  |
+| `M1-API-ME-03`  | 현재 Guardian 수정·유형 왕복            | [검증 항목](./m1-test-cases-detail.md#m1-api-me-03)  |
+| `M1-API-ME-04A` | 수정 validation 실패의 상태 보존        | [검증 항목](./m1-test-cases-detail.md#m1-api-me-04a) |
+| `M1-API-ME-04B` | 수정 JSON 오류의 상태 보존              | [검증 항목](./m1-test-cases-detail.md#m1-api-me-04b) |
+| `M1-API-ME-05`  | 사용자 간 수정 권한 경계                | [검증 항목](./m1-test-cases-detail.md#m1-api-me-05)  |
+| `M1-API-ME-06`  | 최초 성별 설정 동시성                   | [검증 항목](./m1-test-cases-detail.md#m1-api-me-06)  |
+| `M1-API-ME-07`  | 개인 유형 최초 성별 설정                | [검증 항목](./m1-test-cases-detail.md#m1-api-me-07)  |
+| `M1-API-ME-08`  | 최초 성별 변경 거부                     | [검증 항목](./m1-test-cases-detail.md#m1-api-me-08)  |
+| `M1-API-ME-09`  | 커플·가족 입력 성별 무시(기설정·미설정) | [검증 항목](./m1-test-cases-detail.md#m1-api-me-09)  |
 | `M1-API-WD-01`  | 탈퇴 정상 응답·refresh token 폐기 | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-01)  |
 | `M1-API-WD-02`  | 탈퇴 대상 제한                    | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-02)  |
 | `M1-API-WD-03`  | 탈퇴 부분 실패 rollback           | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-03)  |

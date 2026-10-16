@@ -455,13 +455,13 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### `M1-W-API-ME` — 현재 Guardian 조회와 수정
 
-- [ ] `M1-W-API-ME-01` `GET /api/guardians/me`가 Security에서 복원한 현재 Guardian을 계약의 discriminator 형태로
+- [x] `M1-W-API-ME-01` `GET /api/guardians/me`가 Security에서 복원한 현재 Guardian을 계약의 discriminator 형태로
   반환하고 모든 유형에 gender 필드를 포함한다. 성별·계정 상태·email 규칙은 OpenAPI를 따른다.
     - 연관 테스트: M1-API-ME-01
-- [ ] `M1-W-API-ME-02` `PATCH /api/guardians/me`가 profile type, gender와 identity visibility만 수정하게 하고
+- [x] `M1-W-API-ME-02` `PATCH /api/guardians/me`가 profile type, gender와 identity visibility만 수정하게 하고
   [openapi.yaml](./openapi.yaml) 의 GuardianUpdateRequest 규칙을 적용한다.
-    - 연관 테스트: M1-API-ME-03, M1-API-ME-04A ~ M1-API-ME-04B, M1-API-ME-06 ~ M1-API-ME-11
-- [ ] `M1-W-API-ME-03` 수정 대상을 현재 인증 Guardian으로 제한하고 성공 응답을 수정된 Guardian discriminator 형태와 일치시킨다.
+    - 연관 테스트: M1-API-ME-03, M1-API-ME-04A ~ M1-API-ME-04B, M1-API-ME-06 ~ M1-API-ME-09
+- [x] `M1-W-API-ME-03` 수정 대상을 현재 인증 Guardian으로 제한하고 성공 응답을 수정된 Guardian discriminator 형태와 일치시킨다.
     - 연관 테스트: M1-API-ME-03, M1-API-ME-05
 
 #### `M1-W-API-WD` — 현재 Guardian 탈퇴
@@ -486,17 +486,15 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-API-RF-02B](./m1-test-cases-detail.md#m1-api-rf-02b)
 - [x] [M1-API-RF-03](./m1-test-cases-detail.md#m1-api-rf-03)
 - [x] [M1-API-LO-01](./m1-test-cases-detail.md#m1-api-lo-01)
-- [ ] [M1-API-ME-01](./m1-test-cases-detail.md#m1-api-me-01)
-- [ ] [M1-API-ME-03](./m1-test-cases-detail.md#m1-api-me-03)
-- [ ] [M1-API-ME-04A](./m1-test-cases-detail.md#m1-api-me-04a)
-- [ ] [M1-API-ME-04B](./m1-test-cases-detail.md#m1-api-me-04b)
-- [ ] [M1-API-ME-05](./m1-test-cases-detail.md#m1-api-me-05)
-- [ ] [M1-API-ME-06](./m1-test-cases-detail.md#m1-api-me-06)
-- [ ] [M1-API-ME-07](./m1-test-cases-detail.md#m1-api-me-07)
-- [ ] [M1-API-ME-08](./m1-test-cases-detail.md#m1-api-me-08)
-- [ ] [M1-API-ME-09](./m1-test-cases-detail.md#m1-api-me-09)
-- [ ] [M1-API-ME-10](./m1-test-cases-detail.md#m1-api-me-10)
-- [ ] [M1-API-ME-11](./m1-test-cases-detail.md#m1-api-me-11)
+- [x] [M1-API-ME-01](./m1-test-cases-detail.md#m1-api-me-01)
+- [x] [M1-API-ME-03](./m1-test-cases-detail.md#m1-api-me-03)
+- [x] [M1-API-ME-04A](./m1-test-cases-detail.md#m1-api-me-04a)
+- [x] [M1-API-ME-04B](./m1-test-cases-detail.md#m1-api-me-04b)
+- [x] [M1-API-ME-05](./m1-test-cases-detail.md#m1-api-me-05)
+- [x] [M1-API-ME-06](./m1-test-cases-detail.md#m1-api-me-06)
+- [x] [M1-API-ME-07](./m1-test-cases-detail.md#m1-api-me-07)
+- [x] [M1-API-ME-08](./m1-test-cases-detail.md#m1-api-me-08)
+- [x] [M1-API-ME-09](./m1-test-cases-detail.md#m1-api-me-09)
 - [ ] [M1-API-WD-01](./m1-test-cases-detail.md#m1-api-wd-01)
 - [ ] [M1-API-WD-02](./m1-test-cases-detail.md#m1-api-wd-02)
 - [ ] [M1-API-WD-03](./m1-test-cases-detail.md#m1-api-wd-03)
