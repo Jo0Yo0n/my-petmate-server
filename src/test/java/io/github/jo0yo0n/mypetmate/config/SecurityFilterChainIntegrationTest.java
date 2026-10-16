@@ -131,8 +131,8 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   }
 
   @Test
-  @DisplayName("[M1-SEC-06] rejectsMissingOrWithdrawnGuardian")
-  void rejectsMissingOrWithdrawnGuardian() throws Exception {
+  @DisplayName("[M1-SEC-06] rejectsMissingGuardian")
+  void rejectsMissingGuardian() throws Exception {
     assertProblemResponse(
         bearer("/test/secured", token(UUID.randomUUID().toString(), NOW.plusSeconds(900))),
         401,

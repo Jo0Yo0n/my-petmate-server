@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest
@@ -34,6 +36,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @Autowired private GuardianRepository guardianRepository;
   @Autowired private RefreshTokenRepository refreshTokenRepository;
   @Autowired private TransactionTemplate transactionTemplate;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   @DisplayName("[M1-JPA-01] savesGuardianAndRestoresNormalizedEmailAndEnums")
   @Test
@@ -125,38 +128,67 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     refreshTokenRepository.saveAndFlush(
         new RefreshToken(UUID.randomUUID(), guardian, tokenHash, now.plusSeconds(60), null, now));
 
+    CompletableFuture<Integer> firstPid = new CompletableFuture<>();
+    CompletableFuture<Integer> secondPid = new CompletableFuture<>();
     CountDownLatch firstLockAcquired = new CountDownLatch(1);
-    CountDownLatch allowFirstTransactionToCommit = new CountDownLatch(1);
-    CountDownLatch secondLockAcquired = new CountDownLatch(1);
+    CountDownLatch releaseFirstTransaction = new CountDownLatch(1);
 
     try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
-      var firstTransaction =
-          executor.submit(
-              () ->
-                  transactionTemplate.executeWithoutResult(
-                      status -> {
-                        refreshTokenRepository.findByTokenHashWithPessimisticWriteLock(tokenHash);
-                        firstLockAcquired.countDown();
-                        await(allowFirstTransactionToCommit);
-                      }));
+      try {
+        var firstTransaction =
+            executor.submit(
+                () ->
+                    transactionTemplate.executeWithoutResult(
+                        status -> {
+                          firstPid.complete(currentBackendPid());
+                          refreshTokenRepository.findByTokenHashWithPessimisticWriteLock(tokenHash);
+                          firstLockAcquired.countDown();
+                          await(releaseFirstTransaction);
+                        }));
 
-      assertThat(firstLockAcquired.await(5, TimeUnit.SECONDS)).isTrue();
+        await(firstLockAcquired);
 
-      var secondTransaction =
-          executor.submit(
-              () ->
-                  transactionTemplate.executeWithoutResult(
-                      status -> {
-                        refreshTokenRepository.findByTokenHashWithPessimisticWriteLock(tokenHash);
-                        secondLockAcquired.countDown();
-                      }));
+        var secondTransaction =
+            executor.submit(
+                () ->
+                    transactionTemplate.executeWithoutResult(
+                        status -> {
+                          secondPid.complete(currentBackendPid());
+                          refreshTokenRepository.findByTokenHashWithPessimisticWriteLock(tokenHash);
+                        }));
 
-      assertThat(secondLockAcquired.await(250, TimeUnit.MILLISECONDS)).isFalse();
-      allowFirstTransactionToCommit.countDown();
-      firstTransaction.get(5, TimeUnit.SECONDS);
-      secondTransaction.get(5, TimeUnit.SECONDS);
-      assertThat(secondLockAcquired.getCount()).isZero();
+        int blockerPid = firstPid.get(5, TimeUnit.SECONDS);
+        int waitingPid = secondPid.get(5, TimeUnit.SECONDS);
+        assertBlockedBy(waitingPid, blockerPid);
+
+        releaseFirstTransaction.countDown();
+        firstTransaction.get(5, TimeUnit.SECONDS);
+        secondTransaction.get(5, TimeUnit.SECONDS);
+      } finally {
+        // executor.close()가 작업 종료를 기다리기 전에 첫 transaction을 해제한다.
+        releaseFirstTransaction.countDown();
+      }
     }
+  }
+
+  private int currentBackendPid() {
+    return jdbcTemplate.queryForObject("SELECT pg_backend_pid()", Integer.class);
+  }
+
+  private void assertBlockedBy(int waitingPid, int blockerPid) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+    do {
+      Boolean blocked =
+          jdbcTemplate.queryForObject(
+              "SELECT ? = ANY(pg_blocking_pids(?))", Boolean.class, blockerPid, waitingPid);
+      if (Boolean.TRUE.equals(blocked)) {
+        return;
+      }
+      Thread.sleep(20);
+    } while (System.nanoTime() < deadline);
+
+    throw new AssertionError(
+        "PID %d did not wait for a lock held by PID %d".formatted(waitingPid, blockerPid));
   }
 
   @Test

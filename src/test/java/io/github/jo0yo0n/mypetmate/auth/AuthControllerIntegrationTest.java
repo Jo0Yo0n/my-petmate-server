@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper mapper;
   @Autowired JdbcTemplate jdbc;
+  @Autowired TokenProperties tokenProperties;
 
   @ParameterizedTest
   @CsvSource({
@@ -56,7 +58,8 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
       throws Exception {
     ObjectNode request = request(profileType, gender, visibility);
     MvcResult result = signup(request).andExpect(status().isCreated()).andReturn();
-    assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    assertThat(result.getResponse().getHeader(REQUEST_ID))
+        .matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     assertThat(
             MediaType.parseMediaType(Objects.requireNonNull(result.getResponse().getContentType()))
@@ -72,9 +75,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             "guardian");
     assertThat(body.path("accessToken").isTextual()).isTrue();
     assertThat(body.path("refreshToken").isTextual()).isTrue();
-    assertThat(body.path("tokenType").isTextual()).isTrue();
-    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
-    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertTokenMetadata(body);
     assertThat(body.path("guardian").isObject()).isTrue();
 
     JsonNode guardian = body.path("guardian");
@@ -174,7 +175,8 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andReturn();
 
-    assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    assertThat(result.getResponse().getHeader(REQUEST_ID))
+        .matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     assertThat(fields(body))
         .containsExactlyInAnyOrder(
@@ -186,9 +188,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             "guardian");
     assertThat(body.path("accessToken").isTextual()).isTrue();
     assertThat(body.path("refreshToken").isTextual()).isTrue();
-    assertThat(body.path("tokenType").isTextual()).isTrue();
-    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
-    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertTokenMetadata(body);
     assertThat(body.path("guardian").isObject()).isTrue();
     assertThat(body.path("guardian")).isEqualTo(signedUp.path("guardian"));
 
@@ -253,16 +253,15 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
             .andReturn();
 
-    assertThat(result.getResponse().getHeader(REQUEST_ID)).isNotBlank();
+    assertThat(result.getResponse().getHeader(REQUEST_ID))
+        .matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     assertThat(fields(body))
         .containsExactlyInAnyOrder(
             "accessToken", "refreshToken", "tokenType", "expiresIn", "refreshExpiresIn");
     assertThat(body.path("accessToken").isTextual()).isTrue();
     assertThat(body.path("refreshToken").isTextual()).isTrue();
-    assertThat(body.path("tokenType").isTextual()).isTrue();
-    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
-    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertTokenMetadata(body);
     assertThat(body.path("refreshToken").asText()).isNotBlank().isNotEqualTo(previousToken);
 
     JsonNode error =
@@ -375,6 +374,17 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
             "refresh-token-invalid",
             "유효하지 않은 refresh token");
     assertThat(error.has("fieldErrors")).isFalse();
+  }
+
+  private void assertTokenMetadata(JsonNode body) {
+    assertThat(body.path("tokenType").isTextual()).isTrue();
+    assertThat(body.path("tokenType").asText()).isEqualTo(tokenProperties.tokenType());
+    assertThat(body.path("expiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("expiresIn").asLong())
+        .isEqualTo(tokenProperties.accessTokenTtl().toSeconds());
+    assertThat(body.path("refreshExpiresIn").isIntegralNumber()).isTrue();
+    assertThat(body.path("refreshExpiresIn").asLong())
+        .isEqualTo(tokenProperties.refreshTokenTtl().toSeconds());
   }
 
   private ObjectNode request(String type, String gender, String visibility) {

@@ -88,7 +88,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
 
   @DisplayName("[M1-DB-04] refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash")
   @Test
-  void refreshTokenRejectsInvalidHashTimesAndGuardian() {
+  void refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash() {
     UUID guardianId = insertGuardian("token-constraints@example.com", "individual", "female");
     Instant createdAt = Instant.parse("2026-08-26T00:00:00Z");
 
