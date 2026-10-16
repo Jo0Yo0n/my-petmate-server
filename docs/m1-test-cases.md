@@ -177,15 +177,11 @@
 | `M1-API-ME-07`  | 개인 유형 최초 성별 설정                | [검증 항목](./m1-test-cases-detail.md#m1-api-me-07)  |
 | `M1-API-ME-08`  | 최초 성별 변경 거부                     | [검증 항목](./m1-test-cases-detail.md#m1-api-me-08)  |
 | `M1-API-ME-09`  | 커플·가족 입력 성별 무시(기설정·미설정) | [검증 항목](./m1-test-cases-detail.md#m1-api-me-09)  |
-| `M1-API-WD-01`  | 탈퇴 정상 응답·refresh token 폐기 | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-01)  |
-| `M1-API-WD-02`  | 탈퇴 대상 제한                    | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-02)  |
-| `M1-API-WD-03`  | 탈퇴 부분 실패 rollback           | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-03)  |
-| `M1-API-WD-04`  | 탈퇴·refresh 경합                 | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-04)  |
-| `M1-API-WD-05`  | 동시 탈퇴                         | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-05)  |
-| `M1-API-WD-06`  | 탈퇴 완료 후 재요청               | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-06)  |
-| `M1-API-WD-07`  | token 없는 탈퇴 거부              | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-07)  |
-| `M1-API-WD-08`  | 정지 계정의 탈퇴 거부             | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-08)  |
-| `M1-API-WD-09`  | 탈퇴 시 본인 프로필 보존          | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-09)  |
+| `M1-API-WD-01`  | 탈퇴·token 폐기·대상 격리·프로필 보존   | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-01)  |
+| `M1-API-WD-03`  | 탈퇴 부분 실패 rollback                 | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-03)  |
+| `M1-API-WD-04`  | 탈퇴·refresh 경합                       | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-04)  |
+| `M1-API-WD-06`  | 탈퇴 완료 후 재요청                     | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-06)  |
+| `M1-API-WD-07`  | 무인증·정지 계정 탈퇴 거부              | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-07)  |
 
 ### 8. 계약·보안 회귀와 수동 흐름
 

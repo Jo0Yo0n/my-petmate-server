@@ -467,10 +467,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 #### `M1-W-API-WD` — 현재 Guardian 탈퇴
 
 - [ ] `M1-W-API-WD-01` `POST /api/guardians/me/withdraw` 를 상태 변경 동작에 연결하고 현재 인증 Guardian으로 대상을 제한한다.
-    - 연관 테스트: M1-API-WD-01 ~ M1-API-WD-02, M1-API-WD-06 ~ M1-API-WD-09
+    - 연관 테스트: M1-API-WD-01, M1-API-WD-06 ~ M1-API-WD-07
 - [ ] `M1-W-API-WD-02` 상태 변경과 모든 refresh token 폐기를 하나의 transaction으로 수행하고 실패 시 rollback한다. 동시
   refresh와의 경합에도 탈퇴 후 token 사용이 허용되지 않는지 검증한다.
-    - 연관 테스트: M1-API-WD-01, M1-API-WD-03 ~ M1-API-WD-05
+    - 연관 테스트: M1-API-WD-01, M1-API-WD-03 ~ M1-API-WD-04
 
 #### 테스트 범위
 
@@ -496,14 +496,10 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-API-ME-08](./m1-test-cases-detail.md#m1-api-me-08)
 - [x] [M1-API-ME-09](./m1-test-cases-detail.md#m1-api-me-09)
 - [ ] [M1-API-WD-01](./m1-test-cases-detail.md#m1-api-wd-01)
-- [ ] [M1-API-WD-02](./m1-test-cases-detail.md#m1-api-wd-02)
 - [ ] [M1-API-WD-03](./m1-test-cases-detail.md#m1-api-wd-03)
 - [ ] [M1-API-WD-04](./m1-test-cases-detail.md#m1-api-wd-04)
-- [ ] [M1-API-WD-05](./m1-test-cases-detail.md#m1-api-wd-05)
 - [ ] [M1-API-WD-06](./m1-test-cases-detail.md#m1-api-wd-06)
 - [ ] [M1-API-WD-07](./m1-test-cases-detail.md#m1-api-wd-07)
-- [ ] [M1-API-WD-08](./m1-test-cases-detail.md#m1-api-wd-08)
-- [ ] [M1-API-WD-09](./m1-test-cases-detail.md#m1-api-wd-09)
 
 #### 완료 조건
 

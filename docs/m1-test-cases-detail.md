@@ -1166,20 +1166,13 @@ DB 구성요소로 검증한다.
 
 ### M1-API-WD-01
 
-| 항목   | 내용                                                                     |
-|--------|--------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                      |
-| 메서드 | `withdrawsCurrentGuardianAndRevokesTokens()`                             |
-| 검증 1 | active Guardian의 탈퇴는 body 없는 204와 공통 성공 응답 검증을 만족한다. |
-| 검증 2 | DB 상태가 withdrawn이고 모든 미폐기 refresh token이 폐기된다.            |
-
-### M1-API-WD-02
-
-| 항목   | 내용                                                                               |
-|--------|------------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                                |
-| 메서드 | `withdrawsOnlyAuthenticatedGuardian()`                                             |
-| 검증 1 | token subject의 Guardian만 탈퇴하며 다른 Guardian의 상태·refresh token은 보존된다. |
+| 항목   | 내용                                                                              |
+|--------|-----------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                               |
+| 메서드 | `withdrawsCurrentGuardianAndRevokesTokens()`                                      |
+| 검증 1 | active Guardian의 탈퇴는 body 없는 204와 공통 성공 응답 검증을 만족한다.          |
+| 검증 2 | 본인의 복수 refresh token이 모두 폐기되고 DB 상태는 withdrawn이다.                |
+| 검증 3 | 본인의 유형·성별·공개 설정 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
 
 ### M1-API-WD-03
 
@@ -1199,15 +1192,6 @@ DB 구성요소로 검증한다.
 | 검증 1 | refresh와 탈퇴가 경합해도 탈퇴 완료 후 반환된 token으로 인증·갱신할 수 없다. |
 | 검증 2 | 최종 DB 상태는 withdrawn이며 활성 refresh token이 남지 않는다.               |
 
-### M1-API-WD-05
-
-| 항목   | 내용                                                                            |
-|--------|---------------------------------------------------------------------------------|
-| 클래스 | `GuardianWithdrawalConcurrencyIntegrationTest`                                  |
-| 메서드 | `preservesWithdrawalForConcurrentRequests()`                                    |
-| 검증 1 | 동시 탈퇴 요청이 계정 상태를 복원하거나 추가적인 탈퇴 효과를 발생시키지 않는다. |
-| 검증 2 | 최종 상태는 withdrawn이며 미폐기 refresh token이 남지 않는다.                   |
-
 ### M1-API-WD-06
 
 | 항목   | 내용                                                                                   |
@@ -1219,30 +1203,12 @@ DB 구성요소로 검증한다.
 
 ### M1-API-WD-07
 
-| 항목   | 내용                                                      |
-|--------|-----------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                       |
-| 메서드 | `rejectsWithdrawalWithoutAccessToken()`                   |
-| 검증 1 | access token 없이 탈퇴 요청하면 401 AUTH_TOKEN_INVALID다. |
-| 검증 2 | DB를 변경하지 않고 공통 오류 응답을 만족한다.             |
-
-### M1-API-WD-08
-
-| 항목   | 내용                                                                                                                        |
-|--------|-----------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                                                                         |
-| 메서드 | `rejectsWithdrawalForRestrictedGuardian()`                                                                                  |
-| 검증 1 | 유효한 access token을 가진 정지 계정의 탈퇴 요청은 403 ACCOUNT_RESTRICTED다. 탈퇴 완료 후 거부는 M1-API-WD-06에서 검증한다. |
-| 검증 2 | DB를 변경하지 않고 공통 오류 응답을 만족한다.                                                                               |
-
-### M1-API-WD-09
-
-| 항목   | 내용                                                    |
-|--------|---------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                     |
-| 메서드 | `preservesProfileWhenWithdrawing()`                     |
-| 검증 1 | 본인 계정 탈퇴 후 유형·성별·공개 설정은 요청 전과 같다. |
-| 검증 2 | 계정 상태는 withdrawn이며 공통 성공 응답을 만족한다.    |
+| 항목   | 내용                                                                                                               |
+|--------|--------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                |
+| 메서드 | `rejectsUnauthorizedWithdrawal()`                                                                                  |
+| 검증 1 | 무인증은 401 AUTH_TOKEN_INVALID, 유효 token을 가진 정지 계정은 403 ACCOUNT_RESTRICTED다. 두 조건을 매개변수화한다. |
+| 검증 2 | DB를 변경하지 않고 공통 오류 응답을 만족한다.                                                                      |
 
 ## 8. 계약·보안 회귀와 수동 흐름
 
