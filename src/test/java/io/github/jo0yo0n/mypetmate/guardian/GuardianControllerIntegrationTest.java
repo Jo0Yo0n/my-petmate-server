@@ -21,11 +21,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -275,6 +278,126 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(saved.get("status")).isEqualTo(before.get("status"));
   }
 
+  @Test
+  @ExtendWith(OutputCaptureExtension.class)
+  @DisplayName("[M1-API-WD-01] withdrawsCurrentGuardianAndRevokesTokens")
+  void withdrawsCurrentGuardianAndRevokesTokens(CapturedOutput output) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    JsonNode other = signup("other@example.com", "individual", "male");
+    login("guardian@example.com");
+    Map<String, Object> before = snapshot(id(auth));
+    Map<String, Object> otherBefore = snapshot(id(other));
+    var otherTokens = tokens(id(other));
+    var beforeTokens = tokens(id(auth));
+    assertThat(beforeTokens).hasSize(2);
+
+    MvcResult withdrawalResult = withdraw(auth).andReturn();
+    assertWithdrawalSuccess(withdrawalResult);
+    String requestId = withdrawalResult.getResponse().getHeader(REQUEST_ID);
+    String withdrawalLog =
+        output
+            .getAll()
+            .lines()
+            .filter(line -> line.contains("event=GUARDIAN_WITHDRAWN"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(withdrawalLog).contains("guardianId=" + id(auth), "requestId=" + requestId);
+
+    Map<String, Object> after = snapshot(id(auth));
+    assertThat(after.get("status")).isEqualTo("withdrawn");
+    for (String field :
+        List.of(
+            "id",
+            "email",
+            "password_hash",
+            "profile_type",
+            "gender",
+            "identity_visibility",
+            "created_at")) {
+      assertThat(after.get(field)).isEqualTo(before.get(field));
+    }
+    var afterTokens = tokens(id(auth));
+    assertThat(afterTokens).hasSize(beforeTokens.size());
+    for (int index = 0; index < afterTokens.size(); index++) {
+      assertThat(afterTokens.get(index).get("revoked_at")).isNotNull();
+      for (String field : List.of("id", "guardian_id", "token_hash", "created_at", "expires_at")) {
+        assertThat(afterTokens.get(index).get(field)).isEqualTo(beforeTokens.get(index).get(field));
+      }
+    }
+    assertThat(snapshot(id(other))).isEqualTo(otherBefore);
+    assertThat(tokens(id(other))).isEqualTo(otherTokens);
+  }
+
+  @Test
+  @DisplayName("[M1-API-WD-06] rejectsRepeatedWithdrawalWithAccountWithdrawn")
+  void rejectsRepeatedWithdrawalWithAccountWithdrawn() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    MvcResult first = withdraw(auth).andReturn();
+    assertWithdrawalSuccess(first);
+
+    Map<String, Object> before = snapshot(id(auth));
+    var beforeTokens = tokens(id(auth));
+    MvcResult repeated = withdraw(auth).andReturn();
+
+    assertProblem(repeated, 403, "ACCOUNT_WITHDRAWN", "account-withdrawn", "탈퇴한 계정");
+    assertThat(assertRequestId(repeated)).isNotEqualTo(assertRequestId(first));
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+    assertThat(tokens(id(auth))).isEqualTo(beforeTokens);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "false,401,AUTH_TOKEN_INVALID,auth-token-invalid,유효하지 않은 access token",
+    "true,403,ACCOUNT_RESTRICTED,account-restricted,정지된 계정"
+  })
+  @DisplayName("[M1-API-WD-07] rejectsUnauthorizedWithdrawal")
+  void rejectsUnauthorizedWithdrawal(
+      boolean restricted, int status, String code, String type, String title) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    if (restricted) {
+      jdbc.update("UPDATE guardian SET status = 'temporarily_restricted' WHERE id = ?", id(auth));
+    }
+    Map<String, Object> before = snapshot(id(auth));
+    var beforeTokens = tokens(id(auth));
+    var request = post(PATH + "/withdraw");
+    if (restricted) request.header(HttpHeaders.AUTHORIZATION, bearer(auth));
+    assertProblem(mvc.perform(request).andReturn(), status, code, type, title);
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+    assertThat(tokens(id(auth))).isEqualTo(beforeTokens);
+  }
+
+  ResultActions withdraw(JsonNode auth) throws Exception {
+    return mvc.perform(post(PATH + "/withdraw").header(HttpHeaders.AUTHORIZATION, bearer(auth)));
+  }
+
+  void assertWithdrawalSuccess(MvcResult result) throws Exception {
+    status().isNoContent().match(result);
+    content().string("").match(result);
+    assertThat(result.getResponse().getContentType()).isNull();
+    assertRequestId(result);
+  }
+
+  JsonNode login(String email) throws Exception {
+    MvcResult result =
+        mvc.perform(
+                post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        mapper.writeValueAsBytes(
+                            mapper
+                                .createObjectNode()
+                                .put("email", email)
+                                .put("password", "StrongPass123!"))))
+            .andExpect(status().isOk())
+            .andReturn();
+    return mapper.readTree(result.getResponse().getContentAsString());
+  }
+
+  List<Map<String, Object>> tokens(UUID guardianId) {
+    return jdbc.queryForList(
+        "SELECT * FROM refresh_token WHERE guardian_id = ? ORDER BY id", guardianId);
+  }
+
   private JsonNode signup(String email, String type, String gender) throws Exception {
     ObjectNode request =
         profile(type, gender, "public").put("email", email).put("password", "StrongPass123!");
@@ -365,7 +488,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(error.path("type").asText()).isEqualTo("urn:my-petmate:problem:" + type);
     assertThat(error.path("title").asText()).isEqualTo(title);
     assertThat(error.path("detail").asText()).isNotBlank();
-    assertThat(error.path("instance").asText()).isEqualTo(PATH);
+    assertThat(error.path("instance").asText()).isEqualTo(result.getRequest().getRequestURI());
     assertThat(error.path("requestId").asText()).isEqualTo(assertRequestId(result));
     if (!code.equals("VALIDATION_FAILED")) assertThat(error.has("fieldErrors")).isFalse();
     return error;

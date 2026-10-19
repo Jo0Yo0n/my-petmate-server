@@ -81,6 +81,11 @@ public class Guardian {
     updatedAt = now;
   }
 
+  public void withdraw(Instant now) {
+    status = GuardianStatus.WITHDRAWN;
+    updatedAt = now;
+  }
+
   public UUID getId() {
     return id;
   }

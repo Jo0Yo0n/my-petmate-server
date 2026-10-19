@@ -127,13 +127,19 @@ public class AuthService {
 
     Instant now = clock.instant();
 
+    UUID guardianId =
+        refreshTokenRepository
+            .findGuardianIdByTokenHash(refreshTokenGenerator.hash(refreshRequest.refreshToken()))
+            .orElseThrow(InvalidRefreshTokenException::new);
+    Guardian guardian =
+        guardianRepository
+            .findByIdWithPessimisticWriteLock(guardianId)
+            .orElseThrow(InvalidRefreshTokenException::new);
     RefreshToken legacyRefreshToken =
         refreshTokenRepository
             .findByTokenHashWithPessimisticWriteLock(
                 refreshTokenGenerator.hash(refreshRequest.refreshToken()))
             .orElseThrow(InvalidRefreshTokenException::new);
-
-    Guardian guardian = legacyRefreshToken.getGuardian();
 
     if (!legacyRefreshToken.getExpiresAt().isAfter(now)
         || legacyRefreshToken.getRevokedAt() != null) {
