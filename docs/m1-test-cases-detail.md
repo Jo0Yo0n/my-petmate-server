@@ -28,9 +28,10 @@
 
 ### 정보 노출 검증 범위
 
-- 내부 예외·stack trace·SQL·예외에 넣은 민감정보의 응답 노출은 M1-ERR-03B에서 집중 검증한다. 다른 오류 테스트마다 같은 부재 검사를 반복하지 않는다.
+- 내부 예외·stack trace·SQL·예외에 넣은 민감정보의 응답 노출은 M1-ERR-03B에서, `UnexpectedFailureException` 메시지의 로그 기록과 응답 비노출은 M1-ERR-03C에서
+  검증한다. 다른 오류 테스트마다 같은 부재 검사를 반복하지 않는다.
 - 비밀번호·hash·token 원문 등 민감정보의 응답 노출은 해당 값을 취급하는 대표 응답에서 확인한다. 동일 응답 구조를 사용하는 입력 조합마다 반복하지 않는다.
-- 로그·실패 보고서의 민감정보 노출은 M1-REG-02에서 한 번 확인한다.
+- 로그·실패 보고서의 민감정보 노출은 M1-REG-BE-02에서 한 번 확인한다.
 
 ### 성공 응답
 
@@ -800,6 +801,15 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 검증 1 | 500 INTERNAL_SERVER_ERROR와 공통 오류 형식을 반환한다.                              |
 | 검증 2 | 예외에 넣은 내부 메시지·SQL·민감정보와 예외명·stack trace를 본문에 노출하지 않는다. |
 
+### M1-ERR-03C
+
+| 항목   | 내용                                                                                              |
+|--------|---------------------------------------------------------------------------------------------------|
+| 클래스 | `GlobalExceptionHandlerMvcTest`                                                                   |
+| 메서드 | `logsUnexpectedFailureMessageWithoutReturningIt()`                                                |
+| 검증 1 | `UnexpectedFailureException`의 구체 메시지와 응답 `requestId`가 예기치 않은 오류 로그에 기록된다. |
+| 검증 2 | 같은 예외 메시지는 500 응답 본문에 노출되지 않는다.                                               |
+
 ### M1-ERR-04A
 
 | 항목   | 내용                                                |
@@ -961,11 +971,11 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 
 ### M1-DBFILTER-05
 
-| 항목   | 내용                                                                                                                                                                                                                                                                      |
-|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                                                                                                                      |
-| 메서드 | `handlesTransactionCreationFailureInSecurityChain()`                                                                                                                                                                                                                      |
-| 검증   | JWT 인증 과정의 Repository에 `CannotCreateTransactionException`을 주입하면 공통 500과 일치하는 요청 ID를 반환한다. 로그에 요청 ID와 예외 타입을 기록하며 예외와 원인 메시지의 SQL·비밀번호·token은 응답과 로그에 포함하지 않는다. 실제 DB 연결 중단 대신 예외를 주입한다. |
+| 항목   | 내용                                                                                                                                                                                                                                                                                       |
+|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                                                                                                                                       |
+| 메서드 | `handlesTransactionCreationFailureInSecurityChain()`                                                                                                                                                                                                                                       |
+| 검증   | JWT 인증 과정의 Repository에 비밀 fixture가 든 cause를 가진 `CannotCreateTransactionException`을 주입한다. 공통 500·요청 ID를 반환하고 로그에 요청 ID·예외 타입·stack frame을 기록하며 cause의 SQL·비밀번호·token은 로그와 응답에 포함하지 않는다. 실제 DB 연결 중단 대신 예외를 주입한다. |
 
 M1-SEC-07은 테스트 전용 deny 규칙의 SecurityFilterChain으로 운영 EntryPoint·AccessDeniedHandler와 요청 ID 연결을 검증한다.
 나머지 보안 항목은 운영 SecurityFilterChain, 실제 JWT encoder·decoder와 PostgreSQL을 사용한다.
@@ -1164,6 +1174,15 @@ DB 구성요소로 검증한다.
 | 검증 1 | 기존 성별 있음/없음 × 커플/가족을 매개변수화하고 다른 유효 gender를 보내도 무시한다. |
 | 검증 2 | 기존 성별(미설정은 null)을 보존하고 유형·공개 설정만 수정한다. 응답과 DB를 비교한다. |
 
+### M1-API-ME-10
+
+| 항목   | 내용                                                                                                                    |
+|--------|-------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianServiceTest`                                                                                                   |
+| 메서드 | `returnsUnexpectedFailureWhenCurrentGuardianIsMissing()`, `returnsUnexpectedFailureWhenGuardianIsMissingDuringUpdate()` |
+| 검증 1 | 인증 이후 Guardian 재조회가 실패하면 조회·수정 서비스가 `UnexpectedFailureException`을 던진다.                          |
+| 검증 2 | 조회 실패 시 refresh token 저장소나 clock을 호출하지 않는다.                                                            |
+
 ### M1-API-WD-01
 
 | 항목   | 내용                                                                              |
@@ -1171,8 +1190,9 @@ DB 구성요소로 검증한다.
 | 클래스 | `GuardianControllerIntegrationTest`                                               |
 | 메서드 | `withdrawsCurrentGuardianAndRevokesTokens()`                                      |
 | 검증 1 | active Guardian의 탈퇴는 body 없는 204와 공통 성공 응답 검증을 만족한다.          |
-| 검증 2 | 본인의 복수 refresh token이 모두 폐기되고 DB 상태는 withdrawn이다.                |
-| 검증 3 | 본인의 유형·성별·공개 설정 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
+| 검증 2 | 성공 로그에 탈퇴 이벤트, Guardian ID, 응답의 requestId가 기록된다.                |
+| 검증 3 | 본인의 복수 refresh token이 모두 폐기되고 DB 상태는 withdrawn이다.                |
+| 검증 4 | 본인의 유형·성별·공개 설정 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
 
 ### M1-API-WD-03
 
@@ -1210,39 +1230,54 @@ DB 구성요소로 검증한다.
 | 검증 1 | 무인증은 401 AUTH_TOKEN_INVALID, 유효 token을 가진 정지 계정은 403 ACCOUNT_RESTRICTED다. 두 조건을 매개변수화한다. |
 | 검증 2 | DB를 변경하지 않고 공통 오류 응답을 만족한다.                                                                      |
 
-## 8. 계약·보안 회귀와 수동 흐름
+### M1-API-WD-08
 
-모든 구현 단계가 끝난 뒤 수행하는 확인 절차다. 각 기능의 TDD마다 새 검증 도구나 테스트 메서드를 작성하지 않는다.
+| 항목   | 내용                                                                                                                                   |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianServiceTest`                                                                                                                  |
+| 메서드 | `returnsUnexpectedFailureWhenGuardianIsMissingDuringWithdrawal()`                                                                      |
+| 검증   | 인증 이후 탈퇴 서비스의 Guardian 재조회가 실패하면 `UnexpectedFailureException`을 던지고 refresh token 저장소·clock은 호출하지 않는다. |
 
-### M1-REG-01
+## 8. 서버·프론트 계약과 보안 회귀 검증
 
-| 항목 | 내용                                                                                   |
-|------|----------------------------------------------------------------------------------------|
-| 확인 | OpenAPI validator·client type 생성 실행                                                |
-| 검증 | M1 요청·응답과 Guardian discriminator·ProblemDetail 확장 필드를 도구가 처리할 수 있다. |
+모든 구현 단계가 끝난 뒤 수행하는 확인 절차다. 서버와 프론트 검증은 ID로 구분한다.
 
-### M1-REG-02
+### M1-REG-BE-01
 
-| 항목 | 내용                                                                        |
-|------|-----------------------------------------------------------------------------|
-| 확인 | 전체 테스트 로그·실패 보고서 확인                                           |
-| 검증 | 비밀번호·token 원문·내부 예외·SQL 및 fixture secret의 노출 여부를 확인한다. |
+| 항목 | 내용                                                                               |
+|------|------------------------------------------------------------------------------------|
+| 확인 | OpenAPI validator로 서버의 M1 endpoint·요청·응답 계약을 검증한다.                  |
+| 검증 | M1 API와 Guardian discriminator·ProblemDetail 확장 필드가 OpenAPI 계약과 일치한다. |
 
-### M1-REG-03
+### M1-REG-BE-02
 
-| 항목 | 내용                                                            |
-|------|-----------------------------------------------------------------|
-| 확인 | ./gradlew check 실행                                            |
-| 검증 | 현재 코드의 단위·PostgreSQL 통합·API·형식 검사가 모두 통과한다. |
+| 항목 | 내용                                                                              |
+|------|-----------------------------------------------------------------------------------|
+| 확인 | 서버 테스트 로그·실패 보고서를 검사한다.                                          |
+| 검증 | 비밀번호·token 원문·DB 예외 메시지·cause·SQL 및 fixture secret이 노출되지 않는다. |
 
-### M1-MAN-01
+### M1-REG-FE-01
 
-| 항목 | 내용                                                              |
-|------|-------------------------------------------------------------------|
-| 확인 | signup → GET/PATCH me → refresh → 이전 token 재사용 → logout 확인 |
-| 검증 | 각 응답의 status·body·Content-Type·요청 ID가 계약과 일치한다.     |
+| 항목 | 내용                                                                           |
+|------|--------------------------------------------------------------------------------|
+| 확인 | OpenAPI에서 client type을 생성하고 `application/problem+json` 응답을 파싱한다. |
+| 검증 | status·code·fieldErrors·requestId를 올바르게 읽고 계약 불일치를 발견한다.      |
+
+### M1-REG-FE-02
+
+| 항목 | 내용                                                                                              |
+|------|---------------------------------------------------------------------------------------------------|
+| 확인 | 프론트 인증 요청 로직에서 동시 401과 만료 외 401을 검증한다.                                      |
+| 검증 | 동시 401은 refresh 한 번과 원 요청별 재시도 한 번으로 처리하고, 만료 외 401은 refresh하지 않는다. |
+
+### M1-REG-FE-03
+
+| 항목 | 내용                                                                                                              |
+|------|-------------------------------------------------------------------------------------------------------------------|
+| 확인 | 프론트 저장소의 Playwright로 signup → GET/PATCH me → refresh → 이전 refresh token 재사용 → logout API를 호출한다. |
+| 검증 | 각 응답의 status·body·Content-Type·요청 ID가 계약과 일치하고, 회전된 이전 refresh token은 거부된다.               |
 
 ## 완료 판정
 
 완료 여부는 [M1 인증 계약 체크리스트](./m1-auth-contract-checklist.md)에서 관리한다. ID 재분류만으로 미검증 항목을 완료로 바꾸지 않는다.
-M1 종료 시 전체 회귀·계약 확인·수동 흐름과 사람 검토를 마친다.
+M1 종료 시 서버·프론트의 계약·보안 회귀 검증과 프론트 Playwright API 흐름 검증을 마친다.

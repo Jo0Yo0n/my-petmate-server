@@ -124,6 +124,7 @@
 | `M1-ERR-02E`   | 계정 상태별 403 변환             | [검증 항목](./m1-test-cases-detail.md#m1-err-02e)   |
 | `M1-ERR-03A`   | 반환값 validation 오류           | [검증 항목](./m1-test-cases-detail.md#m1-err-03a)   |
 | `M1-ERR-03B`   | 예상하지 못한 오류               | [검증 항목](./m1-test-cases-detail.md#m1-err-03b)   |
+| `M1-ERR-03C`   | 예상치 못한 실패 메시지 로그     | [검증 항목](./m1-test-cases-detail.md#m1-err-03c)   |
 | `M1-ERR-04A`   | 지원하지 않는 HTTP method        | [검증 항목](./m1-test-cases-detail.md#m1-err-04a)   |
 | `M1-ERR-04B`   | 지원하지 않는 Accept             | [검증 항목](./m1-test-cases-detail.md#m1-err-04b)   |
 | `M1-ERR-05`    | 지원하지 않는 요청 Content-Type  | [검증 항목](./m1-test-cases-detail.md#m1-err-05)    |
@@ -177,19 +178,22 @@
 | `M1-API-ME-07`  | 개인 유형 최초 성별 설정                | [검증 항목](./m1-test-cases-detail.md#m1-api-me-07)  |
 | `M1-API-ME-08`  | 최초 성별 변경 거부                     | [검증 항목](./m1-test-cases-detail.md#m1-api-me-08)  |
 | `M1-API-ME-09`  | 커플·가족 입력 성별 무시(기설정·미설정) | [검증 항목](./m1-test-cases-detail.md#m1-api-me-09)  |
+| `M1-API-ME-10`  | 인증 후 Guardian 재조회 실패 처리       | [검증 항목](./m1-test-cases-detail.md#m1-api-me-10)  |
 | `M1-API-WD-01`  | 탈퇴·token 폐기·대상 격리·프로필 보존   | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-01)  |
 | `M1-API-WD-03`  | 탈퇴 부분 실패 rollback                 | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-03)  |
 | `M1-API-WD-04`  | 탈퇴·refresh 경합                       | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-04)  |
 | `M1-API-WD-06`  | 탈퇴 완료 후 재요청                     | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-06)  |
 | `M1-API-WD-07`  | 무인증·정지 계정 탈퇴 거부              | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-07)  |
+| `M1-API-WD-08`  | 탈퇴 중 Guardian 재조회 실패            | [검증 항목](./m1-test-cases-detail.md#m1-api-wd-08)  |
 
-### 8. 계약·보안 회귀와 수동 흐름
+### 8. 서버·프론트 계약과 보안 회귀 검증
 
-다음 항목은 M1 종료 확인 절차이며 테스트 메서드를 추가하는 작업이 아니다.
+다음 항목은 M1 종료 확인 절차이며 테스트 메서드를 추가하는 작업이 아니다. 서버와 프론트에서 실행할 검증은 ID로 구분한다.
 
-| ID          | 검증 목적                    | 상세                                             |
-|-------------|------------------------------|--------------------------------------------------|
-| `M1-REG-01` | OpenAPI 소비 가능성 확인     | [검증 항목](./m1-test-cases-detail.md#m1-reg-01) |
-| `M1-REG-02` | 로그·보고서의 정보 노출 확인 | [검증 항목](./m1-test-cases-detail.md#m1-reg-02) |
-| `M1-REG-03` | 전체 회귀·형식 확인          | [검증 항목](./m1-test-cases-detail.md#m1-reg-03) |
-| `M1-MAN-01` | 실제 인증 사용자 흐름 확인   | [검증 항목](./m1-test-cases-detail.md#m1-man-01) |
+| ID             | 검증 위치 | 검증 목적                         | 상세                                                  |
+|----------------|-----------|-----------------------------------|-------------------------------------------------------|
+| `M1-REG-BE-01` | 서버      | OpenAPI와 M1 API 계약 검증        | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-01)   |
+| `M1-REG-BE-02` | 서버      | 로그·보고서의 민감정보 노출 검사  | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-02)   |
+| `M1-REG-FE-01` | 프론트    | client type 생성·오류 응답 파싱   | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-01)   |
+| `M1-REG-FE-02` | 프론트    | 401 동시 refresh·재시도 정책      | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-02)   |
+| `M1-REG-FE-03` | 프론트    | Playwright 인증 API 흐름          | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-03)   |

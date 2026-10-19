@@ -233,6 +233,10 @@ paths:
       tags: [Guardians]
       operationId: getCurrentGuardian
       summary: 현재 보호자 조회
+      description: |
+        Security 인증 과정에서 access token의 subject에 해당하는 Guardian을 찾지 못하면 401 AUTH_TOKEN_INVALID다.
+        인증 성공 후 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은 데이터 불일치는
+        500 INTERNAL_SERVER_ERROR다.
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -261,6 +265,10 @@ paths:
       tags: [Guardians]
       operationId: updateCurrentGuardian
       summary: 보호자 유형과 공개 설정 수정
+      description: |
+        Security 인증 과정에서 access token의 subject에 해당하는 Guardian을 찾지 못하면 401 AUTH_TOKEN_INVALID다.
+        인증 성공 후 수정 잠금을 위해 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은
+        데이터 불일치는 500 INTERNAL_SERVER_ERROR다.
       requestBody:
         required: true
         content:
@@ -302,6 +310,8 @@ paths:
         이후 인증은 GuardianStatus 정책을 따른다. 탈퇴 완료 후 유효한 기존 access token으로 재요청하면
         403 ACCOUNT_WITHDRAWN이며 탈퇴 효과가 중복되지는 않는다.
         이 API는 계정 상태 변경만 정의하며 개인정보의 물리 삭제·보관 기간은 정의하지 않는다.
+        Security 인증 성공 후 탈퇴 처리를 위해 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은
+        데이터 불일치는 500 INTERNAL_SERVER_ERROR다.
       responses:
         "204":
           $ref: "#/components/responses/WithdrawalCompleted"
