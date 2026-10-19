@@ -16,6 +16,7 @@ import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.config.RequestIdConfig;
 import io.github.jo0yo0n.mypetmate.error.ErrorCode;
 import io.github.jo0yo0n.mypetmate.error.StateConflictException;
+import io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -212,15 +213,39 @@ class GlobalExceptionHandlerMvcTest {
     assertInternalInformationAbsent(result);
     assertThat(output.getOut())
         .contains(
-            "event=unexpected_error",
+            "Unexpected server error",
+            "code=INTERNAL_SERVER_ERROR",
             "requestId=" + result.getResponse().getHeader("My-Petmate-Request-Id"),
             "exceptionType=java.lang.IllegalStateException",
+            "failureMessage=null",
             "ErrorTestController.unexpected(")
         .doesNotContain(
             ErrorTestController.INTERNAL_MESSAGE,
             ErrorTestController.INTERNAL_SQL,
             ErrorTestController.PASSWORD,
             ErrorTestController.TOKEN);
+  }
+
+  @DisplayName("[M1-ERR-03C] logsUnexpectedFailureMessageWithoutReturningIt")
+  @Test
+  @WithMockUser
+  @ExtendWith(OutputCaptureExtension.class)
+  void logsUnexpectedFailureMessageWithoutReturningIt(CapturedOutput output) throws Exception {
+    MvcResult result =
+        assertProblem(
+            get("/test/unexpected-failure"),
+            "/test/unexpected-failure",
+            500,
+            ErrorCode.INTERNAL_SERVER_ERROR.getCode());
+    String responseBody = result.getResponse().getContentAsString();
+    assertInternalInformationAbsent(result);
+    assertThat(responseBody).doesNotContain(ErrorTestController.UNEXPECTED_FAILURE_MESSAGE);
+    assertThat(output.getOut())
+        .contains(
+            "code=INTERNAL_SERVER_ERROR",
+            "requestId=" + result.getResponse().getHeader("My-Petmate-Request-Id"),
+            "exceptionType=io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException",
+            "failureMessage=" + ErrorTestController.UNEXPECTED_FAILURE_MESSAGE);
   }
 
   @DisplayName("[M1-ERR-04A] mapsUnsupportedMethodToMethodNotAllowed")
@@ -338,6 +363,8 @@ class ErrorTestController {
   static final String INTERNAL_SQL = "SELECT password_hash FROM guardian";
   static final String PASSWORD = "fixture-password";
   static final String TOKEN = "fixture-token";
+  static final String UNEXPECTED_FAILURE_MESSAGE =
+      "Authenticated guardian was not found during service processing";
 
   record TestRequest(@NotBlank String name) {}
 
@@ -397,5 +424,10 @@ class ErrorTestController {
   void unexpected() {
     throw new IllegalStateException(
         INTERNAL_MESSAGE + "; " + INTERNAL_SQL + "; password=" + PASSWORD + "; token=" + TOKEN);
+  }
+
+  @GetMapping("/test/unexpected-failure")
+  void unexpectedFailure() {
+    throw new UnexpectedFailureException(UNEXPECTED_FAILURE_MESSAGE);
   }
 }

@@ -213,17 +213,29 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
   @DisplayName("[M1-DBFILTER-05] handlesTransactionCreationFailureInSecurityChain")
   void handlesTransactionCreationFailureInSecurityChain(CapturedOutput output) throws Exception {
     UUID id = UUID.randomUUID();
+    String secret = "SELECT password_hash FROM guardian; password=private; token=private";
     doThrow(
             new CannotCreateTransactionException(
                 "Could not open JPA EntityManager for transaction",
-                new DataAccessResourceFailureException("private database detail")))
+                new DataAccessResourceFailureException(secret)))
         .when(guardians)
         .findById(id);
     try {
-      assertProblemResponse(
-          bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
-          500,
-          "INTERNAL_SERVER_ERROR");
+      var result =
+          assertProblemResponse(
+              bearer("/test/secured", token(id.toString(), NOW.plusSeconds(900))),
+              500,
+              "INTERNAL_SERVER_ERROR");
+      String requestId = result.getResponse().getHeader("My-Petmate-Request-Id");
+      assertThat(output.getAll())
+          .contains(
+              "Unexpected server error",
+              "code=INTERNAL_SERVER_ERROR",
+              "requestId=" + requestId,
+              "exceptionType=org.springframework.transaction.CannotCreateTransactionException",
+              "failureMessage=null",
+              "SecurityFilterChainIntegrationTest.")
+          .doesNotContain(secret);
     } finally {
       reset(guardians);
     }

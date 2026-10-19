@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.transaction.CannotCreateTransactionException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 public class DataAccessExceptionFilter extends OncePerRequestFilter {
@@ -34,7 +35,9 @@ public class DataAccessExceptionFilter extends OncePerRequestFilter {
 
     try {
       filterChain.doFilter(request, response);
-    } catch (DataAccessException | CannotCreateTransactionException exception) {
+    } catch (DataAccessException
+        | CannotCreateTransactionException
+        | TransactionSystemException exception) {
 
       ProblemDetail problemDetail =
           ProblemDetailFactory.create(

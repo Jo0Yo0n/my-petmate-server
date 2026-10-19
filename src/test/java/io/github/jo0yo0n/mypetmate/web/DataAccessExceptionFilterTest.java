@@ -56,9 +56,11 @@ class DataAccessExceptionFilterTest {
         .doesNotContain(secret, "DataAccessResourceFailureException");
     assertThat(output.getAll())
         .contains(
-            "event=unexpected_error",
+            "Unexpected server error",
+            "code=INTERNAL_SERVER_ERROR",
             "requestId=" + requestId,
             "exceptionType=org.springframework.dao.DataAccessResourceFailureException",
+            "failureMessage=null",
             "DataAccessExceptionFilterTest.")
         .doesNotContain(secret);
   }
