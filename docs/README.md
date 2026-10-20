@@ -58,19 +58,46 @@ PostgreSQL 기반의 인증 토대 (M1)를 구현 중입니다.
 
 ## 로컬 실행
 
-로컬 PostgreSQL을 실행하려면 `.env`에 `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `DB_PORT`를 설정한 뒤 다음을 실행합니다.
+로컬 실행 전에 `.env.example`을 복사해 `.env`를 만들고, DB 설정을 확인합니다. `JWT_SECRET`은 `openssl rand -base64 32`로 한 번 생성해 `.env`에 저장하고 계속 재사용합니다.
 
 ```bash
+cp .env.example .env
+openssl rand -base64 32
+# 출력값을 .env의 JWT_SECRET에 복사한다.
 docker compose up -d postgres
-# 최초 한 번만 `openssl rand -base64 32`으로 생성해 안전하게 보관한 값을 설정한다.
-export JWT_SECRET="<stored-jwt-secret>"
-./gradlew bootRun --args='--spring.profiles.active=local'
+./gradlew bootRun
 ```
 
-`JWT_SECRET`은 HS256 access token 서명·검증에 사용하는 외부 환경 변수다. 최소 32바이트여야 하며, Git이나 application YAML에 실제 값을 저장하지 않는다. 서버 재시작에도 같은 값을 사용한다.
+Gradle `bootRun`은 별도 프로파일 지정이 없으면 `local`을 사용한다. `application-local.yaml`은 활성화될 때 `.env`를 읽으므로 별도 `export`가 필요하지 않다. 다른 프로파일은 `SPRING_PROFILES_ACTIVE`로 지정할 수 있다. `JWT_SECRET`은 HS256 access token 서명·검증에 사용하는 비밀값으로 최소 32바이트여야 한다. `.env`는 Git에서 제외되며, 실제 값을 application YAML이나 Git에 저장하지 않는다.
 
 검증은 다음 명령으로 실행합니다.
 
 ```bash
 ./gradlew check
+```
+
+Schemathesis 계약 검증은 `uvx`로 Python 3.12와 Schemathesis 4.32.1을 사용합니다. 최초 실행 시 필요한 런타임과 패키지를 다운로드하며,
+캐시와 런타임은 `.gradle` 아래에 저장합니다.
+
+`schemathesis.toml`에서 `contract_hooks.py` 인증 공급자를 로드합니다. 공급자는 회원가입 API로 고유 이메일의 검증용 계정을 만들고,
+응답의 access token을 테스트 요청에 적용합니다. 탈퇴 요청은 매번 별도 계정을 사용해 다른 테스트의 인증 상태를 훼손하지 않습니다.
+실행마다 계정이 DB에 추가되므로 개발 DB와 분리한 계약 검증 DB에서 실행합니다. 서버는 테스트 전에 별도로 실행해야 합니다.
+
+전역 차단 메서드의 검증 범위는 [오류 계약](./error-response.md#http-메서드-차단과-계약-적용-범위)을 따릅니다.
+별도 보안 회귀 테스트의 입력과 검증 항목은 [M1-SEC-11](./m1-test-cases-detail.md#m1-sec-11)에서 관리합니다.
+`./gradlew check`에 포함되며, 단독 실행은 `./gradlew test --tests '*BlockedHttpMethodIntegrationTest'`입니다.
+HTTP 헤더에 허용되지 않는 제어문자는 생성 대상에서 제외합니다. 회원가입의 이메일 중복과 프로필의 최초 성별 변경 제한은
+상태에 따른 정상적인 409로 검증하며, 응답 상태·본문 스키마 검사는 유지합니다.
+자동 생성된 로그인 자격 증명과 refresh token은 실제 계정·token과 일치하지 않을 수 있습니다.
+이들의 성공 흐름과 token 수명 주기는 기존 인증 통합 테스트에서 검증합니다.
+
+```bash
+./gradlew openApiContractTest
+```
+
+인증 공급자의 계정 격리 회귀 검증은 다음 명령으로 실행합니다.
+
+```bash
+UV_CACHE_DIR=.gradle/uv-cache UV_PYTHON_INSTALL_DIR=.gradle/uv-python UV_TOOL_DIR=.gradle/uv-tools \
+  uvx --python 3.12 --from schemathesis==4.32.1 python -m unittest test_contract_hooks
 ```

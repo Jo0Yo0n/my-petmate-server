@@ -401,6 +401,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] [M1-SEC-07](./m1-test-cases-detail.md#m1-sec-07)
 - [x] [M1-SEC-09](./m1-test-cases-detail.md#m1-sec-09)
 - [x] [M1-SEC-10](./m1-test-cases-detail.md#m1-sec-10)
+- [x] [M1-SEC-11](./m1-test-cases-detail.md#m1-sec-11)
 - [x] [M1-DBFILTER-01](./m1-test-cases-detail.md#m1-dbfilter-01)
 - [x] [M1-DBFILTER-02](./m1-test-cases-detail.md#m1-dbfilter-02)
 - [x] [M1-DBFILTER-03](./m1-test-cases-detail.md#m1-dbfilter-03)
@@ -518,7 +519,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 서버 검증 — `M1-W-REG-BE`
 
-- [ ] `M1-W-REG-BE-01` OpenAPI validator로 M1 endpoint의 계약을 검증한다.
+- [x] `M1-W-REG-BE-01` OpenAPI validator로 M1 endpoint의 계약을 검증한다.
     - 연관 테스트: M1-REG-BE-01
 - [x] `M1-W-REG-BE-02` 테스트 로그와 보고서에서 비밀번호·token 원문·DB 예외 메시지·cause·SQL·fixture secret 노출을 검사한다.
     - 연관 테스트: M1-REG-BE-02
@@ -543,7 +544,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 자동 검증 범위
 
-- [ ] [M1-REG-BE-01](./m1-test-cases-detail.md#m1-reg-be-01)
+- [x] [M1-REG-BE-01](./m1-test-cases-detail.md#m1-reg-be-01)
 - [x] [M1-REG-BE-02](./m1-test-cases-detail.md#m1-reg-be-02)
 - [ ] [M1-REG-FE-01](./m1-test-cases-detail.md#m1-reg-fe-01)
 - [ ] [M1-REG-FE-02](./m1-test-cases-detail.md#m1-reg-fe-02)
@@ -551,7 +552,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 완료 조건
 
-- [ ] OpenAPI와 실제 M1 요청·응답 사이에 알려진 차이가 없다.
+- [x] OpenAPI와 실제 M1 요청·응답 사이에 알려진 차이가 없다.
 
 ## 보안 검토 항목
 
