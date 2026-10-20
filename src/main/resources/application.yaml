@@ -4,6 +4,10 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true
+  servlet:
+    multipart:
+      # JSON/bodyless endpoints must not eagerly parse an unrelated multipart body.
+      resolve-lazily: true
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

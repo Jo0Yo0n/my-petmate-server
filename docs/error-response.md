@@ -12,6 +12,20 @@ My Petmate REST API는 Spring Framework가 지원하는 RFC 9457 `ProblemDetail`
 WebSocket 오류는 프레임 이벤트이므로 [`websocket-protocol.md`](./websocket-protocol.md)의 `message_error` 계약을
 사용한다.
 
+## HTTP 메서드 차단과 계약 적용 범위
+
+- 서버의 전역 메서드 허용 목록은 `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`다.
+  이 목록은 각 endpoint가 해당 메서드를 지원하거나 인증 없이 요청할 수 있다는 의미가 아니다.
+- 허용 목록 밖의 메서드(`TRACE`, `CONNECT`, WebDAV 메서드, 임의 메서드 등)는 서버 또는 보안 방화벽에서
+  전역 차단한다. 이 차단에는 endpoint의 `405 METHOD_NOT_ALLOWED` 계약을 적용하지 않는다.
+- 전역 차단 응답은 처리 계층에 따라 상태 코드가 달라질 수 있으며, `405`로 통일하지 않는다.
+  공통 `ProblemDetail` 본문, `application/problem+json`, 요청 ID header·본문 필드는 보장하지 않는다.
+  아래의 공통 오류 형식과 요청 ID 규칙은 이 전역 차단 응답에는 적용하지 않는다.
+- 허용 목록 안의 메서드가 인증·인가 등 선행 검증을 통과했으나 해당 endpoint에서 지원되지 않으면
+  `405 METHOD_NOT_ALLOWED`와 공통 오류 형식을 반환한다.
+- 전역 차단 메서드는 endpoint의 미지원 메서드 계약 검증과 분리하여 보안 검증 대상으로 다룬다.
+  보안 검증은 해당 메서드의 실행이 거부되는지 확인하고, 모든 차단 응답에 동일한 상태 코드나 공통 오류 형식을 요구하지 않는다.
+
 ## 응답 구조
 
 | 필드          | 구분            | 필수   | 역할                                                                                         | 예시                                          |
@@ -29,7 +43,7 @@ WebSocket 오류는 프레임 이벤트이므로 [`websocket-protocol.md`](./web
 
 ## 요청 ID
 
-- 모든 HTTP 요청마다 서버가 새 `requestId`를 하나 생성한다. 형식은 `req-`와 26자 Crockford Base32 ULID이며 정규식
+- 전역 차단 메서드 요청을 제외한 모든 HTTP 요청마다 서버가 새 `requestId`를 하나 생성한다. 형식은 `req-`와 26자 Crockford Base32 ULID이며 정규식
   `^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$`을 만족한다. 첫 문자를 `0`~`7`로 제한해 canonical ULID의 128비트 범위를 보장한다.
 - 클라이언트가 `My-Petmate-Request-Id`를 보내더라도 서버는 그 값을 신뢰하거나 재사용하지 않는다.
 - 생성 filter는 Spring Security보다 먼저 실행한다. 따라서 MVC 오류뿐 아니라 Security의 401·403도 같은 requestId를 사용할 수 있다.

@@ -8,6 +8,9 @@ info:
 
     추천 후보 처리 순서는 `안전·차단·신고 제외 → 공개 상호성 → 선호 조건 → 궁합 정렬`이다.
     공개 여부 변경은 다음 추천 요청부터 적용되며 기존 match/chat에는 영향을 주지 않는다.
+
+    전역 차단 HTTP 메서드와 endpoint의 미지원 메서드(405)는 구분한다.
+    차단 정책, 공통 오류 형식·요청 ID의 적용 범위 및 검증 구분은 `error-response.md`를 따른다.
   x-time-zone: Asia/Seoul
   x-token-policy:
     accessTokenTtlSeconds: 900
@@ -38,7 +41,7 @@ info:
   x-error-response-contract: ./error-response.md
   x-request-id-policy:
     generatedBy: server
-    scope: every-http-request
+    scope: every-http-request-except-globally-blocked-methods
     format: req-{26-character-crockford-base32-ulid}
     pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
     incomingRequestHeader: ignored
@@ -2764,7 +2767,9 @@ components:
             code: UNSUPPORTED_MEDIA_TYPE
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     MethodNotAllowedError:
-      description: endpoint가 요청 HTTP method를 지원하지 않음
+      description: >-
+        전역 허용 메서드가 인증·인가 등 선행 검증을 통과했으나 endpoint에서 지원되지 않음.
+        전역 차단 메서드는 이 응답 계약의 적용 대상이 아니며 error-response.md를 따른다.
       content:
         application/problem+json:
           schema:

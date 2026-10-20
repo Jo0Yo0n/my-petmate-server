@@ -1,0 +1,25 @@
+hooks = "contract_hooks"
+
+[generation]
+# HTTP field values cannot contain control bytes other than horizontal tab.
+exclude-header-characters = "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u000A\u000B\u000C\u000D\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F\u007F"
+
+[phases.coverage]
+unexpected-methods = [
+    "get",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "options",
+]
+
+[[operations]]
+include-name = "POST /api/auth/signup"
+# Valid signup data can conflict with an email created by an earlier test case.
+checks.positive_data_acceptance.expected-statuses = ["2xx", "401", "403", "404", "409", "5xx"]
+
+[[operations]]
+include-name = "PATCH /api/guardians/me"
+# Gender cannot be changed after its first assignment.
+checks.positive_data_acceptance.expected-statuses = ["2xx", "401", "403", "404", "409", "5xx"]

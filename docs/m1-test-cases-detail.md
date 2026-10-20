@@ -937,6 +937,20 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 메서드 | `rejectsInactiveGuardianWithAccountStatusError()`                                                                                             |
 | 검증   | 정지·탈퇴 계정의 JWT라도 만료되면 401 AUTH_TOKEN_EXPIRED, 서명이 변조되면 401 AUTH_TOKEN_INVALID다. 계정 상태 오류보다 token 오류가 우선한다. |
 
+### M1-SEC-11
+
+| 항목   | 내용                                                                                                                                                                       |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `BlockedHttpMethodIntegrationTest`                                                                                                                                         |
+| 메서드 | `rejectsGloballyBlockedMethodsBeforeEndpointExecution()`                                                                                                                   |
+| 기준   | [전역 메서드 차단 계약](./error-response.md#http-메서드-차단과-계약-적용-범위)                                                                                             |
+| 환경   | 실제 Tomcat의 임의 포트와 PostgreSQL Testcontainers, 운영 SecurityFilterChain을 사용한다.                                                                                  |
+| 입력   | TRACE, CONNECT, 대표 WebDAV 메서드 PROPFIND·MKCOL, QUERY, 임의 메서드 FOO를 무인증·유효 JWT 각각으로 전송한다(12개 사례). CONNECT는 authority-form 요청을 사용한다.        |
+| 검증 1 | 같은 JWT의 GET으로 테스트 전용 endpoint가 실제 실행되는지 먼저 확인한다. endpoint는 메서드를 제한하지 않아 MVC의 미지원 메서드 처리가 전역 차단 검증을 대신하지 않게 한다. |
+| 검증 2 | 차단 요청은 4xx 또는 미구현을 나타내는 501로 거부되며 endpoint 호출 횟수가 늘지 않는다. 2xx·3xx와 501 이외의 5xx는 실패다.                                                 |
+| 검증 3 | 계층별 응답 차이를 허용하며 동일한 상태 코드·Content-Type·ProblemDetail·요청 ID를 요구하지 않는다.                                                                         |
+| 범위   | endpoint의 405 계약을 검사하는 Schemathesis와 분리한 보안 회귀 테스트다. 임의의 모든 HTTP 메서드를 열거하는 대신 대표 차단 메서드를 검증한다.                              |
+
 ### M1-DBFILTER-01
 
 | 항목   | 내용                                                                                                                                                                                                  |

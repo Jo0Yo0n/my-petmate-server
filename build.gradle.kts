@@ -62,6 +62,10 @@ tasks.named<Test>("test") {
     }
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    systemProperty("spring.profiles.default", "local")
+}
+
 val bcryptBenchmark by tasks.registering(Test::class) {
     description = "Measures BCrypt password verification time."
     group = "verification"
@@ -73,4 +77,33 @@ val bcryptBenchmark by tasks.registering(Test::class) {
     useJUnitPlatform {
         includeTags("manual")
     }
+}
+
+val openApiContractUrl =
+    providers
+        .gradleProperty("openApiContractUrl")
+        .orElse(providers.environmentVariable("OPENAPI_CONTRACT_URL"))
+        .orElse("http://localhost:8080")
+
+tasks.register<Exec>("openApiContractTest") {
+    group = "verification"
+    description = "Validates the API implementation against docs/openapi.yaml with Schemathesis."
+    workingDir = rootDir
+    environment("UV_CACHE_DIR", rootProject.file(".gradle/uv-cache").absolutePath)
+    environment("UV_PYTHON_INSTALL_DIR", rootProject.file(".gradle/uv-python").absolutePath)
+    environment("UV_TOOL_DIR", rootProject.file(".gradle/uv-tools").absolutePath)
+    commandLine(
+        "uvx",
+        "--python",
+        "3.12",
+        "schemathesis==4.32.1",
+        "run",
+        "docs/openapi.yaml",
+        "--url",
+        openApiContractUrl.get(),
+        "--include-tag",
+        "Auth",
+        "--include-tag",
+        "Guardians",
+    )
 }

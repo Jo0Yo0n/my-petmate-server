@@ -132,18 +132,19 @@
 
 ### 6. Stateless Security와 현재 Guardian 복원
 
-| ID           | 검증 목적               | 상세                                              |
-|--------------|-------------------------|---------------------------------------------------|
-| `M1-SEC-01`  | 공개 auth 경로          | [검증 항목](./m1-test-cases-detail.md#m1-sec-01)  |
-| `M1-SEC-02`  | 보호 경로의 token 누락  | [검증 항목](./m1-test-cases-detail.md#m1-sec-02)  |
-| `M1-SEC-03A` | 변조된 token            | [검증 항목](./m1-test-cases-detail.md#m1-sec-03a) |
-| `M1-SEC-03B` | 잘못된 JWT subject      | [검증 항목](./m1-test-cases-detail.md#m1-sec-03b) |
-| `M1-SEC-04`  | 만료된 access token     | [검증 항목](./m1-test-cases-detail.md#m1-sec-04)  |
-| `M1-SEC-05`  | 현재 Guardian 복원      | [검증 항목](./m1-test-cases-detail.md#m1-sec-05)  |
-| `M1-SEC-06`  | 인증할 수 없는 Guardian | [검증 항목](./m1-test-cases-detail.md#m1-sec-06)  |
-| `M1-SEC-07`  | 접근 거부의 writer 연결 | [검증 항목](./m1-test-cases-detail.md#m1-sec-07)  |
-| `M1-SEC-09`  | stateless 인증          | [검증 항목](./m1-test-cases-detail.md#m1-sec-09)  |
-| `M1-SEC-10`  | 계정 상태별 접근 거부   | [검증 항목](./m1-test-cases-detail.md#m1-sec-10)  |
+| ID           | 검증 목적                         | 상세                                              |
+|--------------|-----------------------------------|---------------------------------------------------|
+| `M1-SEC-01`  | 공개 auth 경로                    | [검증 항목](./m1-test-cases-detail.md#m1-sec-01)  |
+| `M1-SEC-02`  | 보호 경로의 token 누락            | [검증 항목](./m1-test-cases-detail.md#m1-sec-02)  |
+| `M1-SEC-03A` | 변조된 token                      | [검증 항목](./m1-test-cases-detail.md#m1-sec-03a) |
+| `M1-SEC-03B` | 잘못된 JWT subject                | [검증 항목](./m1-test-cases-detail.md#m1-sec-03b) |
+| `M1-SEC-04`  | 만료된 access token               | [검증 항목](./m1-test-cases-detail.md#m1-sec-04)  |
+| `M1-SEC-05`  | 현재 Guardian 복원                | [검증 항목](./m1-test-cases-detail.md#m1-sec-05)  |
+| `M1-SEC-06`  | 인증할 수 없는 Guardian           | [검증 항목](./m1-test-cases-detail.md#m1-sec-06)  |
+| `M1-SEC-07`  | 접근 거부의 writer 연결           | [검증 항목](./m1-test-cases-detail.md#m1-sec-07)  |
+| `M1-SEC-09`  | stateless 인증                    | [검증 항목](./m1-test-cases-detail.md#m1-sec-09)  |
+| `M1-SEC-10`  | 계정 상태별 접근 거부             | [검증 항목](./m1-test-cases-detail.md#m1-sec-10)  |
+| `M1-SEC-11`  | 전역 차단 HTTP 메서드의 실행 거부 | [검증 항목](./m1-test-cases-detail.md#m1-sec-11)  |
 
 | ID               | 검증 목적                        | 상세                                                  |
 |------------------|----------------------------------|-------------------------------------------------------|
@@ -190,10 +191,10 @@
 
 다음 항목은 M1 종료 확인 절차이며 테스트 메서드를 추가하는 작업이 아니다. 서버와 프론트에서 실행할 검증은 ID로 구분한다.
 
-| ID             | 검증 위치 | 검증 목적                         | 상세                                                  |
-|----------------|-----------|-----------------------------------|-------------------------------------------------------|
-| `M1-REG-BE-01` | 서버      | OpenAPI와 M1 API 계약 검증        | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-01)   |
-| `M1-REG-BE-02` | 서버      | 로그·보고서의 민감정보 노출 검사  | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-02)   |
-| `M1-REG-FE-01` | 프론트    | client type 생성·오류 응답 파싱   | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-01)   |
-| `M1-REG-FE-02` | 프론트    | 401 동시 refresh·재시도 정책      | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-02)   |
-| `M1-REG-FE-03` | 프론트    | Playwright 인증 API 흐름          | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-03)   |
+| ID             | 검증 위치 | 검증 목적                        | 상세                                                |
+|----------------|-----------|----------------------------------|-----------------------------------------------------|
+| `M1-REG-BE-01` | 서버      | OpenAPI와 M1 API 계약 검증       | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-01) |
+| `M1-REG-BE-02` | 서버      | 로그·보고서의 민감정보 노출 검사 | [검증 항목](./m1-test-cases-detail.md#m1-reg-be-02) |
+| `M1-REG-FE-01` | 프론트    | client type 생성·오류 응답 파싱  | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-01) |
+| `M1-REG-FE-02` | 프론트    | 401 동시 refresh·재시도 정책     | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-02) |
+| `M1-REG-FE-03` | 프론트    | Playwright 인증 API 흐름         | [검증 항목](./m1-test-cases-detail.md#m1-reg-fe-03) |
