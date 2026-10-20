@@ -23,12 +23,14 @@ class RefreshTokenGeneratorTest {
   @DisplayName("[M1-CRYPTO-04B] createsADeterministicSha256HashForDatabaseStorage")
   @Test
   void createsADeterministicSha256HashForDatabaseStorage() {
-    String refreshToken = "A".repeat(43);
+    String refreshToken = "abc";
 
     String firstHash = refreshTokenGenerator.hash(refreshToken);
     String secondHash = refreshTokenGenerator.hash(refreshToken);
 
-    assertThat(firstHash).isEqualTo(secondHash).matches("[0-9a-f]{64}");
+    assertThat(firstHash)
+        .isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        .isEqualTo(secondHash);
     assertThat(firstHash).isNotEqualTo(refreshToken);
   }
 }

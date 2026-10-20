@@ -1,5 +1,6 @@
 package io.github.jo0yo0n.mypetmate.guardian.persistence;
 
+import io.github.jo0yo0n.mypetmate.error.StateConflictException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
@@ -62,6 +63,27 @@ public class Guardian {
     this.status = status;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
+  }
+
+  public void updateProfile(
+      ProfileType profileType,
+      Gender requestedGender,
+      IdentityVisibility identityVisibility,
+      Instant now) {
+    if (profileType == ProfileType.INDIVIDUAL) {
+      if (gender != null && gender != requestedGender) {
+        throw new StateConflictException("최초 설정한 성별은 변경할 수 없습니다.");
+      }
+      gender = requestedGender;
+    }
+    this.profileType = profileType;
+    this.identityVisibility = identityVisibility;
+    updatedAt = now;
+  }
+
+  public void withdraw(Instant now) {
+    status = GuardianStatus.WITHDRAWN;
+    updatedAt = now;
   }
 
   public UUID getId() {

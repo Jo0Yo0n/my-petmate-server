@@ -6,8 +6,9 @@
 
 - endpoint는 `/ws`이며 JSON 텍스트 프레임만 사용한다.
 - 클라이언트는 연결 시 HTTP `Authorization: Bearer {accessToken}` 헤더로 인증한다.
+- 서버는 JWT와 DB의 현재 Guardian 상태를 검증하며 active 계정만 연결을 허용한다. 계정 상태 오류는 error-response.md를 따라 handshake에서 403으로 거부한다.
 - 서버는 JWT 검증이 끝나면 아래 `auth_ok` 이벤트를 보낸다. 클라이언트는 이 이벤트 전에는 메시지를 보내지 않는다.
-- token 누락·오류·만료 시 서버는 `message_error`를 보낸 뒤 연결을 닫는다.
+- 연결 후 token 오류·만료 시 서버는 `message_error`를 보낸 뒤 연결을 닫는다. handshake 인증 실패는 REST 오류 계약을 따른다.
 
 ```json
 {
@@ -31,7 +32,7 @@
 }
 ```
 
-저장 성공 시 보낸 연결과 상대 참여자의 활성 연결 모두에 `message_created`를 보낸다.
+저장 성공 시 아래 송수신 권한 검사를 통과한 보낸 연결과 상대 참여자의 연결에만 `message_created`를 보낸다.
 
 ```json
 {
@@ -74,11 +75,19 @@ WebSocket 이벤트는 HTTP 응답이 아니므로 RFC 9457 `ProblemDetail` 전�
 }
 ```
 
-허용하는 주요 오류 `code`는 `AUTH_TOKEN_EXPIRED`, `AUTH_TOKEN_INVALID`, `VALIDATION_FAILED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `MATCH_CLOSED`, `MATCH_BLOCKED`, `ACCOUNT_RESTRICTED`, `MESSAGE_IDEMPOTENCY_CONFLICT`, `MESSAGE_SEND_FAILED`다.
+허용하는 주요 오류 `code`는 `AUTH_TOKEN_EXPIRED`, `AUTH_TOKEN_INVALID`, `VALIDATION_FAILED`, `FORBIDDEN`, `ACCOUNT_RESTRICTED`, `ACCOUNT_WITHDRAWN`, `RESOURCE_NOT_FOUND`, `MATCH_CLOSED`, `MATCH_BLOCKED`, `MESSAGE_IDEMPOTENCY_CONFLICT`, `MESSAGE_SEND_FAILED`다.
 
 ## 멱등성과 권한
 
-- active match의 두 참여 보호자만 전송할 수 있다.
+- active match의 참여자이며 두 Guardian이 모두 active일 때만 새 메시지를 저장·전송·수신할 수 있다.
+- 메시지 저장 직전에 발신자와 상대방의 현재 DB 상태를 확인한다. 상태 확인과 저장은 하나의 transaction에서 수행하며 정지·탈퇴 상태 변경과 경합해 검사를 우회하지 않도록 한다.
+- 발신자 본인이 정지·탈퇴 상태이면 각각 `ACCOUNT_RESTRICTED`·`ACCOUNT_WITHDRAWN`으로 거부하고 본인의 연결을 닫는다.
+- 발신자는 정상이나 상대방이 정지·탈퇴 상태이면 `FORBIDDEN`으로 거부한다. 상대방의 구체적인 계정 상태는 오류에 노출하지 않으며 발신자의 연결은 유지한다. 다른 정상 상대와의 대화에는 영향을 주지 않는다.
+- 연결이 유지돼 있어도 서버가 `message_created`를 전달하기 직전에 두 참여자의 현재 상태를 다시 확인한다. 한 명이라도 active가 아니면 해당 대화의 이벤트를 양쪽 모두에게 전달하지 않는다. 수신자가 프레임을 보내지 않아도 이 검사는 수행한다.
+- 전달 시점에 본인이 정지·탈퇴한 연결을 발견하면 메시지를 전달하지 않고 해당 계정의 연결을 닫는다. 정상 상대방의 연결은 닫지 않는다.
+- 저장 후 전달 전에 상태가 바뀌면 이미 저장한 메시지를 되돌리지는 않는다. 정상 참여자는 REST 내역 조회로 저장 결과를 확인할 수 있으며 WebSocket 이벤트 미수신을 저장 실패로 판단하지 않는다.
+- 기존 `clientMessageId` 재전송에서도 현재 송수신 권한 검사를 먼저 수행한다. 멱등 응답으로 정지·탈퇴 이후 메시지 전달을 우회할 수 없다.
+- 상대방의 정지·탈퇴만으로 match를 closed·blocked로 바꾸지 않는다. 과거 내역 조회는 REST 계약을 따르며 정상 참여자에게만 허용한다.
 - closed 또는 blocked match의 전송은 각각 `MATCH_CLOSED`, `MATCH_BLOCKED`로 거부한다.
 - 멱등성 범위는 `(matchId, senderGuardianId, clientMessageId)`다.
 - 동일 범위의 동일한 `clientMessageId`를 재전송하면 새 메시지를 만들지 않고 최초 저장된 메시지와 동일한 `message_created`를 반환한다.
@@ -91,7 +100,7 @@ WebSocket 이벤트는 HTTP 응답이 아니므로 RFC 9457 `ProblemDetail` 전�
 2. access token 만료가 원인이면 REST refresh를 한 번 실행해 access/refresh token을 회전한다.
 3. 새 access token으로 `/ws`에 다시 연결하고 `auth_ok`를 기다린다.
 4. 각 열린 match에서 `GET /api/matches/{matchId}/messages`를 다시 조회해 연결 공백 동안의 메시지를 복구한다.
-5. `message_created`를 받지 못한 전송은 원래 `clientMessageId`로 재전송한다. 서버의 멱등성 보장 때문에 중복 저장되지 않는다.
+5. `message_created`를 받지 못한 전송은 현재 송수신 권한이 허용될 때 원래 `clientMessageId`로 재전송한다. 서버의 멱등성 보장 때문에 중복 저장되지 않는다. 권한이 거부되면 자동 재전송을 중단한다.
 6. 클라이언트는 오프라인 메시지 큐를 영구 저장하지 않는다. 재연결 중 사용자가 명시적으로 재시도한 현재 세션 전송만 복구한다.
 
 약속 제안과 상태 변경은 REST API로 수행한다. 그 결과 생성되는 `appointment_proposal` 메시지 카드는 REST 메시지 내역 재조회로 동기화하며, 이 MVP WebSocket 클라이언트 전송 계약은 텍스트 메시지만 다룬다.

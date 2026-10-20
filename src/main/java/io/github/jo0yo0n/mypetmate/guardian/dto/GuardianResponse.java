@@ -1,7 +1,5 @@
 package io.github.jo0yo0n.mypetmate.guardian.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
@@ -13,7 +11,7 @@ public record GuardianResponse(
     UUID id,
     String email,
     ProfileType profileType,
-    @JsonInclude(Include.NON_NULL) Gender gender,
+    Gender gender,
     IdentityVisibility identityVisibility,
     GuardianStatus status) {
 

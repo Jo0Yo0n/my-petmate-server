@@ -5,11 +5,14 @@ import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountRestrictedException;
+import io.github.jo0yo0n.mypetmate.auth.exception.AccountWithdrawnException;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
+import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -59,14 +62,8 @@ public class AuthService {
   @Transactional
   AuthResponse signup(SignupRequest signupRequest) {
 
-    if (guardianRepository.existsByEmail(signupRequest.email())) {
-      throw new EmailAlreadyExistsException();
-    }
-
     Instant now = clock.instant();
     Guardian guardian;
-
-    // 동시 조회로 인한 데이터 무결성 위반을 처리하기 위해 try-catch 블록 사용
     try {
       guardian =
           guardianRepository.saveAndFlush(
@@ -75,7 +72,9 @@ public class AuthService {
                   signupRequest.email(),
                   passwordEncoder.encode(signupRequest.password()),
                   signupRequest.profileType(),
-                  signupRequest.gender(),
+                  signupRequest.profileType() == ProfileType.INDIVIDUAL
+                      ? signupRequest.gender()
+                      : null,
                   signupRequest.identityVisibility(),
                   GuardianStatus.ACTIVE,
                   now,
@@ -113,7 +112,9 @@ public class AuthService {
     }
 
     if (guardian.getStatus() == GuardianStatus.WITHDRAWN) {
-      throw new InvalidCredentialsException();
+      throw new AccountWithdrawnException();
+    } else if (guardian.getStatus() == GuardianStatus.TEMPORARILY_RESTRICTED) {
+      throw new AccountRestrictedException();
     }
 
     AuthResponse authResponse = makeAuthResponse(guardian, now);
@@ -126,22 +127,30 @@ public class AuthService {
 
     Instant now = clock.instant();
 
+    UUID guardianId =
+        refreshTokenRepository
+            .findGuardianIdByTokenHash(refreshTokenGenerator.hash(refreshRequest.refreshToken()))
+            .orElseThrow(InvalidRefreshTokenException::new);
+    Guardian guardian =
+        guardianRepository
+            .findByIdWithPessimisticWriteLock(guardianId)
+            .orElseThrow(InvalidRefreshTokenException::new);
     RefreshToken legacyRefreshToken =
         refreshTokenRepository
             .findByTokenHashWithPessimisticWriteLock(
                 refreshTokenGenerator.hash(refreshRequest.refreshToken()))
             .orElseThrow(InvalidRefreshTokenException::new);
 
-    Guardian guardian = legacyRefreshToken.getGuardian();
-
-    if (guardian.getStatus() != GuardianStatus.ACTIVE) {
-      throw new InvalidRefreshTokenException();
-    }
-
     if (!legacyRefreshToken.getExpiresAt().isAfter(now)
         || legacyRefreshToken.getRevokedAt() != null) {
 
       throw new InvalidRefreshTokenException();
+    }
+
+    if (guardian.getStatus() == GuardianStatus.WITHDRAWN) {
+      throw new AccountWithdrawnException();
+    } else if (guardian.getStatus() == GuardianStatus.TEMPORARILY_RESTRICTED) {
+      throw new AccountRestrictedException();
     }
 
     legacyRefreshToken.setRevokedAt(clock.instant());

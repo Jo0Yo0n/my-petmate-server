@@ -28,9 +28,10 @@
 
 ### 정보 노출 검증 범위
 
-- 내부 예외·stack trace·SQL·예외에 넣은 민감정보의 응답 노출은 M1-ERR-03B에서 집중 검증한다. 다른 오류 테스트마다 같은 부재 검사를 반복하지 않는다.
+- 내부 예외·stack trace·SQL·예외에 넣은 민감정보의 응답 노출은 M1-ERR-03B에서, `UnexpectedFailureException` 메시지의 로그 기록과 응답 비노출은 M1-ERR-03C에서
+  검증한다. 다른 오류 테스트마다 같은 부재 검사를 반복하지 않는다.
 - 비밀번호·hash·token 원문 등 민감정보의 응답 노출은 해당 값을 취급하는 대표 응답에서 확인한다. 동일 응답 구조를 사용하는 입력 조합마다 반복하지 않는다.
-- 로그·실패 보고서의 민감정보 노출은 M1-REG-02에서 한 번 확인한다.
+- 로그·실패 보고서의 민감정보 노출은 M1-REG-BE-02에서 한 번 확인한다.
 
 ### 성공 응답
 
@@ -95,11 +96,11 @@ writer는 전달받은 ProblemDetail의 직렬화를 검증한다. 요청 ID 생
 
 ### M1-DTO-02C
 
-| 항목   | 내용                                                            |
-|--------|-----------------------------------------------------------------|
-| 클래스 | `RequestValidationTest`                                         |
-| 메서드 | `forbidsGenderForCoupleAndFamilySignup()`                       |
-| 검증   | 커플·가족 유형에 성별을 지정하면 gender validation 오류가 된다. |
+| 항목   | 내용                                                               |
+|--------|--------------------------------------------------------------------|
+| 클래스 | `RequestValidationTest`                                            |
+| 메서드 | `acceptsGenderForCoupleAndFamilySignup()`                          |
+| 검증   | 커플·가족 유형에 유효한 성별을 지정해도 DTO validation은 성공한다. |
 
 ### M1-DTO-02D
 
@@ -309,11 +310,11 @@ migration 검증은 DB schema에서, JPA 검증은 entity·repository에서 완�
 
 ### M1-DB-02B
 
-| 항목   | 내용                                                           |
-|--------|----------------------------------------------------------------|
-| 클래스 | `DatabaseMigrationIntegrationTest`                             |
-| 메서드 | `guardianRejectsInvalidEnumAndProfileTypeGenderCombinations()` |
-| 검증   | 잘못된 enum·유형·성별 조합을 DB check 제약이 거부한다.         |
+| 항목   | 내용                                                                                                              |
+|--------|-------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `DatabaseMigrationIntegrationTest`                                                                                |
+| 메서드 | `guardianRejectsInvalidEnumAndProfileTypeGenderCombinations()`                                                    |
+| 검증   | 잘못된 enum과 개인 유형의 gender NULL을 DB check 제약이 거부한다. 커플·가족에는 저장된 성별 또는 NULL을 허용한다. |
 
 ### M1-DB-03
 
@@ -328,7 +329,7 @@ migration 검증은 DB schema에서, JPA 검증은 entity·repository에서 완�
 | 항목   | 내용                                                                                      |
 |--------|-------------------------------------------------------------------------------------------|
 | 클래스 | `DatabaseMigrationIntegrationTest`                                                        |
-| 메서드 | `refreshTokenRejectsInvalidHashTimesAndGuardian()`                                        |
+| 메서드 | `refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash()`                           |
 | 검증   | hash 형식·중복, 잘못된 생성·만료·폐기 시각 및 없는 Guardian FK를 각각 DB 제약이 거부한다. |
 
 ### M1-DB-05
@@ -445,12 +446,12 @@ token·설정 자체로 완료하며 auth service·endpoint는 필요하지 않�
 
 ### M1-CRYPTO-04B
 
-| 항목   | 내용                                                          |
-|--------|---------------------------------------------------------------|
-| 클래스 | `RefreshTokenGeneratorTest`                                   |
-| 메서드 | `createsADeterministicSha256HashForDatabaseStorage()`         |
-| 검증 1 | 같은 원문은 같은 SHA-256 hash가 되며 DB 저장 형식과 일치한다. |
-| 검증 2 | hash가 원문과 다르다.                                         |
+| 항목   | 내용                                                                                      |
+|--------|-------------------------------------------------------------------------------------------|
+| 클래스 | `RefreshTokenGeneratorTest`                                                               |
+| 메서드 | `createsADeterministicSha256HashForDatabaseStorage()`                                     |
+| 검증 1 | 고정 입력 abc의 hash를 알려진 SHA-256 기대값과 비교하고 반복 호출 결과가 같은지 확인한다. |
+| 검증 2 | hash가 원문과 다르다.                                                                     |
 
 ### M1-CRYPTO-05A
 
@@ -526,11 +527,11 @@ application service와 이전 구성요소로 완료한다. controller와 Securi
 
 ### M1-AUTH-06
 
-| 항목   | 내용                                                                                       |
-|--------|--------------------------------------------------------------------------------------------|
-| 클래스 | `AuthServiceIntegrationTest`                                                               |
-| 메서드 | `loginRejectsWithdrawnGuardianAndAllowsTemporarilyRestrictedGuardian()`                    |
-| 검증   | withdrawn 계정은 자격 증명 오류로 거부하며 temporarily_restricted 계정은 login에 성공한다. |
+| 항목   | 내용                                                                                                               |
+|--------|--------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                                                                       |
+| 메서드 | `loginRejectsWithdrawnGuardianAndTemporarilyRestrictedGuardian()`                                                  |
+| 검증   | 올바른 비밀번호의 정지·탈퇴 계정은 각각 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN으로 거부하고 token을 발급하지 않는다. |
 
 ### M1-AUTH-07
 
@@ -593,6 +594,42 @@ application service와 이전 구성요소로 완료한다. controller와 Securi
 | 메서드 | `allowOnlyOneConcurrentSignupForSameEmail()`                                         |
 | 검증 1 | 같은 canonical email의 동시 signup 중 정확히 하나만 성공한다.                        |
 | 검증 2 | 다른 요청은 EmailAlreadyExistsException이며 성공한 요청의 Guardian과 token만 남는다. |
+
+### M1-AUTH-13
+
+| 항목   | 내용                                                                                                        |
+|--------|-------------------------------------------------------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                                                                |
+| 메서드 | `rejectsRefreshForInactiveGuardian()`                                                                       |
+| 검증 1 | 미만료·미폐기 refresh token을 가진 정지·탈퇴 계정은 각각 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN으로 거부한다. |
+| 검증 2 | 새 token을 발급하지 않는다. token 자체의 폐기가 아닌 계정 상태 검사로 거부됨을 확인한다.                    |
+
+### M1-AUTH-14
+
+| 항목   | 내용                                                                    |
+|--------|-------------------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                            |
+| 메서드 | `rejectsInvalidPasswordWithoutDisclosingAccountStatus()`                |
+| 검증 1 | 정지·탈퇴 계정에 잘못된 비밀번호를 제출하면 AUTH_INVALID_CREDENTIALS다. |
+| 검증 2 | 계정 상태별 오류를 노출하지 않고 token을 발급하지 않는다.               |
+
+### M1-AUTH-15
+
+| 항목   | 내용                                                          |
+|--------|---------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                  |
+| 메서드 | `rejectsExpiredRefreshWithoutDisclosingAccountStatus()`       |
+| 검증 1 | 정지·탈퇴 계정의 만료 refresh token은 AUTH_REFRESH_INVALID다. |
+| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.  |
+
+### M1-AUTH-16
+
+| 항목   | 내용                                                          |
+|--------|---------------------------------------------------------------|
+| 클래스 | `AuthServiceIntegrationTest`                                  |
+| 메서드 | `rejectsRevokedRefreshWithoutDisclosingAccountStatus()`       |
+| 검증 1 | 정지·탈퇴 계정의 폐기 refresh token은 AUTH_REFRESH_INVALID다. |
+| 검증 2 | 계정 상태별 오류를 노출하지 않고 새 token을 발급하지 않는다.  |
 
 ## 5. 요청 ID와 공통 REST 오류
 
@@ -738,6 +775,15 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 검증 1 | 409 EMAIL_ALREADY_EXISTS를 반환하고 fieldErrors를 생략한다. |
 | 검증 2 | 공통 오류 검증을 만족한다.                                  |
 
+### M1-ERR-02E
+
+| 항목   | 내용                                                                                              |
+|--------|---------------------------------------------------------------------------------------------------|
+| 클래스 | `GlobalExceptionHandlerMvcTest`                                                                   |
+| 메서드 | `mapsAccountStatusExceptionsToForbidden()`                                                        |
+| 검증 1 | 정지·탈퇴 예외가 각각 HTTP 403과 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN으로 변환된다.               |
+| 검증 2 | 상태별 type·title 및 공통 오류 응답을 검증한다. 동일 변환 분기는 parameterized 테스트로 처리한다. |
+
 ### M1-ERR-03A
 
 | 항목   | 내용                                                   |
@@ -754,6 +800,15 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 메서드 | `mapsUnexpectedExceptionToInternalServerError()`                                    |
 | 검증 1 | 500 INTERNAL_SERVER_ERROR와 공통 오류 형식을 반환한다.                              |
 | 검증 2 | 예외에 넣은 내부 메시지·SQL·민감정보와 예외명·stack trace를 본문에 노출하지 않는다. |
+
+### M1-ERR-03C
+
+| 항목   | 내용                                                                                              |
+|--------|---------------------------------------------------------------------------------------------------|
+| 클래스 | `GlobalExceptionHandlerMvcTest`                                                                   |
+| 메서드 | `logsUnexpectedFailureMessageWithoutReturningIt()`                                                |
+| 검증 1 | `UnexpectedFailureException`의 구체 메시지와 응답 `requestId`가 예기치 않은 오류 로그에 기록된다. |
+| 검증 2 | 같은 예외 메시지는 500 응답 본문에 노출되지 않는다.                                               |
 
 ### M1-ERR-04A
 
@@ -804,12 +859,12 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 
 ### M1-SEC-02
 
-| 항목   | 내용                                                                                  |
-|--------|---------------------------------------------------------------------------------------|
-| 클래스 | `SecurityFilterChainIntegrationTest`                                                  |
-| 메서드 | `returnsProblemDetailWhenAccessTokenIsMissing()`                                      |
-| 검증 1 | 보호 경로는 token 없이 접근하면 401 AUTH_TOKEN_INVALID를 반환한다.                    |
-| 검증 2 | 보호된 처리는 실행되지 않으며 공통 오류 형식·header와 body의 요청 ID 일치를 만족한다. |
+| 항목   | 내용                                                                                                                                                                 |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                 |
+| 메서드 | `returnsProblemDetailWhenAccessTokenIsMissing()`                                                                                                                     |
+| 검증 1 | 보호 경로 예시 중 하나인 GET /api/guardians/me에 token 없이 접근하 401 AUTH_TOKEN_INVALID를 반환한다. GET /api/auth/login도 인증 없이 접근하면 같은 오류를 반환한다. |
+| 검증 2 | 보호된 처리는 실행되지 않으며 공통 오류 형식·header와 body의 요청 ID 일치를 만족한다.                                                                                |
 
 ### M1-SEC-03A
 
@@ -844,17 +899,17 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 |--------|-----------------------------------------------------------------------------------|
 | 클래스 | `SecurityFilterChainIntegrationTest`                                              |
 | 메서드 | `restoresCurrentGuardianFromValidToken()`                                         |
-| 검증 1 | active·temporarily_restricted Guardian은 인증된다.                                |
+| 검증 1 | active Guardian만 인증된다.                                                       |
 | 검증 2 | 매 요청 DB의 현재 Guardian 상태를 복원한다. 세션의 과거 상태를 재사용하지 않는다. |
 
 ### M1-SEC-06
 
-| 항목   | 내용                                                                      |
-|--------|---------------------------------------------------------------------------|
-| 클래스 | `SecurityFilterChainIntegrationTest`                                      |
-| 메서드 | `rejectsMissingOrWithdrawnGuardian()`                                     |
-| 검증 1 | JWT subject의 Guardian이 없거나 withdrawn이면 401 AUTH_TOKEN_INVALID이다. |
-| 검증 2 | 공통 오류 검증을 만족한다.                                                |
+| 항목   | 내용                                                                                                 |
+|--------|------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                 |
+| 메서드 | `rejectsMissingGuardian()`                                                                           |
+| 검증 1 | JWT subject의 Guardian이 없으면 401 AUTH_TOKEN_INVALID이다. 계정 상태 거부는 M1-SEC-10에서 검증한다. |
+| 검증 2 | 공통 오류 검증을 만족한다.                                                                           |
 
 ### M1-SEC-07
 
@@ -873,6 +928,14 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 | 메서드 | `authenticatesWithoutCreatingHttpSession()`                             |
 | 검증 1 | 세션 cookie 없이 같은 access token으로 연속 요청을 인증한다.            |
 | 검증 2 | HTTP session을 생성하지 않으며 form login·HTTP Basic을 사용하지 않는다. |
+
+### M1-SEC-10
+
+| 항목   | 내용                                                                                                                                          |
+|--------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                          |
+| 메서드 | `rejectsInactiveGuardianWithAccountStatusError()`                                                                                             |
+| 검증   | 정지·탈퇴 계정의 JWT라도 만료되면 401 AUTH_TOKEN_EXPIRED, 서명이 변조되면 401 AUTH_TOKEN_INVALID다. 계정 상태 오류보다 token 오류가 우선한다. |
 
 ### M1-DBFILTER-01
 
@@ -908,11 +971,11 @@ MVC 오류는 테스트 전용 controller로, writer는 직접 직렬화로 검�
 
 ### M1-DBFILTER-05
 
-| 항목   | 내용                                                                                                                                                                                                                                                                      |
-|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                                                                                                                      |
-| 메서드 | `handlesTransactionCreationFailureInSecurityChain()`                                                                                                                                                                                                                      |
-| 검증   | JWT 인증 과정의 Repository에 `CannotCreateTransactionException`을 주입하면 공통 500과 일치하는 요청 ID를 반환한다. 로그에 요청 ID와 예외 타입을 기록하며 예외와 원인 메시지의 SQL·비밀번호·token은 응답과 로그에 포함하지 않는다. 실제 DB 연결 중단 대신 예외를 주입한다. |
+| 항목   | 내용                                                                                                                                                                                                                                                                                       |
+|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `SecurityFilterChainIntegrationTest`                                                                                                                                                                                                                                                       |
+| 메서드 | `handlesTransactionCreationFailureInSecurityChain()`                                                                                                                                                                                                                                       |
+| 검증   | JWT 인증 과정의 Repository에 비밀 fixture가 든 cause를 가진 `CannotCreateTransactionException`을 주입한다. 공통 500·요청 ID를 반환하고 로그에 요청 ID·예외 타입·stack frame을 기록하며 cause의 SQL·비밀번호·token은 로그와 응답에 포함하지 않는다. 실제 DB 연결 중단 대신 예외를 주입한다. |
 
 M1-SEC-07은 테스트 전용 deny 규칙의 SecurityFilterChain으로 운영 EntryPoint·AccessDeniedHandler와 요청 ID 연결을 검증한다.
 나머지 보안 항목은 운영 SecurityFilterChain, 실제 JWT encoder·decoder와 PostgreSQL을 사용한다.
@@ -930,15 +993,16 @@ DB 구성요소로 검증한다.
 | 메서드 | `returnsCreatedAuthResponseForSignup()`                                                |
 | 검증 1 | 201 AuthResponse의 token 값·canonical email·대표 Guardian 유형의 필드가 계약과 맞는다. |
 | 검증 2 | active Guardian과 refresh token hash가 저장되고 공통 성공 응답 검증을 만족한다.        |
+| 검증 3 | 커플·가족 가입 시 전달된 유효 gender를 무시하고 DB와 응답의 gender는 null이다.         |
 
 ### M1-API-SU-02A
 
-| 항목   | 내용                                                        |
-|--------|-------------------------------------------------------------|
-| 클래스 | `AuthControllerIntegrationTest`                             |
-| 메서드 | `rejectsInvalidSignupWithoutCreatingGuardian()`             |
-| 검증 1 | 대표 조건 위반은 400 VALIDATION_FAILED다.                   |
-| 검증 2 | Guardian·token이 추가되지 않으며 공통 오류 검증을 만족한다. |
+| 항목   | 내용                                                                                                               |
+|--------|--------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                                                    |
+| 메서드 | `rejectsInvalidSignupWithoutCreatingGuardian()`                                                                    |
+| 검증 1 | 개인 유형의 gender 누락 등 필수 조건 위반은 400 VALIDATION_FAILED다. 커플·가족의 유효 gender는 조건 위반이 아니다. |
+| 검증 2 | Guardian·token이 추가되지 않으며 공통 오류 검증을 만족한다.                                                        |
 
 ### M1-API-SU-02B
 
@@ -976,6 +1040,15 @@ DB 구성요소로 검증한다.
 | 검증 1 | 없는 email과 잘못된 비밀번호는 같은 401 AUTH_INVALID_CREDENTIALS다.                               |
 | 검증 2 | 유효 길이의 단순 비밀번호를 signup 복잡도 규칙으로 400 거부하지 않으며 공통 오류 검증을 만족한다. |
 
+### M1-API-LI-03
+
+| 항목   | 내용                                                                                                |
+|--------|-----------------------------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                                     |
+| 메서드 | `returnsAccountStatusErrorForValidLogin()`                                                          |
+| 검증 1 | 정지·탈퇴 계정의 올바른 이메일·비밀번호 로그인은 각각 403 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN이다. |
+| 검증 2 | token을 발급하지 않고 공통 오류 응답을 만족한다.                                                    |
+
 ### M1-API-RF-01
 
 | 항목   | 내용                                                                               |
@@ -1001,6 +1074,15 @@ DB 구성요소로 검증한다.
 | 메서드 | `returnsInvalidRefreshForUnknownToken()`                                             |
 | 검증   | 올바른 형식의 미등록 token은 401 AUTH_REFRESH_INVALID이며 공통 오류 검증을 만족한다. |
 
+### M1-API-RF-03
+
+| 항목   | 내용                                                                                      |
+|--------|-------------------------------------------------------------------------------------------|
+| 클래스 | `AuthControllerIntegrationTest`                                                           |
+| 메서드 | `returnsAccountStatusErrorForValidRefresh()`                                              |
+| 검증 1 | 정지·탈퇴 계정의 유효한 refresh 요청은 각각 403 ACCOUNT_RESTRICTED·ACCOUNT_WITHDRAWN이다. |
+| 검증 2 | 새 token을 저장·발급하지 않고 공통 오류 응답을 만족한다.                                  |
+
 ### M1-API-LO-01
 
 | 항목   | 내용                                                        |
@@ -1012,39 +1094,31 @@ DB 구성요소로 검증한다.
 
 ### M1-API-ME-01
 
-| 항목   | 내용                                                                                                                    |
-|--------|-------------------------------------------------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                                                                     |
-| 메서드 | `returnsCurrentGuardianForEachProfileType()`                                                                            |
-| 검증 1 | 유효 token으로 조회하면 200 Guardian 응답이다.                                                                          |
-| 검증 2 | 개인·커플·가족 discriminator와 유형별 gender, canonical email·현재 status가 계약과 맞고 공통 성공 응답 검증을 만족한다. |
-
-### M1-API-ME-02
-
-| 항목   | 내용                                                                               |
-|--------|------------------------------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                                                |
-| 메서드 | `rejectsUnauthenticatedMeRequest()`                                                |
-| 검증 1 | 실제 GET /api/guardians/me에 token이 없으면 401 AUTH_TOKEN_INVALID다.              |
-| 검증 2 | 공통 오류 검증을 만족한다. Security 단계의 상세 token 실패 조합은 반복하지 않는다. |
+| 항목   | 내용                                                                                                                                           |
+|--------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                                            |
+| 메서드 | `returnsCurrentGuardianForEachProfileType()`                                                                                                   |
+| 검증 1 | 유효 token으로 조회하면 200 Guardian 응답이다.                                                                                                 |
+| 검증 2 | active 계정의 유형별 discriminator와 항상 포함되는 gender(미설정은 null), canonical email·status가 계약과 맞고 공통 성공 응답 검증을 만족한다. |
 
 ### M1-API-ME-03
 
-| 항목   | 내용                                                        |
-|--------|-------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                         |
-| 메서드 | `updatesCurrentGuardianWithValidProfile()`                  |
-| 검증 1 | 유효한 유형·성별·공개 설정 변경이 현재 Guardian에 저장된다. |
-| 검증 2 | 200 응답과 DB 상태가 같고 공통 성공 응답 검증을 만족한다.   |
+| 항목   | 내용                                                                                         |
+|--------|----------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                          |
+| 메서드 | `updatesCurrentGuardianWithValidProfile()`                                                   |
+| 검증 1 | 기존 성별과 같은 individual 요청 또는 커플·가족으로의 유효한 유형·공개 설정 변경이 저장된다. |
+| 검증 2 | 200 응답과 DB 상태가 같고 공통 성공 응답 검증을 만족한다.                                    |
+| 검증 3 | 개인 → 커플/가족 → 개인 왕복 시 각 응답과 DB에 최초 성별을 보존한다.                         |
 
 ### M1-API-ME-04A
 
-| 항목   | 내용                                                       |
-|--------|------------------------------------------------------------|
-| 클래스 | `GuardianControllerIntegrationTest`                        |
-| 메서드 | `preservesGuardianWhenUpdateValidationFails()`             |
-| 검증 1 | 대표 조건 위반은 400 VALIDATION_FAILED다.                  |
-| 검증 2 | Guardian의 기존 상태가 유지되며 공통 오류 검증을 만족한다. |
+| 항목   | 내용                                                                                                               |
+|--------|--------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                |
+| 메서드 | `preservesGuardianWhenUpdateValidationFails()`                                                                     |
+| 검증 1 | 개인 유형의 gender 누락 등 필수 조건 위반은 400 VALIDATION_FAILED다. 커플·가족의 유효 gender는 조건 위반이 아니다. |
+| 검증 2 | Guardian의 기존 상태가 유지되며 공통 오류 검증을 만족한다.                                                         |
 
 ### M1-API-ME-04B
 
@@ -1064,39 +1138,146 @@ DB 구성요소로 검증한다.
 | 검증 1 | 다른 Guardian이 존재해도 token subject의 Guardian만 수정된다. |
 | 검증 2 | 다른 Guardian의 상태가 유지된다.                              |
 
-## 8. 계약·보안 회귀와 수동 흐름
+### M1-API-ME-06
 
-모든 구현 단계가 끝난 뒤 수행하는 확인 절차다. 각 기능의 TDD마다 새 검증 도구나 테스트 메서드를 작성하지 않는다.
+| 항목   | 내용                                                                                             |
+|--------|--------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                              |
+| 메서드 | `preservesFirstGenderForConcurrentUpdates()`                                                     |
+| 검증 1 | 성별 미설정 계정에 서로 다른 성별의 individual 수정 요청이 경합하면 하나만 최초 저장에 성공한다. |
+| 검증 2 | 나머지는 409 STATE_CONFLICT이며 최초 저장값이 덮어써지지 않는다. 공통 HTTP 응답 검증을 만족한다. |
 
-### M1-REG-01
+### M1-API-ME-07
 
-| 항목 | 내용                                                                                   |
-|------|----------------------------------------------------------------------------------------|
-| 확인 | OpenAPI validator·client type 생성 실행                                                |
-| 검증 | M1 요청·응답과 Guardian discriminator·ProblemDetail 확장 필드를 도구가 처리할 수 있다. |
+| 항목   | 내용                                                                       |
+|--------|----------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                        |
+| 메서드 | `initializesGenderForFirstIndividualProfile()`                             |
+| 검증 1 | 성별 미설정 커플·가족이 individual로 변경하면 요청한 성별이 최초 저장된다. |
+| 검증 2 | 200 응답과 DB 값이 같고 공통 성공 응답을 만족한다.                         |
 
-### M1-REG-02
+### M1-API-ME-08
 
-| 항목 | 내용                                                                        |
-|------|-----------------------------------------------------------------------------|
-| 확인 | 전체 테스트 로그·실패 보고서 확인                                           |
-| 검증 | 비밀번호·token 원문·내부 예외·SQL 및 fixture secret의 노출 여부를 확인한다. |
+| 항목   | 내용                                                                                                                                                                                   |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                                                                                    |
+| 메서드 | `rejectsChangingPreviouslyStoredGender()`                                                                                                                                              |
+| 검증 1 | 현재 유형이 individual·couple·family 중 무엇이든, 이미 저장된 성별과 다른 gender를 포함한 individual 수정 요청은 409 STATE_CONFLICT다. 각 유형에서 female→male·male→female을 검증한다. |
+| 검증 2 | 프로필 전체의 DB 상태가 보존되고 공통 오류 응답을 만족한다.                                                                                                                            |
 
-### M1-REG-03
+### M1-API-ME-09
 
-| 항목 | 내용                                                            |
-|------|-----------------------------------------------------------------|
-| 확인 | ./gradlew check 실행                                            |
-| 검증 | 현재 코드의 단위·PostgreSQL 통합·API·형식 검사가 모두 통과한다. |
+| 항목   | 내용                                                                                 |
+|--------|--------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                  |
+| 메서드 | `ignoresGenderForNonIndividualUpdate()`                                              |
+| 검증 1 | 기존 성별 있음/없음 × 커플/가족을 매개변수화하고 다른 유효 gender를 보내도 무시한다. |
+| 검증 2 | 기존 성별(미설정은 null)을 보존하고 유형·공개 설정만 수정한다. 응답과 DB를 비교한다. |
 
-### M1-MAN-01
+### M1-API-ME-10
 
-| 항목 | 내용                                                              |
-|------|-------------------------------------------------------------------|
-| 확인 | signup → GET/PATCH me → refresh → 이전 token 재사용 → logout 확인 |
-| 검증 | 각 응답의 status·body·Content-Type·요청 ID가 계약과 일치한다.     |
+| 항목   | 내용                                                                                                                    |
+|--------|-------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianServiceTest`                                                                                                   |
+| 메서드 | `returnsUnexpectedFailureWhenCurrentGuardianIsMissing()`, `returnsUnexpectedFailureWhenGuardianIsMissingDuringUpdate()` |
+| 검증 1 | 인증 이후 Guardian 재조회가 실패하면 조회·수정 서비스가 `UnexpectedFailureException`을 던진다.                          |
+| 검증 2 | 조회 실패 시 refresh token 저장소나 clock을 호출하지 않는다.                                                            |
+
+### M1-API-WD-01
+
+| 항목   | 내용                                                                              |
+|--------|-----------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                               |
+| 메서드 | `withdrawsCurrentGuardianAndRevokesTokens()`                                      |
+| 검증 1 | active Guardian의 탈퇴는 body 없는 204와 공통 성공 응답 검증을 만족한다.          |
+| 검증 2 | 성공 로그에 탈퇴 이벤트, Guardian ID, 응답의 requestId가 기록된다.                |
+| 검증 3 | 본인의 복수 refresh token이 모두 폐기되고 DB 상태는 withdrawn이다.                |
+| 검증 4 | 본인의 유형·성별·공개 설정 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
+
+### M1-API-WD-03
+
+| 항목   | 내용                                                                            |
+|--------|---------------------------------------------------------------------------------|
+| 클래스 | `GuardianWithdrawalIntegrationTest`                                             |
+| 메서드 | `rollsBackWithdrawalWhenRefreshTokenRevocationFails()`                          |
+| 검증 1 | refresh token 폐기 중 실패하면 계정 상태 변경과 token 폐기가 모두 rollback된다. |
+| 검증 2 | 계정 상태와 refresh token 상태는 요청 전과 같다.                                |
+
+### M1-API-WD-04
+
+| 항목   | 내용                                                                         |
+|--------|------------------------------------------------------------------------------|
+| 클래스 | `GuardianWithdrawalConcurrencyIntegrationTest`                               |
+| 메서드 | `rejectsTokensAfterConcurrentRefreshAndWithdrawal()`                         |
+| 검증 1 | refresh와 탈퇴가 경합해도 탈퇴 완료 후 반환된 token으로 인증·갱신할 수 없다. |
+| 검증 2 | 최종 DB 상태는 withdrawn이며 활성 refresh token이 남지 않는다.               |
+
+### M1-API-WD-06
+
+| 항목   | 내용                                                                                   |
+|--------|----------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                    |
+| 메서드 | `rejectsRepeatedWithdrawalWithAccountWithdrawn()`                                      |
+| 검증 1 | 탈퇴 완료 후 유효한 기존 access token으로 탈퇴를 재요청하면 403 ACCOUNT_WITHDRAWN이다. |
+| 검증 2 | 계정·refresh token 상태는 재요청 전과 같고 공통 오류 응답을 만족한다.                  |
+
+### M1-API-WD-07
+
+| 항목   | 내용                                                                                                               |
+|--------|--------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianControllerIntegrationTest`                                                                                |
+| 메서드 | `rejectsUnauthorizedWithdrawal()`                                                                                  |
+| 검증 1 | 무인증은 401 AUTH_TOKEN_INVALID, 유효 token을 가진 정지 계정은 403 ACCOUNT_RESTRICTED다. 두 조건을 매개변수화한다. |
+| 검증 2 | DB를 변경하지 않고 공통 오류 응답을 만족한다.                                                                      |
+
+### M1-API-WD-08
+
+| 항목   | 내용                                                                                                                                   |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------|
+| 클래스 | `GuardianServiceTest`                                                                                                                  |
+| 메서드 | `returnsUnexpectedFailureWhenGuardianIsMissingDuringWithdrawal()`                                                                      |
+| 검증   | 인증 이후 탈퇴 서비스의 Guardian 재조회가 실패하면 `UnexpectedFailureException`을 던지고 refresh token 저장소·clock은 호출하지 않는다. |
+
+## 8. 서버·프론트 계약과 보안 회귀 검증
+
+모든 구현 단계가 끝난 뒤 수행하는 확인 절차다. 서버와 프론트 검증은 ID로 구분한다.
+
+### M1-REG-BE-01
+
+| 항목 | 내용                                                                               |
+|------|------------------------------------------------------------------------------------|
+| 확인 | OpenAPI validator로 서버의 M1 endpoint·요청·응답 계약을 검증한다.                  |
+| 검증 | M1 API와 Guardian discriminator·ProblemDetail 확장 필드가 OpenAPI 계약과 일치한다. |
+
+### M1-REG-BE-02
+
+| 항목 | 내용                                                                              |
+|------|-----------------------------------------------------------------------------------|
+| 확인 | 서버 테스트 로그·실패 보고서를 검사한다.                                          |
+| 검증 | 비밀번호·token 원문·DB 예외 메시지·cause·SQL 및 fixture secret이 노출되지 않는다. |
+
+### M1-REG-FE-01
+
+| 항목 | 내용                                                                           |
+|------|--------------------------------------------------------------------------------|
+| 확인 | OpenAPI에서 client type을 생성하고 `application/problem+json` 응답을 파싱한다. |
+| 검증 | status·code·fieldErrors·requestId를 올바르게 읽고 계약 불일치를 발견한다.      |
+
+### M1-REG-FE-02
+
+| 항목 | 내용                                                                                              |
+|------|---------------------------------------------------------------------------------------------------|
+| 확인 | 프론트 인증 요청 로직에서 동시 401과 만료 외 401을 검증한다.                                      |
+| 검증 | 동시 401은 refresh 한 번과 원 요청별 재시도 한 번으로 처리하고, 만료 외 401은 refresh하지 않는다. |
+
+### M1-REG-FE-03
+
+| 항목 | 내용                                                                                                              |
+|------|-------------------------------------------------------------------------------------------------------------------|
+| 확인 | 프론트 저장소의 Playwright로 signup → GET/PATCH me → refresh → 이전 refresh token 재사용 → logout API를 호출한다. |
+| 검증 | 각 응답의 status·body·Content-Type·요청 ID가 계약과 일치하고, 회전된 이전 refresh token은 거부된다.               |
 
 ## 완료 판정
 
 완료 여부는 [M1 인증 계약 체크리스트](./m1-auth-contract-checklist.md)에서 관리한다. ID 재분류만으로 미검증 항목을 완료로 바꾸지 않는다.
-M1 종료 시 전체 회귀·계약 확인·수동 흐름과 사람 검토를 마친다.
+M1 종료 시 서버·프론트의 계약·보안 회귀 검증과 프론트 Playwright API 흐름 검증을 마친다.

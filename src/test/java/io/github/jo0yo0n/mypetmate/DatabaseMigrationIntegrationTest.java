@@ -54,6 +54,8 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThat(insertGuardian("individual@example.com", "individual", "female")).isNotNull();
     assertThat(insertGuardian("couple@example.com", "couple", null)).isNotNull();
     assertThat(insertGuardian("family@example.com", "family", null)).isNotNull();
+    assertThat(insertGuardian("coupleGender@example.com", "couple", "female")).isNotNull();
+    assertThat(insertGuardian("familyGender@example.com", "family", "male")).isNotNull();
   }
 
   @DisplayName("[M1-DB-02B] guardianRejectsInvalidEnumAndProfileTypeGenderCombinations")
@@ -62,8 +64,6 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThatThrownBy(() -> insertGuardian("unknown-profile@example.com", "unknown", "female"))
         .isInstanceOf(DataIntegrityViolationException.class);
     assertThatThrownBy(() -> insertGuardian("missing-gender@example.com", "individual", null))
-        .isInstanceOf(DataIntegrityViolationException.class);
-    assertThatThrownBy(() -> insertGuardian("couple-gender@example.com", "couple", "female"))
         .isInstanceOf(DataIntegrityViolationException.class);
     assertThatThrownBy(
             () ->
@@ -88,7 +88,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
 
   @DisplayName("[M1-DB-04] refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash")
   @Test
-  void refreshTokenRejectsInvalidHashTimesAndGuardian() {
+  void refreshTokenRejectsInvalidHashTimesGuardianAndDuplicateHash() {
     UUID guardianId = insertGuardian("token-constraints@example.com", "individual", "female");
     Instant createdAt = Instant.parse("2026-08-26T00:00:00Z");
 
