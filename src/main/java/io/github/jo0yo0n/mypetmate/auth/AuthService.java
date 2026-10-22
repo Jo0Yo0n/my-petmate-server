@@ -75,7 +75,7 @@ public class AuthService {
                   signupRequest.profileType() == ProfileType.INDIVIDUAL
                       ? signupRequest.gender()
                       : null,
-                  signupRequest.identityVisibility(),
+                  signupRequest.discoveryStatus(),
                   GuardianStatus.ACTIVE,
                   now,
                   now));

@@ -5,8 +5,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -55,7 +55,7 @@ class GuardianServiceTest {
     given(guardianRepository.findByIdWithPessimisticWriteLock(guardianId))
         .willReturn(Optional.empty());
     var request =
-        new GuardianUpdateRequest(ProfileType.INDIVIDUAL, Gender.FEMALE, IdentityVisibility.PUBLIC);
+        new GuardianUpdateRequest(ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING);
 
     assertThatThrownBy(() -> guardianService.updateCurrentGuardian(guardianId, request))
         .isInstanceOf(UnexpectedFailureException.class)

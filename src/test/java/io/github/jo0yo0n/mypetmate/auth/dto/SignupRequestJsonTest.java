@@ -7,8 +7,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ public class SignupRequestJsonTest {
   void acceptsValidSignupJson() throws Exception {
     String json =
         """
-            {"email":"guardian@example.com", "password":"StrongPass123!", "profileType":"individual", "gender":"female", "identityVisibility":"public"}
+            {"email":"guardian@example.com", "password":"StrongPass123!", "profileType":"individual", "gender":"female", "discoveryStatus":"searching"}
             """;
 
     assertThat(objectMapper.readValue(json, SignupRequest.class))
@@ -35,7 +35,7 @@ public class SignupRequestJsonTest {
                 "StrongPass123!",
                 ProfileType.INDIVIDUAL,
                 Gender.FEMALE,
-                IdentityVisibility.PUBLIC));
+                DiscoveryStatus.SEARCHING));
   }
 
   @DisplayName("[보강] acceptsCoupleAndFamilySignupJsonWithoutGender")
@@ -43,11 +43,11 @@ public class SignupRequestJsonTest {
   void acceptsCoupleAndFamilySignupJsonWithoutGender() throws Exception {
     String coupleJson =
         """
-            {"email":"couple@example.com", "password":"StrongPass123!", "profileType":"couple", "identityVisibility":"private"}
+            {"email":"couple@example.com", "password":"StrongPass123!", "profileType":"couple", "discoveryStatus":"paused"}
             """;
     String familyJson =
         """
-            {"email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "identityVisibility":"public"}
+            {"email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "discoveryStatus":"searching"}
             """;
 
     assertThat(objectMapper.readValue(coupleJson, SignupRequest.class))
@@ -57,7 +57,7 @@ public class SignupRequestJsonTest {
                 "StrongPass123!",
                 ProfileType.COUPLE,
                 null,
-                IdentityVisibility.PRIVATE));
+                DiscoveryStatus.PAUSED));
     assertThat(objectMapper.readValue(familyJson, SignupRequest.class))
         .isEqualTo(
             new SignupRequest(
@@ -65,7 +65,7 @@ public class SignupRequestJsonTest {
                 "StrongPass123!",
                 ProfileType.FAMILY,
                 null,
-                IdentityVisibility.PUBLIC));
+                DiscoveryStatus.SEARCHING));
   }
 
   @DisplayName("[M1-DTO-08A] rejectsUnknownSignupJsonField")
@@ -74,7 +74,7 @@ public class SignupRequestJsonTest {
     String json =
         """
             {"email":"guardian@example.com","password":"StrongPass123!","profileType":"individual",\
-            "gender":"female","identityVisibility":"public","unexpected":true}
+            "gender":"female","discoveryStatus":"searching","unexpected":true}
             """;
 
     assertThatThrownBy(() -> objectMapper.readValue(json, SignupRequest.class))
@@ -84,29 +84,29 @@ public class SignupRequestJsonTest {
   @DisplayName("[M1-DTO-08D] rejectsUnknownProfileTypeInSignupJson")
   @Test
   void rejectsUnknownProfileTypeInSignupJson() {
-    assertSignupJsonRejected("unknown", "female", "public", "profileType");
+    assertSignupJsonRejected("unknown", "female", "searching", "profileType");
   }
 
   @DisplayName("[보강] rejectsUnknownGenderInSignupJson")
   @Test
   void rejectsUnknownGenderInSignupJson() {
-    assertSignupJsonRejected("individual", "unknown", "public", "gender");
+    assertSignupJsonRejected("individual", "unknown", "searching", "gender");
   }
 
-  @DisplayName("[보강] rejectsUnknownIdentityVisibilityInSignupJson")
+  @DisplayName("[보강] rejectsUnknownDiscoveryStatusInSignupJson")
   @Test
-  void rejectsUnknownIdentityVisibilityInSignupJson() {
-    assertSignupJsonRejected("individual", "female", "unknown", "identityVisibility");
+  void rejectsUnknownDiscoveryStatusInSignupJson() {
+    assertSignupJsonRejected("individual", "female", "unknown", "discoveryStatus");
   }
 
   private void assertSignupJsonRejected(
-      String profileType, String gender, String identityVisibility, String expectedField) {
+      String profileType, String gender, String discoveryStatus, String expectedField) {
     String json =
         """
             {"email":"guardian@example.com","password":"StrongPass123!","profileType":"%s",\
-            "gender":"%s","identityVisibility":"%s"}
+            "gender":"%s","discoveryStatus":"%s"}
             """
-            .formatted(profileType, gender, identityVisibility);
+            .formatted(profileType, gender, discoveryStatus);
 
     assertThatThrownBy(() -> objectMapper.readValue(json, SignupRequest.class))
         .isInstanceOfSatisfying(

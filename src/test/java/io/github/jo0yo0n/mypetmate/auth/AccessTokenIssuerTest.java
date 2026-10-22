@@ -6,10 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import io.github.jo0yo0n.mypetmate.config.JwtConfig;
 import io.github.jo0yo0n.mypetmate.config.JwtProperties;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
-import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
-import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.*;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import java.time.Clock;
 import java.time.Instant;
@@ -63,7 +60,7 @@ public class AccessTokenIssuerTest {
                   "hashed-password",
                   ProfileType.INDIVIDUAL,
                   Gender.MALE,
-                  IdentityVisibility.PUBLIC,
+                  DiscoveryStatus.SEARCHING,
                   GuardianStatus.ACTIVE,
                   NOW,
                   null);

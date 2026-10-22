@@ -250,7 +250,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
             "fixture-hash",
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            IdentityVisibility.PRIVATE,
+            DiscoveryStatus.PAUSED,
             status,
             NOW,
             NOW));

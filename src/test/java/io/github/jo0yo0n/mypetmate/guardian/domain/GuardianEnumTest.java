@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.DiscoveryStatusConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GenderConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianStatusConverter;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.IdentityVisibilityConverter;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.ProfileTypeConverter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,8 +20,7 @@ class GuardianEnumTest {
   void serializesEnumsAsContractValues() throws Exception {
     assertThat(objectMapper.writeValueAsString(ProfileType.INDIVIDUAL)).isEqualTo("\"individual\"");
     assertThat(objectMapper.writeValueAsString(Gender.FEMALE)).isEqualTo("\"female\"");
-    assertThat(objectMapper.writeValueAsString(IdentityVisibility.PRIVATE))
-        .isEqualTo("\"private\"");
+    assertThat(objectMapper.writeValueAsString(DiscoveryStatus.PAUSED)).isEqualTo("\"paused\"");
     assertThat(objectMapper.writeValueAsString(GuardianStatus.TEMPORARILY_RESTRICTED))
         .isEqualTo("\"temporarily_restricted\"");
   }
@@ -32,8 +31,8 @@ class GuardianEnumTest {
     assertThat(objectMapper.readValue("\"couple\"", ProfileType.class))
         .isEqualTo(ProfileType.COUPLE);
     assertThat(objectMapper.readValue("\"male\"", Gender.class)).isEqualTo(Gender.MALE);
-    assertThat(objectMapper.readValue("\"public\"", IdentityVisibility.class))
-        .isEqualTo(IdentityVisibility.PUBLIC);
+    assertThat(objectMapper.readValue("\"searching\"", DiscoveryStatus.class))
+        .isEqualTo(DiscoveryStatus.SEARCHING);
     assertThat(objectMapper.readValue("\"withdrawn\"", GuardianStatus.class))
         .isEqualTo(GuardianStatus.WITHDRAWN);
   }
@@ -52,7 +51,7 @@ class GuardianEnumTest {
   void convertersUseLowercaseDatabaseValues() {
     ProfileTypeConverter profileTypeConverter = new ProfileTypeConverter();
     GenderConverter genderConverter = new GenderConverter();
-    IdentityVisibilityConverter visibilityConverter = new IdentityVisibilityConverter();
+    DiscoveryStatusConverter discoveryStatusConverter = new DiscoveryStatusConverter();
     GuardianStatusConverter statusConverter = new GuardianStatusConverter();
 
     assertThat(profileTypeConverter.convertToDatabaseColumn(ProfileType.FAMILY))
@@ -60,8 +59,8 @@ class GuardianEnumTest {
     assertThat(profileTypeConverter.convertToEntityAttribute("individual"))
         .isEqualTo(ProfileType.INDIVIDUAL);
     assertThat(genderConverter.convertToDatabaseColumn(Gender.MALE)).isEqualTo("male");
-    assertThat(visibilityConverter.convertToEntityAttribute("private"))
-        .isEqualTo(IdentityVisibility.PRIVATE);
+    assertThat(discoveryStatusConverter.convertToEntityAttribute("paused"))
+        .isEqualTo(DiscoveryStatus.PAUSED);
     assertThat(statusConverter.convertToDatabaseColumn(GuardianStatus.ACTIVE)).isEqualTo("active");
   }
 

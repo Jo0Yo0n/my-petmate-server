@@ -67,7 +67,7 @@ class BlockedHttpMethodIntegrationTest extends PostgreSqlIntegrationTestSupport 
                 "email", "blocked-method@example.com",
                 "password", "StrongPass123!",
                 "profileType", "family",
-                "identityVisibility", "public"),
+                "discoveryStatus", "searching"),
             JsonNode.class);
     assertThat(response.getStatusCode().value()).isEqualTo(201);
     assertThat(response.getBody()).isNotNull();

@@ -19,10 +19,7 @@ import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.error.BusinessException;
-import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
-import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.*;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -115,7 +112,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
             rawPassword,
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
 
     // When
     AuthResponse authResponse = authService.signup(signupRequest);
@@ -126,7 +123,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(guardian.getEmail()).isEqualTo(CANONICAL_EMAIL);
     assertThat(guardian.getProfileType()).isEqualTo(ProfileType.INDIVIDUAL);
     assertThat(guardian.getGender()).isEqualTo(Gender.MALE);
-    assertThat(guardian.getIdentityVisibility()).isEqualTo(IdentityVisibility.PUBLIC);
+    assertThat(guardian.getDiscoveryStatus()).isEqualTo(DiscoveryStatus.SEARCHING);
     assertThat(guardian.getStatus()).isEqualTo(GuardianStatus.ACTIVE);
     assertThat(guardian.getPasswordHash()).isNotEqualTo(rawPassword);
     assertThat(guardian.getPasswordHash()).startsWith("$2");
@@ -152,7 +149,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
             rawPassword,
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
     authService.signup(signupRequest);
     long guardianCountBefore = guardianRepository.count();
     long refreshTokenCountBefore = refreshTokenRepository.count();
@@ -163,7 +160,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
             rawPassword + "a",
             ProfileType.INDIVIDUAL,
             Gender.FEMALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
 
     assertThatThrownBy(() -> authService.signup(duplicatedSignupRequest))
         .isInstanceOf(EmailAlreadyExistsException.class);
@@ -186,7 +183,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
                 rawPassword,
                 ProfileType.INDIVIDUAL,
                 Gender.MALE,
-                IdentityVisibility.PUBLIC));
+                DiscoveryStatus.SEARCHING));
     long guardianCountBefore = guardianRepository.count();
     long refreshTokenCountBefore = refreshTokenRepository.count();
 
@@ -260,7 +257,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
                 "StrongPassword1!",
                 ProfileType.FAMILY,
                 null,
-                IdentityVisibility.PUBLIC));
+                DiscoveryStatus.SEARCHING));
 
     Guardian guardian = guardianRepository.findByEmail("guardian@example.com").orElseThrow();
 
@@ -687,7 +684,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
         hashedPassword,
         ProfileType.FAMILY,
         null,
-        IdentityVisibility.PUBLIC,
+        DiscoveryStatus.SEARCHING,
         status,
         NOW,
         NOW);
@@ -703,7 +700,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(response.guardian().email()).isEqualTo(CANONICAL_EMAIL);
     assertThat(response.guardian().profileType()).isEqualTo(ProfileType.INDIVIDUAL);
     assertThat(response.guardian().gender()).isEqualTo(Gender.MALE);
-    assertThat(response.guardian().identityVisibility()).isEqualTo(IdentityVisibility.PUBLIC);
+    assertThat(response.guardian().discoveryStatus()).isEqualTo(DiscoveryStatus.SEARCHING);
     assertThat(response.guardian().status()).isEqualTo(GuardianStatus.ACTIVE);
 
     // Then: Refresh token persistence

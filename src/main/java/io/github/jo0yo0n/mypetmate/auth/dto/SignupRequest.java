@@ -1,7 +1,7 @@
 package io.github.jo0yo0n.mypetmate.auth.dto;
 
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.support.EmailNormalizer;
 import io.github.jo0yo0n.mypetmate.guardian.validation.GuardianProfileFields;
@@ -26,7 +26,7 @@ public record SignupRequest(
         String password,
     @NotNull(message = "필수입니다.") ProfileType profileType,
     Gender gender,
-    @NotNull(message = "필수입니다.") IdentityVisibility identityVisibility)
+    @NotNull(message = "필수입니다.") DiscoveryStatus discoveryStatus)
     implements GuardianProfileFields {
 
   public SignupRequest {

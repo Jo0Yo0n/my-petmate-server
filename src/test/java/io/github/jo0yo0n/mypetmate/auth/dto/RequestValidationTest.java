@@ -2,8 +2,8 @@ package io.github.jo0yo0n.mypetmate.auth.dto;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import jakarta.validation.ConstraintViolation;
@@ -58,31 +58,30 @@ class RequestValidationTest {
     assertThat(
             violations(
                 new GuardianUpdateRequest(
-                    ProfileType.INDIVIDUAL, Gender.FEMALE, IdentityVisibility.PUBLIC)))
+                    ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
+        .isEmpty();
+    assertThat(
+            violations(new GuardianUpdateRequest(ProfileType.COUPLE, null, DiscoveryStatus.PAUSED)))
         .isEmpty();
     assertThat(
             violations(
-                new GuardianUpdateRequest(ProfileType.COUPLE, null, IdentityVisibility.PRIVATE)))
-        .isEmpty();
-    assertThat(
-            violations(
-                new GuardianUpdateRequest(ProfileType.FAMILY, null, IdentityVisibility.PUBLIC)))
+                new GuardianUpdateRequest(ProfileType.FAMILY, null, DiscoveryStatus.SEARCHING)))
         .isEmpty();
 
     assertThat(
             violations(
-                new GuardianUpdateRequest(ProfileType.INDIVIDUAL, null, IdentityVisibility.PUBLIC)))
+                new GuardianUpdateRequest(ProfileType.INDIVIDUAL, null, DiscoveryStatus.SEARCHING)))
         .extracting(violation -> violation.getPropertyPath().toString())
         .contains("gender");
     assertThat(
             violations(
                 new GuardianUpdateRequest(
-                    ProfileType.COUPLE, Gender.FEMALE, IdentityVisibility.PUBLIC)))
+                    ProfileType.COUPLE, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
         .isEmpty();
     assertThat(
             violations(
                 new GuardianUpdateRequest(
-                    ProfileType.FAMILY, Gender.FEMALE, IdentityVisibility.PUBLIC)))
+                    ProfileType.FAMILY, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
         .isEmpty();
   }
 
@@ -136,7 +135,7 @@ class RequestValidationTest {
 
     assertThat(violations(request))
         .extracting(violation -> violation.getPropertyPath().toString())
-        .contains("email", "password", "profileType", "identityVisibility");
+        .contains("email", "password", "profileType", "discoveryStatus");
   }
 
   @DisplayName("[보강] rejectsMissingSignupEmail")
@@ -154,7 +153,7 @@ class RequestValidationTest {
             "StrongPass123!",
             ProfileType.INDIVIDUAL,
             Gender.FEMALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
     LoginRequest login = new LoginRequest("  GUARDIAN@EXAMPLE.COM  ", "x");
 
     assertThat(signup.email()).isEqualTo("guardian@example.com");
@@ -324,7 +323,7 @@ class RequestValidationTest {
 
   private SignupRequest signup(ProfileType profileType, Gender gender) {
     return new SignupRequest(
-        "guardian@example.com", "StrongPass123!", profileType, gender, IdentityVisibility.PUBLIC);
+        "guardian@example.com", "StrongPass123!", profileType, gender, DiscoveryStatus.SEARCHING);
   }
 
   private SignupRequest signup(String password) {
@@ -333,12 +332,12 @@ class RequestValidationTest {
         password,
         ProfileType.INDIVIDUAL,
         Gender.FEMALE,
-        IdentityVisibility.PUBLIC);
+        DiscoveryStatus.SEARCHING);
   }
 
   private SignupRequest signupWithEmail(String email) {
     return new SignupRequest(
-        email, "StrongPass123!", ProfileType.INDIVIDUAL, Gender.FEMALE, IdentityVisibility.PUBLIC);
+        email, "StrongPass123!", ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING);
   }
 
   private String longestValidEmail() {

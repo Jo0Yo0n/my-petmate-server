@@ -53,7 +53,7 @@ class GuardianService {
                         "Authenticated guardian was not found during service processing"));
     requireActive(guardian);
     guardian.updateProfile(
-        request.profileType(), request.gender(), request.identityVisibility(), clock.instant());
+        request.profileType(), request.gender(), request.discoveryStatus(), clock.instant());
     return GuardianResponse.from(guardian);
   }
 

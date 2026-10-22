@@ -57,6 +57,7 @@
 | `M1-DB-03`  | email DB 유일성         | [검증 항목](./m1-test-cases-detail.md#m1-db-03)  |
 | `M1-DB-04`  | refresh token DB 제약   | [검증 항목](./m1-test-cases-detail.md#m1-db-04)  |
 | `M1-DB-05`  | Guardian 삭제의 FK 정책 | [검증 항목](./m1-test-cases-detail.md#m1-db-05)  |
+| `M1-DB-06`  | 기존 상태값 migration 변환 | [검증 항목](./m1-test-cases-detail.md#m1-db-06) |
 | `M1-JPA-01` | Guardian 저장·복원      | [검증 항목](./m1-test-cases-detail.md#m1-jpa-01) |
 | `M1-JPA-02` | RefreshToken 저장·복원  | [검증 항목](./m1-test-cases-detail.md#m1-jpa-02) |
 | `M1-JPA-03` | token row lock          | [검증 항목](./m1-test-cases-detail.md#m1-jpa-03) |

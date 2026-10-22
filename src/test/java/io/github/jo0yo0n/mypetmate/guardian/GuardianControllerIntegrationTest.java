@@ -63,37 +63,44 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
         mvc.perform(get(PATH).header(HttpHeaders.AUTHORIZATION, bearer(auth)))
             .andExpect(status().isOk())
             .andReturn();
-    assertGuardian(result, id, "guardian@example.com", type, gender, "public", accountStatus);
+    assertGuardian(result, id, "guardian@example.com", type, gender, "searching", accountStatus);
   }
 
   @ParameterizedTest
-  @CsvSource({"individual,female,private", "couple,,private", "family,,public"})
+  @CsvSource({"individual,female,paused", "couple,,paused", "family,,searching"})
   @DisplayName("[M1-API-ME-03] updatesCurrentGuardianWithValidProfile")
-  void updatesCurrentGuardianWithValidProfile(String type, String gender, String visibility)
+  void updatesCurrentGuardianWithValidProfile(String type, String gender, String discoveryStatus)
       throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "individual", "female");
     MvcResult result =
-        update(auth, profile(type, gender, visibility)).andExpect(status().isOk()).andReturn();
-    assertGuardian(result, id(auth), "guardian@example.com", type, "female", visibility, "active");
+        update(auth, profile(type, gender, discoveryStatus)).andExpect(status().isOk()).andReturn();
+    assertGuardian(
+        result, id(auth), "guardian@example.com", type, "female", discoveryStatus, "active");
     Map<String, Object> saved = snapshot(id(auth));
     assertThat(saved.get("profile_type")).isEqualTo(type);
     assertThat(saved.get("gender")).isEqualTo("female");
-    assertThat(saved.get("identity_visibility")).isEqualTo(visibility);
+    assertThat(saved.get("discovery_status")).isEqualTo(discoveryStatus);
     assertThat(saved.get("email")).isEqualTo("guardian@example.com");
     assertThat(saved.get("status")).isEqualTo("active");
 
     if (!type.equals("individual")) {
       MvcResult restored =
-          update(auth, profile("individual", "female", "public"))
+          update(auth, profile("individual", "female", "searching"))
               .andExpect(status().isOk())
               .andReturn();
       assertGuardian(
-          restored, id(auth), "guardian@example.com", "individual", "female", "public", "active");
+          restored,
+          id(auth),
+          "guardian@example.com",
+          "individual",
+          "female",
+          "searching",
+          "active");
       Map<String, Object> restoredState = snapshot(id(auth));
       assertThat(restoredState.get("profile_type")).isEqualTo("individual");
       assertThat(restoredState.get("gender")).isEqualTo("female");
-      assertThat(restoredState.get("identity_visibility")).isEqualTo("public");
+      assertThat(restoredState.get("discovery_status")).isEqualTo("searching");
     }
   }
 
@@ -105,8 +112,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     Map<String, Object> before = snapshot(id(auth));
     for (ObjectNode request :
         List.of(
-            profile("individual", null, "public"),
-            profile(null, null, "public"),
+            profile("individual", null, "searching"),
+            profile(null, null, "searching"),
             profile("couple", null, null))) {
       JsonNode error =
           assertProblem(
@@ -128,11 +135,11 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     JsonNode auth = signup("guardian@example.com", "individual", "female");
     Map<String, Object> before = snapshot(id(auth));
     List<ObjectNode> requests = new ArrayList<>();
-    requests.add(profile("unknown", null, "public"));
-    requests.add(profile("individual", "unknown", "public"));
+    requests.add(profile("unknown", null, "searching"));
+    requests.add(profile("individual", "unknown", "searching"));
     requests.add(profile("couple", null, "unknown"));
     for (String field : List.of("id", "email", "status")) {
-      requests.add(profile("couple", null, "private").put(field, "unexpected"));
+      requests.add(profile("couple", null, "paused").put(field, "unexpected"));
     }
     for (ObjectNode request : requests) {
       JsonNode error =
@@ -151,8 +158,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     JsonNode other = signup("other@example.com", "individual", "male");
     Map<String, Object> before = snapshot(id(other));
     MvcResult result =
-        update(first, profile("couple", null, "private")).andExpect(status().isOk()).andReturn();
-    assertGuardian(result, id(first), "first@example.com", "couple", "female", "private", "active");
+        update(first, profile("couple", null, "paused")).andExpect(status().isOk()).andReturn();
+    assertGuardian(result, id(first), "first@example.com", "couple", "female", "paused", "active");
     assertThat(snapshot(id(first)).get("profile_type")).isEqualTo("couple");
     assertThat(snapshot(id(other))).isEqualTo(before);
   }
@@ -190,14 +197,14 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
             "guardian@example.com",
             "individual",
             savedGender,
-            "private",
+            "paused",
             "active");
         assertProblem(conflict, 409, "STATE_CONFLICT", "state-conflict", "상태 충돌");
         assertThat(assertRequestId(success)).isNotEqualTo(assertRequestId(conflict));
         Map<String, Object> saved = snapshot(id(auth));
         assertThat(saved.get("gender")).isEqualTo(savedGender);
         assertThat(saved.get("profile_type")).isEqualTo("individual");
-        assertThat(saved.get("identity_visibility")).isEqualTo("private");
+        assertThat(saved.get("discovery_status")).isEqualTo("paused");
       } finally {
         start.countDown();
       }
@@ -211,7 +218,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     if (!start.await(5, TimeUnit.SECONDS)) {
       throw new AssertionError("Timed out waiting to start concurrent profile updates");
     }
-    return update(auth, profile("individual", gender, "private")).andReturn();
+    return update(auth, profile("individual", gender, "paused")).andReturn();
   }
 
   @ParameterizedTest
@@ -223,15 +230,15 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     JsonNode auth = signup("guardian@example.com", initialType, null);
     assertThat(snapshot(id(auth)).get("gender")).isNull();
     MvcResult result =
-        update(auth, profile("individual", gender, "private"))
+        update(auth, profile("individual", gender, "paused"))
             .andExpect(status().isOk())
             .andReturn();
     assertGuardian(
-        result, id(auth), "guardian@example.com", "individual", gender, "private", "active");
+        result, id(auth), "guardian@example.com", "individual", gender, "paused", "active");
     Map<String, Object> saved = snapshot(id(auth));
     assertThat(saved.get("gender")).isEqualTo(gender);
     assertThat(saved.get("profile_type")).isEqualTo("individual");
-    assertThat(saved.get("identity_visibility")).isEqualTo("private");
+    assertThat(saved.get("discovery_status")).isEqualTo("paused");
   }
 
   @ParameterizedTest
@@ -244,7 +251,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     jdbc.update("UPDATE guardian SET profile_type = ? WHERE id = ?", initialType, id(auth));
     Map<String, Object> before = snapshot(id(auth));
     MvcResult result =
-        update(auth, profile("individual", requestedGender, "private"))
+        update(auth, profile("individual", requestedGender, "paused"))
             .andExpect(status().isConflict())
             .andReturn();
     assertProblem(result, 409, "STATE_CONFLICT", "state-conflict", "상태 충돌");
@@ -265,15 +272,15 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     JsonNode auth = signup("guardian@example.com", initialType, storedGender);
     Map<String, Object> before = snapshot(id(auth));
     MvcResult result =
-        update(auth, profile(requestedType, requestedGender, "private"))
+        update(auth, profile(requestedType, requestedGender, "paused"))
             .andExpect(status().isOk())
             .andReturn();
     assertGuardian(
-        result, id(auth), "guardian@example.com", requestedType, storedGender, "private", "active");
+        result, id(auth), "guardian@example.com", requestedType, storedGender, "paused", "active");
     Map<String, Object> saved = snapshot(id(auth));
     assertThat(saved.get("gender")).isEqualTo(storedGender);
     assertThat(saved.get("profile_type")).isEqualTo(requestedType);
-    assertThat(saved.get("identity_visibility")).isEqualTo("private");
+    assertThat(saved.get("discovery_status")).isEqualTo("paused");
     assertThat(saved.get("email")).isEqualTo(before.get("email"));
     assertThat(saved.get("status")).isEqualTo(before.get("status"));
   }
@@ -312,7 +319,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
             "password_hash",
             "profile_type",
             "gender",
-            "identity_visibility",
+            "discovery_status",
             "created_at")) {
       assertThat(after.get(field)).isEqualTo(before.get(field));
     }
@@ -400,7 +407,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
 
   private JsonNode signup(String email, String type, String gender) throws Exception {
     ObjectNode request =
-        profile(type, gender, "public").put("email", email).put("password", "StrongPass123!");
+        profile(type, gender, "searching").put("email", email).put("password", "StrongPass123!");
     MvcResult result =
         mvc.perform(
                 post("/api/auth/signup")
@@ -411,9 +418,9 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     return mapper.readTree(result.getResponse().getContentAsString());
   }
 
-  private ObjectNode profile(String type, String gender, String visibility) {
+  private ObjectNode profile(String type, String gender, String discoveryStatus) {
     ObjectNode request =
-        mapper.createObjectNode().put("profileType", type).put("identityVisibility", visibility);
+        mapper.createObjectNode().put("profileType", type).put("discoveryStatus", discoveryStatus);
     if (gender != null) request.put("gender", gender);
     return request;
   }
@@ -444,21 +451,21 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
       String email,
       String type,
       String gender,
-      String visibility,
+      String discoveryStatus,
       String accountStatus)
       throws Exception {
     content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON).match(result);
     assertRequestId(result);
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     List<String> expected =
-        List.of("id", "email", "profileType", "gender", "identityVisibility", "status");
+        List.of("id", "email", "profileType", "gender", "discoveryStatus", "status");
     List<String> actual = new ArrayList<>();
     body.fieldNames().forEachRemaining(actual::add);
     assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
     assertThat(body.path("id").asText()).isEqualTo(id.toString());
     assertThat(body.path("email").asText()).isEqualTo(email);
     assertThat(body.path("profileType").asText()).isEqualTo(type);
-    assertThat(body.path("identityVisibility").asText()).isEqualTo(visibility);
+    assertThat(body.path("discoveryStatus").asText()).isEqualTo(discoveryStatus);
     assertThat(body.path("status").asText()).isEqualTo(accountStatus);
     if (gender == null) {
       assertThat(body.path("gender").isNull()).isTrue();

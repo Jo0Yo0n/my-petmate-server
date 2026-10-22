@@ -72,7 +72,7 @@ class MultipartRequestIntegrationTest extends PostgreSqlIntegrationTestSupport {
                 "email", "multipart@example.com",
                 "password", "StrongPass123!",
                 "profileType", "family",
-                "identityVisibility", "public"),
+                "discoveryStatus", "searching"),
             JsonNode.class);
     assertThat(response.getStatusCode().value()).isEqualTo(201);
     assertThat(response.getBody()).isNotNull();

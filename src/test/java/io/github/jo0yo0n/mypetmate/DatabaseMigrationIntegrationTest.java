@@ -7,6 +7,9 @@ import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
+import javax.sql.DataSource;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  @Autowired private DataSource dataSource;
 
   @DisplayName("[M1-DB-01] appliesAllMigrationsToAnEmptyPostgresDatabase")
   @Test
@@ -48,6 +53,63 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThat(emailIndexExists).isTrue();
   }
 
+  @DisplayName("[M1-DB-06] mapsLegacyIdentityVisibilityValuesToDiscoveryStatus")
+  @Test
+  void mapsLegacyIdentityVisibilityValuesToDiscoveryStatus() {
+    String schema = "migration_" + UUID.randomUUID().toString().replace("-", "");
+    try {
+      Flyway.configure()
+          .dataSource(dataSource)
+          .schemas(schema)
+          .defaultSchema(schema)
+          .target(MigrationVersion.fromVersion("3"))
+          .load()
+          .migrate();
+
+      jdbcTemplate.update(
+          """
+          INSERT INTO %s.guardian (
+              id, email, password_hash, profile_type, gender, identity_visibility)
+          VALUES (?, ?, ?, ?, ?, ?)
+          """
+              .formatted(schema),
+          UUID.randomUUID(),
+          "public@example.com",
+          "password-hash",
+          "individual",
+          "female",
+          "public");
+      jdbcTemplate.update(
+          """
+          INSERT INTO %s.guardian (
+              id, email, password_hash, profile_type, gender, identity_visibility)
+          VALUES (?, ?, ?, ?, ?, ?)
+          """
+              .formatted(schema),
+          UUID.randomUUID(),
+          "private@example.com",
+          "password-hash",
+          "individual",
+          "male",
+          "private");
+
+      Flyway.configure()
+          .dataSource(dataSource)
+          .schemas(schema)
+          .defaultSchema(schema)
+          .load()
+          .migrate();
+
+      assertThat(
+              jdbcTemplate.queryForList(
+                  "SELECT discovery_status FROM %s.guardian ORDER BY email".formatted(schema),
+                  String.class))
+          .containsExactly("paused", "searching");
+    } finally {
+      jdbcTemplate.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+    }
+  }
+
   @DisplayName("[M1-DB-02A] guardianAcceptsValidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianAcceptsValidEnumAndProfileTypeGenderCombinations() {
@@ -68,12 +130,16 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     assertThatThrownBy(
             () ->
                 insertGuardian(
-                    "unknown-visibility@example.com", "individual", "female", "hidden", "active"))
+                    "unknown-discovery-status@example.com",
+                    "individual",
+                    "female",
+                    "hidden",
+                    "active"))
         .isInstanceOf(DataIntegrityViolationException.class);
     assertThatThrownBy(
             () ->
                 insertGuardian(
-                    "unknown-status@example.com", "individual", "female", "public", "unknown"))
+                    "unknown-status@example.com", "individual", "female", "searching", "unknown"))
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
@@ -146,16 +212,16 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
   }
 
   private UUID insertGuardian(String email, String profileType, String gender) {
-    return insertGuardian(email, profileType, gender, "public", "active");
+    return insertGuardian(email, profileType, gender, "searching", "active");
   }
 
   private UUID insertGuardian(
-      String email, String profileType, String gender, String identityVisibility, String status) {
+      String email, String profileType, String gender, String discoveryStatus, String status) {
     UUID guardianId = UUID.randomUUID();
     jdbcTemplate.update(
         """
         INSERT INTO guardian (
-            id, email, password_hash, profile_type, gender, identity_visibility, status)
+            id, email, password_hash, profile_type, gender, discovery_status, status)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         guardianId,
@@ -163,7 +229,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
         "password-hash",
         profileType,
         gender,
-        identityVisibility,
+        discoveryStatus,
         status);
     return guardianId;
   }
