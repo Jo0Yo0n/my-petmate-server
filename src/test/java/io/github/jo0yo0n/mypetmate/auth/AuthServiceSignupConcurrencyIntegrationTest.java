@@ -8,8 +8,8 @@ import static org.mockito.Mockito.mockingDetails;
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -53,7 +53,7 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
             "StringPassword1!",
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
 
     CountDownLatch bothReadyToSave = new CountDownLatch(2);
     CountDownLatch allowSave = new CountDownLatch(1);

@@ -45,18 +45,18 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   @ParameterizedTest
   @CsvSource({
-    "individual,female,public",
-    "couple,,private",
-    "family,,public",
-    "couple,female,public",
-    "couple,male,private",
-    "family,female,private",
-    "family,male,public",
+    "individual,female,searching",
+    "couple,,paused",
+    "family,,searching",
+    "couple,female,searching",
+    "couple,male,paused",
+    "family,female,paused",
+    "family,male,searching",
   })
   @DisplayName("[M1-API-SU-01] returnsCreatedAuthResponseForSignup")
-  void returnsCreatedAuthResponseForSignup(String profileType, String gender, String visibility)
-      throws Exception {
-    ObjectNode request = request(profileType, gender, visibility);
+  void returnsCreatedAuthResponseForSignup(
+      String profileType, String gender, String discoveryStatus) throws Exception {
+    ObjectNode request = request(profileType, gender, discoveryStatus);
     MvcResult result = signup(request).andExpect(status().isCreated()).andReturn();
     assertThat(result.getResponse().getHeader(REQUEST_ID))
         .matches("^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$");
@@ -80,11 +80,11 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
     JsonNode guardian = body.path("guardian");
     List<String> expectedFields =
-        List.of("id", "email", "profileType", "gender", "identityVisibility", "status");
+        List.of("id", "email", "profileType", "gender", "discoveryStatus", "status");
     assertThat(fields(guardian)).containsExactlyInAnyOrderElementsOf(expectedFields);
     assertThat(guardian.path("email").asText()).isEqualTo(EMAIL);
     assertThat(guardian.path("profileType").asText()).isEqualTo(profileType);
-    assertThat(guardian.path("identityVisibility").asText()).isEqualTo(visibility);
+    assertThat(guardian.path("discoveryStatus").asText()).isEqualTo(discoveryStatus);
     assertThat(guardian.path("status").asText()).isEqualTo("active");
     String expectedGender = "individual".equals(profileType) ? gender : null;
     if (expectedGender == null) {
@@ -106,7 +106,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Test
   @DisplayName("[M1-API-SU-02A] rejectsInvalidSignupWithoutCreatingGuardian")
   void rejectsInvalidSignupWithoutCreatingGuardian() throws Exception {
-    ObjectNode request = request("individual", null, "public");
+    ObjectNode request = request("individual", null, "searching");
     long guardians = count("guardian");
     long refreshTokens = count("refresh_token");
     JsonNode error =
@@ -126,7 +126,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Test
   @DisplayName("[M1-API-SU-02B] rejectsUnknownSignupFieldWithoutCreatingGuardian")
   void rejectsUnknownSignupFieldWithoutCreatingGuardian() throws Exception {
-    ObjectNode request = request("individual", "female", "public");
+    ObjectNode request = request("individual", "female", "searching");
     request.put("unknownField", "unexpected");
     long guardians = count("guardian");
     long refreshTokens = count("refresh_token");
@@ -140,7 +140,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Test
   @DisplayName("[M1-API-SU-03] returnsEmailConflictForDuplicateSignup")
   void returnsEmailConflictForDuplicateSignup() throws Exception {
-    ObjectNode firstRequest = request("individual", "female", "public");
+    ObjectNode firstRequest = request("individual", "female", "searching");
     firstRequest.put("email", EMAIL);
     signup(firstRequest).andExpect(status().isCreated());
     long guardians = count("guardian");
@@ -148,7 +148,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     JsonNode error =
         assertProblemResponse(
             SIGNUP_PATH,
-            request("individual", "female", "public"),
+            request("individual", "female", "searching"),
             409,
             "EMAIL_ALREADY_EXISTS",
             "email-already-exists",
@@ -162,7 +162,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   void returnsAuthResponseForValidLogin() throws Exception {
     JsonNode signedUp =
         mapper.readTree(
-            signup(request("individual", "female", "public"))
+            signup(request("individual", "female", "searching"))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -198,7 +198,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @Test
   @DisplayName("[M1-API-LI-02] returnsSameErrorForInvalidLoginCredentials")
   void returnsSameErrorForInvalidLoginCredentials() throws Exception {
-    signup(request("individual", "female", "public")).andExpect(status().isCreated());
+    signup(request("individual", "female", "searching")).andExpect(status().isCreated());
 
     for (String email : List.of("missing@example.com", EMAIL)) {
       // 유효 길이지만 signup 복잡도에는 맞지 않는 비밀번호도 인증 단계까지 전달
@@ -222,7 +222,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   @DisplayName("[M1-API-LI-03] returnsAccountStatusErrorForValidLogin")
   void returnsAccountStatusErrorForValidLogin(
       String accountStatus, String code, String type, String title) throws Exception {
-    signup(request("individual", "female", "public")).andExpect(status().isCreated());
+    signup(request("individual", "female", "searching")).andExpect(status().isCreated());
     jdbc.update("UPDATE guardian SET status = ? WHERE email = ?", accountStatus, EMAIL);
     long refreshTokens = count("refresh_token");
 
@@ -240,7 +240,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   void rotatesRefreshTokenAndRejectsReuse() throws Exception {
     JsonNode signedUp =
         mapper.readTree(
-            signup(request("individual", "female", "public"))
+            signup(request("individual", "female", "searching"))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -320,7 +320,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
       String accountStatus, String code, String type, String title) throws Exception {
     JsonNode signedUp =
         mapper.readTree(
-            signup(request("individual", "female", "public"))
+            signup(request("individual", "female", "searching"))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -349,7 +349,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   void returnsNoContentForRepeatedLogout() throws Exception {
     JsonNode signedUp =
         mapper.readTree(
-            signup(request("individual", "female", "public"))
+            signup(request("individual", "female", "searching"))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -387,13 +387,13 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
         .isEqualTo(tokenProperties.refreshTokenTtl().toSeconds());
   }
 
-  private ObjectNode request(String type, String gender, String visibility) {
+  private ObjectNode request(String type, String gender, String discoveryStatus) {
     ObjectNode request = mapper.createObjectNode();
     request.put("email", "  Guardian@Example.COM  ");
     request.put("password", PASSWORD);
     request.put("profileType", type);
     if (gender != null) request.put("gender", gender);
-    request.put("identityVisibility", visibility);
+    request.put("discoveryStatus", discoveryStatus);
     return request;
   }
 

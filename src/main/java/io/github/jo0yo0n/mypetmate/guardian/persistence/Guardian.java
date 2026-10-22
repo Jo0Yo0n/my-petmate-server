@@ -1,10 +1,7 @@
 package io.github.jo0yo0n.mypetmate.guardian.persistence;
 
 import io.github.jo0yo0n.mypetmate.error.StateConflictException;
-import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
-import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.*;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -30,8 +27,8 @@ public class Guardian {
   @Column(length = 8)
   private Gender gender;
 
-  @Column(name = "identity_visibility", nullable = false, length = 8)
-  private IdentityVisibility identityVisibility;
+  @Column(name = "discovery_status", nullable = false, length = 16)
+  private DiscoveryStatus discoveryStatus;
 
   @Column(nullable = false, length = 24)
   private GuardianStatus status;
@@ -50,7 +47,7 @@ public class Guardian {
       String passwordHash,
       ProfileType profileType,
       Gender gender,
-      IdentityVisibility identityVisibility,
+      DiscoveryStatus discoveryStatus,
       GuardianStatus status,
       Instant createdAt,
       Instant updatedAt) {
@@ -59,7 +56,7 @@ public class Guardian {
     this.passwordHash = passwordHash;
     this.profileType = profileType;
     this.gender = gender;
-    this.identityVisibility = identityVisibility;
+    this.discoveryStatus = discoveryStatus;
     this.status = status;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
@@ -68,7 +65,7 @@ public class Guardian {
   public void updateProfile(
       ProfileType profileType,
       Gender requestedGender,
-      IdentityVisibility identityVisibility,
+      DiscoveryStatus discoveryStatus,
       Instant now) {
     if (profileType == ProfileType.INDIVIDUAL) {
       if (gender != null && gender != requestedGender) {
@@ -77,7 +74,7 @@ public class Guardian {
       gender = requestedGender;
     }
     this.profileType = profileType;
-    this.identityVisibility = identityVisibility;
+    this.discoveryStatus = discoveryStatus;
     updatedAt = now;
   }
 
@@ -106,8 +103,8 @@ public class Guardian {
     return gender;
   }
 
-  public IdentityVisibility getIdentityVisibility() {
-    return identityVisibility;
+  public DiscoveryStatus getDiscoveryStatus() {
+    return discoveryStatus;
   }
 
   public GuardianStatus getStatus() {

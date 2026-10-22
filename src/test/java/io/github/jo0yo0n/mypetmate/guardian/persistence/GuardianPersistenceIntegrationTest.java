@@ -3,10 +3,7 @@ package io.github.jo0yo0n.mypetmate.guardian.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
-import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.*;
 import io.github.jo0yo0n.mypetmate.guardian.support.EmailNormalizer;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import jakarta.persistence.EntityManager;
@@ -51,7 +48,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
             "password-hash",
             ProfileType.INDIVIDUAL,
             Gender.FEMALE,
-            IdentityVisibility.PUBLIC,
+            DiscoveryStatus.SEARCHING,
             GuardianStatus.ACTIVE,
             now,
             now));
@@ -64,7 +61,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     assertThat(guardianRepository.existsByEmail(email)).isTrue();
     assertThat(guardian.getProfileType()).isEqualTo(ProfileType.INDIVIDUAL);
     assertThat(guardian.getGender()).isEqualTo(Gender.FEMALE);
-    assertThat(guardian.getIdentityVisibility()).isEqualTo(IdentityVisibility.PUBLIC);
+    assertThat(guardian.getDiscoveryStatus()).isEqualTo(DiscoveryStatus.SEARCHING);
     assertThat(guardian.getStatus()).isEqualTo(GuardianStatus.ACTIVE);
   }
 
@@ -204,7 +201,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
         "password-hash",
         ProfileType.INDIVIDUAL,
         Gender.FEMALE,
-        IdentityVisibility.PUBLIC,
+        DiscoveryStatus.SEARCHING,
         GuardianStatus.ACTIVE,
         now,
         now);

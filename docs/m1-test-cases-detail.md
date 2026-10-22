@@ -340,6 +340,14 @@ migration 검증은 DB schema에서, JPA 검증은 entity·repository에서 완�
 | 메서드 | `deletingGuardianDeletesRefreshTokens()`                            |
 | 검증   | Guardian을 삭제하면 FK 정책에 따라 연결된 refresh token도 삭제된다. |
 
+### M1-DB-06
+
+| 항목   | 내용                                                                                           |
+|--------|------------------------------------------------------------------------------------------------|
+| 클래스 | `DatabaseMigrationIntegrationTest`                                                            |
+| 메서드 | `mapsLegacyIdentityVisibilityValuesToDiscoveryStatus()`                                        |
+| 검증   | V3까지 적용하고 기존 `public`·`private` 행을 넣은 뒤 V4를 실행해 `searching`·`paused`로 변환한다. |
+
 ### M1-JPA-01
 
 | 항목   | 내용                                                                     |
@@ -1121,7 +1129,7 @@ DB 구성요소로 검증한다.
 |--------|----------------------------------------------------------------------------------------------|
 | 클래스 | `GuardianControllerIntegrationTest`                                                          |
 | 메서드 | `updatesCurrentGuardianWithValidProfile()`                                                   |
-| 검증 1 | 기존 성별과 같은 individual 요청 또는 커플·가족으로의 유효한 유형·공개 설정 변경이 저장된다. |
+| 검증 1 | 기존 성별과 같은 individual 요청 또는 커플·가족으로의 유효한 유형·찾기 상태 변경이 저장된다. |
 | 검증 2 | 200 응답과 DB 상태가 같고 공통 성공 응답 검증을 만족한다.                                    |
 | 검증 3 | 개인 → 커플/가족 → 개인 왕복 시 각 응답과 DB에 최초 성별을 보존한다.                         |
 
@@ -1186,7 +1194,7 @@ DB 구성요소로 검증한다.
 | 클래스 | `GuardianControllerIntegrationTest`                                                  |
 | 메서드 | `ignoresGenderForNonIndividualUpdate()`                                              |
 | 검증 1 | 기존 성별 있음/없음 × 커플/가족을 매개변수화하고 다른 유효 gender를 보내도 무시한다. |
-| 검증 2 | 기존 성별(미설정은 null)을 보존하고 유형·공개 설정만 수정한다. 응답과 DB를 비교한다. |
+| 검증 2 | 기존 성별(미설정은 null)을 보존하고 유형·찾기 상태만 수정한다. 응답과 DB를 비교한다. |
 
 ### M1-API-ME-10
 
@@ -1206,7 +1214,7 @@ DB 구성요소로 검증한다.
 | 검증 1 | active Guardian의 탈퇴는 body 없는 204와 공통 성공 응답 검증을 만족한다.          |
 | 검증 2 | 성공 로그에 탈퇴 이벤트, Guardian ID, 응답의 requestId가 기록된다.                |
 | 검증 3 | 본인의 복수 refresh token이 모두 폐기되고 DB 상태는 withdrawn이다.                |
-| 검증 4 | 본인의 유형·성별·공개 설정 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
+| 검증 4 | 본인의 유형·성별·찾기 상태 및 다른 Guardian의 전체 상태·refresh token은 보존된다. |
 
 ### M1-API-WD-03
 

@@ -29,6 +29,18 @@ M1 전체의 통과 여부는 완료
 문서가 충돌하면 구현에서 임의로 해석하지 않는다. [`documentation-guide.md`의 충돌 처리](./documentation-guide.md#충돌-처리)에 따라 기준
 문서를 먼저 일치시킨다.
 
+## discoveryStatus 계약 검증 게이트
+
+현재 보호자 요청·응답 계약은 `DiscoveryStatus`(`searching`, `paused`)를 사용하며, 기존 `IdentityVisibility`(`identityVisibility`)는 대체되었다.
+아래 항목은 기존 단계의 완료
+기록과 별도로 검증하며, 모두 완료되기 전에는 M1 완료 게이트를 통과할 수 없다.
+
+- [x] signup과 `GET/PATCH /api/guardians/me`에서 `discoveryStatus`의 필수 enum을 검증하고, 누락·미지원 값을 거부한다.
+- [x] 프로필 유형 변경 뒤에도 최초 개인 유형에서 설정한 성별을 보존하며 변경을 거부하는 동작을 재검증한다.
+- [x] 기존 DB의 `identity_visibility` 컬럼을 `discovery_status`로 대체하는 migration 정책을 확정한다. 기존 `public`은 `searching`, `private`는
+  `paused`로 변환한다.
+- [x] 기존 `public`·`private` 행을 포함한 DB에서 migration을 실행해 `searching`·`paused`로 변환되는지 통합 테스트로 검증한다.
+
 ## 설계 검토 결과
 
 | 주제              | 승인한 결정                                                                                                                                                                                                                                                                              |
@@ -143,6 +155,8 @@ M1 전체의 통과 여부는 완료
 - [x] `M1-W-DB-07` 기존 migration을 수정하지 않고 후속 migration으로 최신 Guardian 스키마의 성별 제약을 반영한다. 유효 enum과 개인
   유형의 필수 값 제약은 유지한다.
     - 연관 테스트: M1-DB-02A ~ M1-DB-02B
+- [x] `M1-W-DB-08` 기존 migration을 수정하지 않고 후속 migration으로 `identity_visibility`를 `discovery_status`로 대체하며 기존 값을 변환한다.
+    - 연관 테스트: M1-DB-06
 
 #### 테스트 범위
 
@@ -152,6 +166,7 @@ M1 전체의 통과 여부는 완료
 - [x] [M1-DB-03](./m1-test-cases-detail.md#m1-db-03)
 - [x] [M1-DB-04](./m1-test-cases-detail.md#m1-db-04)
 - [x] [M1-DB-05](./m1-test-cases-detail.md#m1-db-05)
+- [x] [M1-DB-06](./m1-test-cases-detail.md#m1-db-06)
 
 #### 완료 조건
 
@@ -460,7 +475,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 - [x] `M1-W-API-ME-01` `GET /api/guardians/me`가 Security에서 복원한 현재 Guardian을 계약의 discriminator 형태로
   반환하고 모든 유형에 gender 필드를 포함한다. 성별·계정 상태·email 규칙은 OpenAPI를 따른다.
     - 연관 테스트: M1-API-ME-01
-- [x] `M1-W-API-ME-02` `PATCH /api/guardians/me`가 profile type, gender와 identity visibility만 수정하게 하고
+- [x] `M1-W-API-ME-02` `PATCH /api/guardians/me`가 profile type, gender와 discovery status만 수정하게 하고
   [openapi.yaml](./openapi.yaml) 의 GuardianUpdateRequest 규칙을 적용한다.
     - 연관 테스트: M1-API-ME-03, M1-API-ME-04A ~ M1-API-ME-04B, M1-API-ME-06 ~ M1-API-ME-09
 - [x] `M1-W-API-ME-03` 수정 대상을 현재 인증 Guardian으로 제한하고 성공 응답을 수정된 Guardian discriminator 형태와 일치시킨다.
@@ -552,7 +567,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 완료 조건
 
-- [x] OpenAPI와 실제 M1 요청·응답 사이에 알려진 차이가 없다.
+- [ ] OpenAPI와 실제 M1 요청·응답 사이에 알려진 차이가 없다.
 
 ## 보안 검토 항목
 

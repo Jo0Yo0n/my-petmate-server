@@ -6,8 +6,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
@@ -42,7 +42,7 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
             "StrongPassword1!",
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
 
     assertThat(guardianRepository.count()).isEqualTo(0);
     assertThat(refreshTokenRepository.count()).isEqualTo(0);

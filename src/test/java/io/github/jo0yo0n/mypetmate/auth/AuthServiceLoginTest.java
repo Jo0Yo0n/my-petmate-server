@@ -8,8 +8,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
@@ -116,7 +116,7 @@ class AuthServiceLoginTest {
         "hashed-password",
         ProfileType.FAMILY,
         null,
-        IdentityVisibility.PUBLIC,
+        DiscoveryStatus.SEARCHING,
         GuardianStatus.ACTIVE,
         NOW,
         NOW);

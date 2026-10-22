@@ -22,7 +22,7 @@ class ContractAuth:
                     "email": "contract-" + uuid4().hex + "@example.com",
                     "password": "ContractPass123!",
                     "profileType": "family",
-                    "identityVisibility": "public",
+                    "discoveryStatus": "searching",
                 },
                 timeout=10,
             )

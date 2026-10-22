@@ -10,7 +10,7 @@ import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
-import io.github.jo0yo0n.mypetmate.guardian.domain.IdentityVisibility;
+import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
@@ -48,7 +48,7 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
             "StrongPassword1!",
             ProfileType.FAMILY,
             null,
-            IdentityVisibility.PUBLIC);
+            DiscoveryStatus.SEARCHING);
 
     AuthResponse authResponse = authService.signup(signupRequest);
     String rawRefreshToken = authResponse.refreshToken();
