@@ -93,7 +93,7 @@ docs/m1-reorganize-backend-docs
 
 모든 Pull Request는 [저장소 템플릿](../.github/pull_request_template.md)을 사용한다.
 
-- PR 제목은 영어 Conventional Commits 형식을 사용하고, 관련 Issue가 있으면 `docs: clarify collaboration workflow (#12)`처럼 번호를 반드시 적는다.
+- PR 제목은 영어 Conventional Commits 형식을 사용하고, 관련 Issue가 있으면 `docs: clarify collaboration workflow (Issue#12)`처럼 번호를 반드시 적는다.
 - PR 본문에도 관련 Issue를 명시한다. 다른 저장소 Issue는 `Jo0Yo0n/my-petmate-server#12`처럼 저장소를 포함하고 제목에서도 구분한다.
 - Issue의 완료 조건을 모두 충족하는 PR만 본문에 `Closes #12`를 사용한다. 부분 구현·선행 작업은 `Refs #12`와 남은 범위를 적는다.
 - Issue 없는 PR은 제목에서 번호를 생략하고 본문에 사유를 적는다. 번호를 임의로 만들지 않는다.
