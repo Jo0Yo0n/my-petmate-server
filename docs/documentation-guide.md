@@ -19,7 +19,7 @@
 | M1 인증 구현 순서와 완료 점검             | [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md) | [구현 순서](./m1-auth-contract-checklist.md#구현-순서), [검증 게이트](./m1-auth-contract-checklist.md#검증-게이트)                                                                             |
 | M1 테스트 ID와 검증 목적 | [`m1-test-cases.md`](./m1-test-cases.md) | [실행 순서](./m1-test-cases.md#실행-순서) |
 | M1 메서드별 검증 결과·공통 assertion | [`m1-test-cases-detail.md`](./m1-test-cases-detail.md) | [공통 Assertion 체크](./m1-test-cases-detail.md#공통-assertion-체크) |
-| 코드·브랜치·커밋·PR 규칙                  | [`development-conventions.md`](./development-conventions.md)       | [코드와 설계](./development-conventions.md#코드와-설계), [Git 작업](./development-conventions.md#git-작업), [Pull Request](./development-conventions.md#pull-request)                          |
+| 코드·Issue·Git·PR·리뷰·병합·Projects 규칙                  | [`development-conventions.md`](./development-conventions.md)       | [코드와 설계](./development-conventions.md#코드와-설계), [Git 작업](./development-conventions.md#git-작업), [Pull Request](./development-conventions.md#pull-request), [Issue](./development-conventions.md#issue와-작업-범위), [리뷰와 검증](./development-conventions.md#리뷰와-검증), [병합](./development-conventions.md#병합), [Projects](./development-conventions.md#projects)                          |
 
 ## 문서별 역할
 
