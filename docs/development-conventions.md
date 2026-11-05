@@ -93,6 +93,7 @@ docs/m1-reorganize-backend-docs
 
 모든 Pull Request는 [저장소 템플릿](../.github/pull_request_template.md)을 사용한다.
 
+- PR 본문의 `체크리스트`는 템플릿의 항목 문구와 순서를 그대로 유지하고, 확인 결과에 따라 체크 표시만 갱신한다.
 - PR 제목은 영어 Conventional Commits 형식을 사용하고, 관련 Issue가 있으면 `docs: clarify collaboration workflow (Issue #12)`처럼 번호를 반드시 적는다.
 - 다른 저장소의 Issue는 PR 제목에 `(Issue Jo0Yo0n/my-petmate-frontend#12)`처럼 `Issue`와 저장소 전체 이름을 함께 적는다.
 - PR 본문에도 관련 Issue를 명시한다. 다른 저장소의 Issue는 `Closes 소유자/저장소#번호` 또는 `Refs 소유자/저장소#번호`처럼 참조한다.
