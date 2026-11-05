@@ -1,6 +1,6 @@
 # 핵심 원칙
 
-코드, 설정 또는 테스트를 변경하거나 Git 작업을 하기 전에는 `docs/development-conventions.md`를 읽고 따른다.
+코드, 문서, 설정 또는 테스트를 변경하거나 Git 작업을 하기 전에는 `docs/development-conventions.md`를 읽고 따른다.
 
 기능 구현을 시작하기 전에는 `docs/backend-mvp-plan.md`에서 현재 마일스톤을 확인한다. 이 문서가 상세 마일스톤 문서를 연결한 경우, 해당 문서를 함께 읽는다.
 
@@ -18,10 +18,10 @@
 | M1 인증 진입 조건과 검증 게이트                | `docs/m1-auth-contract-checklist.md` |
 | 코드, Git, Pull Request 규칙                   | `docs/development-conventions.md`    |
 
-코드, 설정 또는 테스트 변경 전에는 `docs/development-conventions.md`를 읽는다. 기능 구현 시에는 현재 마일스톤, 관련 `seed.yaml` 요구사항,
+코드, 문서, 설정 또는 테스트 변경 전에는 `docs/development-conventions.md`를 읽는다. 기능 구현 시에는 현재 마일스톤, 관련 `seed.yaml` 요구사항,
 영향을 받는 REST·WebSocket·오류 계약만 확인한다. `docs/m1-auth-contract-checklist.md`는 M1 인증 범위 변경 시에만 적용한다.
 
-제품·API·프로토콜의 동작은 아래 계약 문서 우선순위를 따른다. `docs/development-conventions.md`는 코드 구조, 테스트, Git·PR 절차에 적용한다.
+제품·API·프로토콜의 동작은 아래 계약 문서 우선순위를 따른다. `docs/development-conventions.md`는 코드 구조, 테스트, Issue·Git·PR·리뷰·병합·Projects 절차에 적용한다. 협업 절차의 상세는 이 문서에 복사하지 않는다.
 
 문서가 충돌하면 구현하거나 문서를 수정하지 말고, 기준 문서, 충돌 지점, 권장안과 대안을 사용자에게 보고한다. 사용자의 명시적 승인 없이는 계약 문서를 수정하지 않는다. 적용
 우선순위는 다음과 같다.
