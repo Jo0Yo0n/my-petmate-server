@@ -6,7 +6,7 @@ info:
     My Petmate MVP의 REST API 계약이다. 모든 날짜/시간 기반 약속 규칙은
     `Asia/Seoul` 기준이며, 다른 사용자에게 정확한 위치나 비공개 평가를 반환하지 않는다.
 
-    추천 후보 처리 순서는 `안전·차단·신고 제외 → 양쪽 찾기 상태 → 선호 조건 → 궁합 정렬`이다.
+    추천 후보 처리 순서는 `안전·차단·신고 제외 → 양쪽 찾기 상태 → 저장 정보·임시 필터 → 궁합 정렬`이다.
     찾기 상태 변경은 다음 추천·관심 요청부터 적용되며 기존 match/chat/약속에는 영향을 주지 않는다.
     전역 차단 HTTP 메서드와 endpoint의 미지원 메서드(405)는 구분한다.
     차단 정책, 공통 오류 형식·요청 ID의 적용 범위 및 검증 구분은 `error-response.md`를 따른다.
@@ -36,6 +36,8 @@ info:
     exactLocationReturned: false
     rawReviewsReturned: false
     aggregateReviewScoresReturned: false
+    locationCoordinatesCollected: false
+    distanceReturned: false
   x-websocket-protocol: ./websocket-protocol.md
   x-error-response-contract: ./error-response.md
   x-request-id-policy:
@@ -57,6 +59,7 @@ tags:
   - name: Auth
   - name: Guardians
   - name: Dogs
+  - name: Regions
   - name: Recommendations
   - name: Likes
   - name: Matches
@@ -71,6 +74,10 @@ paths:
       tags: [ Auth ]
       operationId: signUp
       summary: 보호자 계정 생성
+      description: >-
+        회원가입 화면의 필수 비밀번호 확인은 클라이언트에서만 원문과 정확히 비교한다. 미입력·불일치 시 요청을 보내지 않는다. 비밀번호 확인 값은 요청 필드가 아니며 API 전송·영속 저장·로그 기록 대상이 아니다.
+        SignupRequest에는 password만 전송한다. 서버는 기존 password 규칙을 독립적으로 검증한다.
+         보호자 활동 지역 1~3개와 활동 가능 시간대는 필수이며 가입 전에 공개 지역 카탈로그로 선택한다.
       security: [ ]
       requestBody:
         required: true
@@ -86,18 +93,39 @@ paths:
                   profileType: individual
                   gender: female
                   discoveryStatus: searching
+                  nickname: 보리네
+                  activityRegionIds:
+                    - locality-demo-mangwon
+                  availableTimeSlots:
+                    - dayOfWeek: sat
+                      startTime: 10:00
+                      endTime: 12:00
               couple:
                 value:
                   email: couple@example.com
                   password: StrongPass123!
                   profileType: couple
                   discoveryStatus: paused
+                  nickname: 보리네
+                  activityRegionIds:
+                    - locality-demo-mangwon
+                  availableTimeSlots:
+                    - dayOfWeek: sat
+                      startTime: 10:00
+                      endTime: 12:00
               family:
                 value:
                   email: family@example.com
                   password: StrongPass123!
                   profileType: family
                   discoveryStatus: searching
+                  nickname: 보리네
+                  activityRegionIds:
+                    - locality-demo-mangwon
+                  availableTimeSlots:
+                    - dayOfWeek: sat
+                      startTime: 10:00
+                      endTime: 12:00
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -124,6 +152,15 @@ paths:
                   gender: female
                   discoveryStatus: searching
                   status: active
+                  nickname: 보리네
+                  photoUrl:
+                  activityRegions:
+                    - id: locality-demo-mangwon
+                      displayName: 서울특별시 마포구 망원동
+                  availableTimeSlots:
+                    - dayOfWeek: sat
+                      startTime: 10:00
+                      endTime: 12:00
         "400":
           $ref: "#/components/responses/RequestBodyError"
         "409":
@@ -259,6 +296,15 @@ paths:
                 gender: female
                 discoveryStatus: searching
                 status: active
+                nickname: 보리네
+                photoUrl:
+                activityRegions:
+                  - id: locality-demo-mangwon
+                    displayName: 서울특별시 마포구 망원동
+                availableTimeSlots:
+                  - dayOfWeek: sat
+                    startTime: 10:00
+                    endTime: 12:00
         "401":
           $ref: "#/components/responses/AuthenticationError"
         "403":
@@ -266,11 +312,15 @@ paths:
     patch:
       tags: [ Guardians ]
       operationId: updateCurrentGuardian
-      summary: 보호자 유형과 찾기 상태 수정
-      description: |
+      summary: 보호자 정보·주 활동 지역·활동 가능 시간 수정
+      description: |-
         Security 인증 과정에서 access token의 subject에 해당하는 Guardian을 찾지 못하면 401 AUTH_TOKEN_INVALID다.
         인증 성공 후 수정 잠금을 위해 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은
         데이터 불일치는 500 INTERNAL_SERVER_ERROR다.
+
+        지역·시간 목록은 다른 수정 필드와 원자적으로 전체 교체한다. 추천 필터 조작은 이 API를 호출하지 않는다.
+        닉네임·유형·찾기 상태·활동 지역·시간과 개인 유형의 성별을 모두 전송한다. 사진은 /photos의 별도 요청으로 처리한다.
+        취소한 초안은 전송하지 않으며 저장 성공 응답의 Guardian을 본인 정보의 기준으로 사용한다.
       requestBody:
         required: true
         content:
@@ -280,6 +330,13 @@ paths:
             example:
               profileType: couple
               discoveryStatus: paused
+              nickname: 보리네
+              activityRegionIds:
+                - locality-demo-mangwon
+              availableTimeSlots:
+                - dayOfWeek: sat
+                  startTime: 10:00
+                  endTime: 12:00
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -301,6 +358,56 @@ paths:
           $ref: "#/components/responses/AuthenticationError"
         "403":
           $ref: "#/components/responses/PermissionError"
+  /api/guardians/me/photos:
+    post:
+      tags:
+        - Guardians
+      operationId: replaceGuardianPhoto
+      summary: 본인 보호자 사진 등록·교체
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - photo
+              properties:
+                photo:
+                  $ref: '#/components/schemas/DogPhoto'
+            encoding:
+              photo:
+                contentType: image/jpeg, image/png, image/webp
+            example:
+              photo: (binary JPEG)
+      responses:
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '413':
+          $ref: '#/components/responses/PayloadTooLargeError'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '200':
+          description: 사진이 갱신된 본인 보호자 정보
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Guardian'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+      description: 선택 사진을 기존 반려견 사진과 같은 형식·용량 제한으로 업로드한다. 소유자는 인증 계정으로 결정한다. 비공개 저장·만료 조회 URL을 사용한다. 새 업로드 실패 시 기존 사진을 유지한다.
+        프로필 PATCH와 별도 요청이므로 일부 성공을 구분한다. 사진 삭제·생성 기능은 이번 범위에 포함하지 않는다.
   /api/guardians/me/withdraw:
     post:
       tags: [ Guardians ]
@@ -352,23 +459,16 @@ paths:
               profile:
                 name: 보리
                 breed: mixed_breed
+                birthDate: "2022-01-01"
                 age: 4
+                ageMonths: 57
+                breedOther: null
                 sex: female
                 weightKg: 8.4
                 sizeGroup: small
                 neutered: true
-                primaryActivityArea: 서울특별시 마포구 연남동
-                approximateLocation:
-                  latitude: 37.56
-                  longitude: 126.92
-                availableTimeSlots:
-                  - dayOfWeek: saturday
-                    startTime: "09:00"
-                    endTime: "11:00"
                 vaccinated: true
                 animalRegistered: true
-                sociability: high
-                aggressionLevel: none
                 preferredWalkIntensity: moderate
                 unfamiliarDogReaction: calm
                 selfIntroduction: 천천히 인사하고 함께 걷는 것을 좋아해요.
@@ -427,20 +527,16 @@ paths:
                     name: 보리
                     photoUrl: https://cdn.example.com/private/bori.jpg?expires=...
                     breed: mixed_breed
+                    birthDate: "2022-01-01"
                     age: 4
+                    ageMonths: 57
+                    breedOther: null
                     sex: female
                     weightKg: 8.4
                     sizeGroup: small
                     neutered: true
-                    primaryActivityArea: 서울특별시 마포구 연남동
-                    availableTimeSlots:
-                      - dayOfWeek: saturday
-                        startTime: "09:00"
-                        endTime: "11:00"
                     vaccinated: true
                     animalRegistered: true
-                    sociability: high
-                    aggressionLevel: none
                     preferredWalkIntensity: moderate
                     unfamiliarDogReaction: calm
                     selfIntroduction: 천천히 인사하고 함께 걷는 것을 좋아해요.
@@ -488,25 +584,15 @@ paths:
             example:
               name: 보리
               breed: mixed_breed
-              age: 4
+              birthDate: "2022-01-01"
               sex: female
               weightKg: 8.8
               sizeGroup: small
               neutered: true
-              primaryActivityArea: 서울특별시 마포구 연남동
-              approximateLocation:
-                latitude: 37.56
-                longitude: 126.92
-              availableTimeSlots:
-                - dayOfWeek: sunday
-                  startTime: "10:00"
-                  endTime: "12:00"
               vaccinated: true
               animalRegistered: true
-              sociability: high
-              aggressionLevel: none
               preferredWalkIntensity: active
-              unfamiliarDogReaction: calm
+              unfamiliarDogReaction: cautious
               selfIntroduction: 주말 오전 산책 친구를 찾아요.
       responses:
         "405":
@@ -577,6 +663,46 @@ paths:
           $ref: "#/components/responses/PermissionError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+  /api/regions:
+    get:
+      tags:
+        - Regions
+      operationId: listChildRegions
+      summary: 시도·시군구·읍면동 선택용 지역 카탈로그
+      description: 가입 전에도 조회 가능한 공개 지역 카탈로그다. parentId 생략 시 시도, 시도 ID이면 시군구, 시군구 ID이면 읍면동을 반환하고 locality 하위는 빈 배열이다.
+        저장·필터에는 locality ID만 사용한다. ID는 서버가 관리하는 불투명 값이며 표시 이름·좌표로 조합하지 않는다. 예시 ID는 목업 값이다. 전국 원천·안정 ID·갱신·기존 데이터 처리는 구현 전에
+        확정한다.
+      parameters:
+        - name: parentId
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+      responses:
+        '200':
+          description: 직계 하위 지역. 표시 순서대로 반환한다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionList'
+              example:
+                items:
+                  - id: locality-demo-mangwon
+                    name: 망원동
+                    level: locality
+                    parentId: mapo-demo
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security: [ ]
   /api/dogs/{dogId}/recommendations:
     parameters:
       - $ref: "#/components/parameters/DogId"
@@ -587,15 +713,20 @@ paths:
       parameters:
         - $ref: "#/components/parameters/SizeGroups"
         - $ref: "#/components/parameters/WalkIntensities"
-        - $ref: "#/components/parameters/SociabilityLevels"
-        - $ref: "#/components/parameters/AvailableDays"
-        - $ref: "#/components/parameters/MaxDistanceKm"
+        - $ref: "#/components/parameters/UnfamiliarDogReactions"
+        - $ref: "#/components/parameters/AvailableTimeSlots"
+        - $ref: "#/components/parameters/RegionIds"
         - $ref: "#/components/parameters/GuardianIdentities"
       description: |
-        안전·차단·신고 제외, 양쪽 찾기 상태, 명시된 선호 조건, 궁합 정렬 순서로 처리한다.
+        안전·차단·신고 제외 → 양쪽 찾기 상태 → 저장 정보와 임시 필터로 해석한 지역·시간 및 선택 조건 → 궁합 정렬 순서로 처리한다.
+        필터 없이도 요청 보호자의 저장 활동 지역·시간과 선택 반려견의 성향으로 기본 추천한다.
+        regionIds와 availableTimeSlots는 각각 생략하면 저장값을 사용하고 지정하면 해당 차원의 저장값 전체를 대체한다. 프로필은 바꾸지 않는다.
+        후보 보호자의 활동 지역 중 하나 이상이 실효 지역과 같고, 같은 요일에서 가능한 시간 구간이 양의 길이로 겹쳐야 한다.
+        크기·산책 강도·낯선 반려견 반응·보호자 정보는 생략하면 추가로 제한하지 않는다. 필터는 상대 후보를 고르는 조건이며 내 반려견의 사실 정보를 바꾸지 않는다.
+        궁합을 우선하고 비슷한 궁합에서는 겹치는 시간대를 고려하며 동률은 안정적인 순서로 반환한다. 같은 시군구 여부로 가산하지 않는다.
+        선택 지역의 순서는 우선순위가 아니다. 후보가 없어도 선택하지 않은 지역이나 시간을 자동으로 추가하지 않는다.
         요청자가 paused이면 유효한 필터에 대해 200과 빈 items를 반환한다. 후보도 searching 계정만 포함한다.
-        guardianIdentities는 찾기 상태와 무관하게 유효한 필터이며 보호자 정보 마스킹은 없다.
-        정확한 좌표는 반환하지 않는다.
+        기본 추천과 필터는 MVP에서 무료다. 좌표 수집·저장·거리 계산·거리 표시·지도 장소 선택은 MVP에서 제외한다.
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -615,37 +746,23 @@ paths:
                       id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
                       name: 구름
                       photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
-                      breed: poodle
-                      age: 3
-                      sex: male
-                      weightKg: 7.1
-                      sizeGroup: small
-                      neutered: true
-                      primaryActivityArea: 서울특별시 마포구 망원동
-                      availableTimeSlots:
-                        - dayOfWeek: saturday
-                          startTime: "10:00"
-                          endTime: "12:00"
-                      vaccinated: true
-                      animalRegistered: true
-                      sociability: high
-                      aggressionLevel: none
-                      preferredWalkIntensity: moderate
-                      unfamiliarDogReaction: calm
-                      selfIntroduction: 친구와 나란히 걷는 걸 좋아해요.
-                    guardianIdentity: male
                     compatibilityGrade: excellent
                     reasons:
-                      - 산책 강도와 사회성이 잘 맞아요.
+                      - 산책 강도와 낯선 반려견 반응이 잘 맞아요.
                       - 토요일 가능 시간이 겹쳐요.
-                    approximateDistanceKm: 1.8
                 appliedFilters:
-                  sizeGroups: [ small ]
-                  walkIntensities: [ moderate ]
-                  sociabilityLevels: [ ]
-                  availableDays: [ saturday ]
-                  maxDistanceKm: 5
-                  guardianIdentities: [ male ]
+                  sizeGroups:
+                    - small
+                  walkIntensities:
+                    - moderate
+                  unfamiliarDogReactions: [ ]
+                  regionIds: [ locality-demo-mangwon ]
+                  guardianIdentities:
+                    - male
+                  availableTimeSlots:
+                    - dayOfWeek: sat
+                      startTime: 10:00
+                      endTime: 12:00
         "400":
           $ref: "#/components/responses/RecommendationValidationError"
         "401":
@@ -654,6 +771,56 @@ paths:
           $ref: "#/components/responses/PermissionError"
         "404":
           $ref: "#/components/responses/NotFoundError"
+  /api/dogs/{dogId}/discovery/{targetDogId}:
+    get:
+      tags: [ Dogs ]
+      operationId: getDiscoveryDogDetail
+      summary: 추천·받은 관심·보낸 관심 상대 상세
+      description: |
+        본인 소유 반려견을 기준으로 context의 접근 조건을 다시 확인한다.
+        recommendation은 양쪽 찾기 상태·안전 제외를 적용한다. 지역·시간과 임시 필터는 목록 선정 조건이다.
+        received_like와 sent_like는 해당 목록에 포함 가능한 관심이 있어야 하며 찾기 상태는 제한하지 않는다.
+        차단·안전 제외·비활성 계정 등 접근 불가 대상은 404다. 상대의 등록 지역·시간은 상세에서만 제공한다.
+      parameters:
+        - $ref: '#/components/parameters/DogId'
+        - name: targetDogId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: context
+          in: query
+          required: true
+          schema: { type: string, enum: [ recommendation, received_like, sent_like ] }
+      responses:
+        '200':
+          description: 상대 반려견과 보호자 상세
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ dog, guardianIdentity, guardian ]
+                properties:
+                  dog:
+                    $ref: '#/components/schemas/PublicDog'
+                  guardianIdentity:
+                    $ref: '#/components/schemas/GuardianIdentity'
+                  guardian:
+                    $ref: '#/components/schemas/PublicGuardianProfile'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/dogs/{dogId}/received-likes:
     parameters:
       - $ref: "#/components/parameters/DogId"
@@ -670,11 +837,11 @@ paths:
         다음 페이지는 직전 페이지 마지막 항목보다 뒤에 정렬되는 항목만 반환한다. 페이지 사이 새 관심이 cursor보다 앞에 정렬되면 현재 페이지 흐름에는 포함되지 않으므로,
         새 항목을 확인하려면 첫 페이지부터 다시 조회한다. 페이지 간 동일한 시점의 목록을 고정하는 스냅샷 일관성은 보장하지 않는다.
         - 처리·차단된 항목은 후속 페이지에서 사라질 수 있다. 잘못된/다른 dogId의 cursor는 400 VALIDATION_FAILED다.
-        - 목록 항목을 열면 별도 반려견 조회 요청 없이 이 응답의 dog 필드에 포함된 공개 프로필 정보로 화면을 표시한다.
+        - 목록 항목을 열면 상세 API를 context=received_like로 호출한다.
         - 사용자가 liked 또는 passed를 선택하면 기존 POST /api/dogs/{dogId}/likes를 호출한다. 경로의 dogId는 사용자가 선택한 본인 반려견 ID이고,
-        요청의 targetDogId는 목록 항목의 dog.id다. status에는 사용자가 선택한 liked 또는 passed를 보낸다.
-        - 서버는 반대 방향의 liked가 있는지 확인한다. 양쪽 모두 liked이면 매칭을 만들고, 응답의 matched와 match에 그 결과를 반환한다.
-        원본 좌표는 반환하지 않으며, 근사 거리만 제공한다.
+        요청의 targetDogId는 목록 항목의 dog.id, receivedInteractionId는 목록 항목의 id다. status에는 사용자가 선택한 liked 또는 passed를 보낸다.
+        - 서버는 지정된 관심 전송 건에만 응답을 적용한다. 양쪽 모두 liked이면 매칭을 만들고, 응답의 matched와 match에 그 결과를 반환한다.
+        상대의 등록 지역·시간은 상세 조회에서만 반환한다. 저장 지역·시간과 추천 필터로 받은 관심을 제한하지 않는다.
       parameters:
         - name: cursor
           in: query
@@ -706,32 +873,12 @@ paths:
                           id: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
                           name: 구름
                           photoUrl: https://cdn.example.com/private/gureum.jpg?expires=...
-                          breed: poodle
-                          age: 3
-                          sex: male
-                          weightKg: 7.1
-                          sizeGroup: small
-                          neutered: true
-                          primaryActivityArea: 서울특별시 마포구 망원동
-                          availableTimeSlots:
-                            - dayOfWeek: saturday
-                              startTime: '10:00'
-                              endTime: '12:00'
-                          vaccinated: true
-                          animalRegistered: true
-                          sociability: high
-                          aggressionLevel: none
-                          preferredWalkIntensity: moderate
-                          unfamiliarDogReaction: calm
-                          selfIntroduction: 친구와 나란히 걷는 걸 좋아해요.
-                        guardianIdentity: male
-                        approximateDistanceKm: 1.8
                         receivedAt: '2025-01-15T09:00:00+09:00'
-                    nextCursor: null
+                    nextCursor:
                 empty:
                   value:
                     items: [ ]
-                    nextCursor: null
+                    nextCursor:
         "400":
           $ref: "#/components/responses/RequestBodyError"
         "401":
@@ -746,6 +893,84 @@ paths:
           $ref: "#/components/responses/NotAcceptableError"
         "500":
           $ref: "#/components/responses/InternalServerError"
+  /api/dogs/{dogId}/sent-likes:
+    parameters:
+      - $ref: '#/components/parameters/DogId'
+    get:
+      tags: [ Likes ]
+      operationId: listSentDogLikes
+      summary: 내 반려견이 보낸 응답 대기 관심 목록
+      description: |
+        본인 소유 반려견의 미처리·미매칭 liked만 반환한다. searching/paused 모두 조회할 수 있다.
+        상대 응답·매칭 이력·취소·차단·안전 제외·관련 계정 비활성 항목은 제외한다. 추천 필터는 적용하지 않는다.
+        sentAt DESC, id DESC로 정렬하고 cursor는 dogId에 귀속한다. 페이지 간 스냅샷은 보장하지 않는다.
+        잘못된 cursor 또는 다른 dogId의 cursor는 400 VALIDATION_FAILED다. id는 관심 전송 건의 식별자다.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, minLength: 1, maxLength: 512, pattern: '^[A-Za-z0-9_-]+={0,2}$' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+      responses:
+        '200':
+          description: 응답 대기 목록. 마지막 페이지의 nextCursor는 null이다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentLikeList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /api/dogs/{dogId}/sent-likes/{interactionId}:
+    parameters:
+      - $ref: '#/components/parameters/DogId'
+      - name: interactionId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [ Likes ]
+      operationId: cancelSentDogLike
+      summary: 보낸 응답 대기 관심 취소
+      description: |
+        본인 소유 반려견이 보낸 관심 한 건을 취소한다. searching/paused 모두 허용하며 body는 없다.
+        취소와 상대 응답·매칭 생성을 같은 반려견 쌍의 트랜잭션에서 원자적으로 판정한다.
+        취소가 먼저 확정되면 상대의 받은 관심에서 제거하고 매칭을 만들지 않는다.
+        상대 liked/passed 응답 또는 매칭이 먼저 확정되면 409 STATE_CONFLICT다. 기존 응답·매칭·대화·약속을 취소하지 않는다.
+        프론트는 409 안내 후 GET sent-likes의 첫 페이지를 다시 조회한다. 오류 응답에 목록을 포함하지 않는다.
+        같은 전송 건의 취소 재요청은 204다. 새로 보낸 관심은 새 ID를 사용해 이전 취소 재시도가 새 관심을 취소하지 않도록 한다.
+        존재하지 않는 ID는 404, 소유권·계정 상태 오류는 공통 인증·인가 계약을 따른다.
+      responses:
+        '204':
+          description: 취소 완료 또는 같은 전송 건의 취소가 이미 완료됨. 응답 body 없음.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/dogs/{dogId}/likes:
     parameters:
       - $ref: "#/components/parameters/DogId"
@@ -755,9 +980,15 @@ paths:
       summary: 추천 또는 받은 관심에 like 또는 pass
       description: |
         새 선제 관심은 양쪽 보호자가 searching일 때만 허용한다.
-        반대 방향의 미처리 liked가 존재하면 양쪽 찾기 상태와 무관하게 liked/passed로 응답할 수 있다.
+        받은 관심의 liked/passed 응답은 receivedInteractionId로 전송 건을 지정하며 양쪽 찾기 상태와 무관하다.
+        ID가 없으면 선제 요청으로 처리하며 다른 관심에 대한 응답으로 연결하지 않는다. 선제 요청 시 반대 방향의 응답 대기 관심이 있으면 409 STATE_CONFLICT로 받은 관심을 다시 조회하도록 한다.
+        지정한 ID가 없거나 요청 반려견 쌍과 방향이 일치하지 않으면 404다. 지정한 관심이 취소됐다면 409 STATE_CONFLICT이며 프론트는 받은 관심 첫 페이지를 다시 조회한다.
+        취소된 관심 이후 같은 쌍에 새 관심이 도착해도 이전 관심에 대한 응답을 새 관심에 적용하지 않는다.
         응답 시 소유권·계정 상태·차단·안전 제외와 기존 관심 상태를 서버에서 재검증한다.
-        같은 반려견 쌍의 같은 응답 재전송은 멱등하게 현재 결과를 반환하며 매칭을 중복 생성하지 않는다.
+        새 선제 liked 전송은 고유 ID를 발급하고 취소·응답 이력을 보존한다. 같은 방향에는 응답 대기 관심을 최대 한 건만 허용한다.
+        새 선제 liked에는 clientRequestId가 필수이며, 누락은 400 VALIDATION_FAILED다. 보호자와 요청 ID별 결과를 보존하며 취소 뒤에도 같은 요청에는 원래 결과를 반환한다.
+        같은 요청 ID로 다른 내용을 보내거나 다른 요청 ID로 이미 대기 중인 같은 방향에 관심을 보내면 409 STATE_CONFLICT다.
+        같은 receivedInteractionId에 같은 응답을 재전송하면 최초 처리 결과를 반환한다. 이미 처리된 같은 건에 다른 응답을 보내면 409 STATE_CONFLICT다.
         관심·찾기 상태 변경의 동시 요청은 DB의 최종 상태를 기준으로 원자적으로 판정한다.
         새 선제 관심의 찾기 상태 조건이 맞지 않으면 409 STATE_CONFLICT를 반환한다.
         동시에 상충하는 관심 응답의 충돌은 409 STATE_CONFLICT다.
@@ -772,10 +1003,16 @@ paths:
                 value:
                   targetDogId: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
                   status: liked
+                  clientRequestId: 684348e3-6848-474b-a687-6f4cd2166e92
               pass:
                 value:
                   targetDogId: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
                   status: passed
+              acceptReceivedLike:
+                value:
+                  targetDogId: e514d9ad-0a7e-4e50-b62a-b3cbb112e2ee
+                  receivedInteractionId: 7c65c917-2141-437c-9c23-60f4c99e84b5
+                  status: liked
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -1069,6 +1306,73 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "409":
           $ref: "#/components/responses/MatchUnavailableError"
+  /api/appointment-proposals:
+    get:
+      tags:
+        - Appointments
+      operationId: listMyAppointmentProposals
+      summary: 본인의 약속을 보낸 제안·받은 약속·성사된 약속·취소된 약속으로 조회
+      description: '인증된 보호자가 참여한 조회 가능한 활성 매칭의 약속만 반환한다. 종료·차단 매칭의 조회 제한을 우회하지 않는다.
+
+        box=sent는 본인이 제안한 제안/거절 약속, received는 상대가 제안한 제안/거절 약속, canceled는 방향과 무관한 취소 약속이다.
+
+        sent/received는 proposed·rejected 상태를 방향으로 분류한다. accepted는 방향과 무관한 성사된 약속(accepted)이며 canceled는 취소된 약속과 cancellationReason을
+        반환한다.
+
+        찾기 상태와 무관하게 사용한다. 원본 좌표와 타인의 약속은 반환하지 않는다.
+
+        createdAt DESC, id DESC의 cursor 페이지네이션이다. cursor는 인증 보호자와 box에 귀속되며 형식·범위 오류는 400 VALIDATION_FAILED다.
+
+        목록 조회와 동시에 상태가 바뀔 수 있으며 스냅샷 일관성을 보장하지 않는다. 카테고리 변경 시 cursor를 초기화하고 수락·거절·취소 후 목록을 재조회한다.
+
+        수락·거절·취소는 기존 명령 API를 사용하며 서버에서 현재 상태·참여 권한·중복 처리를 재검증한다.'
+      parameters:
+        - name: box
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - sent
+              - received
+              - accepted
+              - canceled
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 512
+            pattern: ^[A-Za-z0-9_-]+={0,2}$
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        '200':
+          description: 약속 목록과 다음 cursor. 다음 페이지가 없으면 null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentProposalPage'
+              example:
+                items: [ ]
+                nextCursor: null
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/PermissionError'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowedError'
+        '406':
+          $ref: '#/components/responses/NotAcceptableError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /api/appointment-proposals/{proposalId}/accept:
     parameters:
       - $ref: "#/components/parameters/ProposalId"
@@ -1303,6 +1607,19 @@ components:
         pattern: "^req-[0-7][0-9A-HJKMNP-TV-Z]{25}$"
       example: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
   parameters:
+    AvailableTimeSlots:
+      name: availableTimeSlots
+      in: query
+      required: false
+      description: 지정하면 보호자의 저장 시간대 전체를 이번 요청에서 대체한다. JSON 배열을 URL 인코딩해 전달한다. 생략하면 저장 시간대를 사용하며 빈 배열은 거부한다. 프로필은 수정하지 않는다.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AvailableTimeSlots'
+          example:
+            - dayOfWeek: sat
+              startTime: 10:00
+              endTime: 12:00
     DogId:
       name: dogId
       in: path
@@ -1358,8 +1675,8 @@ components:
         uniqueItems: true
         items:
           $ref: "#/components/schemas/WalkIntensity"
-    SociabilityLevels:
-      name: sociabilityLevels
+    UnfamiliarDogReactions:
+      name: unfamiliarDogReactions
       in: query
       required: false
       style: form
@@ -1370,31 +1687,24 @@ components:
         maxItems: 3
         uniqueItems: true
         items:
-          $ref: "#/components/schemas/Sociability"
-    AvailableDays:
-      name: availableDays
+          $ref: "#/components/schemas/UnfamiliarDogReaction"
+    RegionIds:
+      name: regionIds
       in: query
       required: false
+      description: 카탈로그 locality ID를 쉼표로 구분해 1~3개 선택한다. 지정하면 보호자의 저장 활동 지역을 이번 요청에서 대체한다. 후보 보호자의 활동 지역과 하나 이상 겹쳐야 한다. 선택 지역
+        간 OR, 시간·기타 필터와 AND다. 생략하면 저장 지역을 사용한다. 빈 값·중복·알 수 없는 ID·상위 지역 ID·4개 이상은 400 VALIDATION_FAILED다.
       style: form
       explode: false
       schema:
         type: array
         minItems: 1
-        maxItems: 7
+        maxItems: 3
         uniqueItems: true
         items:
-          $ref: "#/components/schemas/DayOfWeek"
-    MaxDistanceKm:
-      name: maxDistanceKm
-      in: query
-      required: false
-      schema:
-        type: number
-        format: double
-        minimum: 0.5
-        maximum: 50
-        multipleOf: 0.1
-      example: 5
+          type: string
+          minLength: 1
+          maxLength: 100
     GuardianIdentities:
       name: guardianIdentities
       in: query
@@ -1429,12 +1739,98 @@ components:
         maximum: 100
         default: 30
   schemas:
+    ActivityRegionIds:
+      type: array
+      minItems: 1
+      maxItems: 3
+      uniqueItems: true
+      description: 지역 카탈로그의 locality ID를 1~3개 선택한다. 중복·알 수 없는 ID·상위 지역 ID는 거부한다. 순서는 추천 우선순위가 아니다.
+      items:
+        type: string
+        minLength: 1
+        maxLength: 100
+    ActivityRegion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 100
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 서버의 지역 카탈로그에서 해석한 시도·시군구·읍면동 전체 표시 이름.
+    ActivityRegions:
+      type: array
+      minItems: 1
+      maxItems: 3
+      description: 보호자가 저장한 주 활동 지역. ID가 중복되지 않으며 표시 이름은 서버 카탈로그를 따른다.
+      items:
+        $ref: '#/components/schemas/ActivityRegion'
+    AvailableTimeSlots:
+      type: array
+      minItems: 1
+      maxItems: 21
+      uniqueItems: true
+      description: Asia/Seoul의 반복 가능한 요일별 시간대. 같은 요일의 구간 중복·겹침은 거부하며 맞닿은 구간은 허용한다. 시작·종료는 같은 요일 안의 시각이며 자정을 넘는 단일 구간은 허용하지 않는다.
+      items:
+        $ref: '#/components/schemas/AvailableTimeSlot'
+    Region:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - name
+        - level
+        - parentId
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 100
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        level:
+          type: string
+          enum:
+            - sido
+            - sigungu
+            - locality
+        parentId:
+          type:
+            - string
+            - 'null'
+          minLength: 1
+          maxLength: 100
+    RegionList:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
     ProfileType:
       type: string
       enum: [ individual, couple, family ]
     Gender:
       type: string
       enum: [ female, male ]
+    GuardianNickname:
+      type: string
+      minLength: 1
+      maxLength: 30
+      pattern: ".*\\S.*"
+      description: 앞뒤 공백을 제거한 1~30자 닉네임. 중복을 허용하며 인증 식별자로 사용하지 않는다. 가입·본인 정보 수정에서 필수다.
     DiscoveryStatus:
       type: string
       enum: [ searching, paused ]
@@ -1479,9 +1875,11 @@ components:
         - other
       description: MVP에서 서버와 프론트가 공통으로 지원하는 견종 코드.
     Guardian:
-      description: |
+      description: |-
         본인 전용 응답이며 모든 유형에서 gender를 포함한다. 미설정은 null이고 유형 전환 후에도 최초 설정값을 반환한다.
         보존된 성별을 다른 사용자에게 노출하지 않으며 상대 보호자 정보는 현재 유형에서 파생한 GuardianIdentity를 따른다.
+
+        주 활동 지역과 활동 가능 시간은 보호자 소유이며 모든 반려견의 기본 추천에서 공유한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardian"
         - $ref: "#/components/schemas/CoupleGuardian"
@@ -1495,7 +1893,17 @@ components:
     IndividualGuardian:
       type: object
       additionalProperties: false
-      required: [ id, email, profileType, gender, discoveryStatus, status ]
+      required:
+        - id
+        - email
+        - profileType
+        - gender
+        - discoveryStatus
+        - status
+        - nickname
+        - photoUrl
+        - activityRegions
+        - availableTimeSlots
       properties:
         id:
           type: string
@@ -1505,19 +1913,42 @@ components:
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         profileType:
           const: individual
         gender:
-          $ref: "#/components/schemas/Gender"
+          $ref: '#/components/schemas/Gender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
         status:
-          $ref: "#/components/schemas/GuardianStatus"
+          $ref: '#/components/schemas/GuardianStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        photoUrl:
+          type:
+            - string
+            - 'null'
+          format: uri
+          maxLength: 2048
+          description: 선택 보호자 사진의 만료 조회 URL. 미등록은 null. 원본 객체 키·공개 URL은 받지 않는다.
+        activityRegions:
+          $ref: '#/components/schemas/ActivityRegions'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     CoupleGuardian:
       type: object
       additionalProperties: false
-      required: [ id, email, profileType, gender, discoveryStatus, status ]
+      required:
+        - id
+        - email
+        - profileType
+        - gender
+        - discoveryStatus
+        - status
+        - nickname
+        - photoUrl
+        - activityRegions
+        - availableTimeSlots
       properties:
         id:
           type: string
@@ -1527,20 +1958,48 @@ components:
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         profileType:
           const: couple
         gender:
-          type: [ string, 'null' ]
-          enum: [ female, male, null ]
+          type:
+            - string
+            - 'null'
+          enum:
+            - female
+            - male
+            -
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
         status:
-          $ref: "#/components/schemas/GuardianStatus"
+          $ref: '#/components/schemas/GuardianStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        photoUrl:
+          type:
+            - string
+            - 'null'
+          format: uri
+          maxLength: 2048
+          description: 선택 보호자 사진의 만료 조회 URL. 미등록은 null. 원본 객체 키·공개 URL은 받지 않는다.
+        activityRegions:
+          $ref: '#/components/schemas/ActivityRegions'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     FamilyGuardian:
       type: object
       additionalProperties: false
-      required: [ id, email, profileType, gender, discoveryStatus, status ]
+      required:
+        - id
+        - email
+        - profileType
+        - gender
+        - discoveryStatus
+        - status
+        - nickname
+        - photoUrl
+        - activityRegions
+        - availableTimeSlots
       properties:
         id:
           type: string
@@ -1550,16 +2009,34 @@ components:
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         profileType:
           const: family
         gender:
-          type: [ string, 'null' ]
-          enum: [ female, male, null ]
+          type:
+            - string
+            - 'null'
+          enum:
+            - female
+            - male
+            -
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
         status:
-          $ref: "#/components/schemas/GuardianStatus"
+          $ref: '#/components/schemas/GuardianStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        photoUrl:
+          type:
+            - string
+            - 'null'
+          format: uri
+          maxLength: 2048
+          description: 선택 보호자 사진의 만료 조회 URL. 미등록은 null. 원본 객체 키·공개 URL은 받지 않는다.
+        activityRegions:
+          $ref: '#/components/schemas/ActivityRegions'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     SignupRequest:
       oneOf:
         - $ref: "#/components/schemas/IndividualSignupRequest"
@@ -1574,84 +2051,126 @@ components:
     IndividualSignupRequest:
       type: object
       additionalProperties: false
-      required: [ email, password, profileType, gender, discoveryStatus ]
+      required:
+        - email
+        - password
+        - profileType
+        - gender
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         email:
           type: string
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         password:
           type: string
           format: password
           minLength: 8
           maxLength: 72
-          pattern: "^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$"
-          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @ # $ % ^ & *)를 각각 하나 이상 포함해야 하며, 다른 특수문자와 공백은 사용할 수 없다.
+          pattern: ^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$
+          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @
           writeOnly: true
         profileType:
           const: individual
         gender:
-          $ref: "#/components/schemas/Gender"
+          $ref: '#/components/schemas/Gender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     CoupleSignupRequest:
       type: object
       additionalProperties: false
-      required: [ email, password, profileType, discoveryStatus ]
+      required:
+        - email
+        - password
+        - profileType
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         email:
           type: string
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         password:
           type: string
           format: password
           minLength: 8
           maxLength: 72
-          pattern: "^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$"
-          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @ # $ % ^ & *)를 각각 하나 이상 포함해야 하며, 다른 특수문자와 공백은 사용할 수 없다.
+          pattern: ^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$
+          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @
           writeOnly: true
         profileType:
           const: couple
         gender:
-          $ref: "#/components/schemas/IgnoredGuardianGender"
+          $ref: '#/components/schemas/IgnoredGuardianGender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     FamilySignupRequest:
       type: object
       additionalProperties: false
-      required: [ email, password, profileType, discoveryStatus ]
+      required:
+        - email
+        - password
+        - profileType
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         email:
           type: string
           format: email
           minLength: 3
           maxLength: 254
-          pattern: "^[!-~]+$"
+          pattern: ^[!-~]+$
         password:
           type: string
           format: password
           minLength: 8
           maxLength: 72
-          pattern: "^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$"
-          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @ # $ % ^ & *)를 각각 하나 이상 포함해야 하며, 다른 특수문자와 공백은 사용할 수 없다.
+          pattern: ^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{8,72}$
+          description: 영문 대문자, 영문 소문자, 숫자, 허용 특수문자(! @
           writeOnly: true
         profileType:
           const: family
         gender:
-          $ref: "#/components/schemas/IgnoredGuardianGender"
+          $ref: '#/components/schemas/IgnoredGuardianGender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     GuardianUpdateRequest:
-      description: |
-        유형·성별·찾기 상태만 수정하며 계정 상태는 받지 않는다. individual은 gender가 필수다.
+      description: |-
+        닉네임·유형·성별·찾기 상태·주 활동 지역·활동 가능 시간을 수정하며 계정 상태는 받지 않는다. individual은 gender가 필수다.
         individual 요청에 한해 DB의 gender가 null이면 최초 저장하고 기존 값과 같으면 허용한다.
         individual 요청의 성별이 기존 값과 다르면 409 STATE_CONFLICT로 거부한다.
         DB 확인과 저장은 동시 요청에서도 최초 성별이 덮어써지지 않도록 수행한다.
+
+        지역 목록과 시간대 목록은 요청 값으로 전체 교체하고 다른 필드와 함께 원자적으로 저장한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardianUpdateRequest"
         - $ref: "#/components/schemas/CoupleGuardianUpdateRequest"
@@ -1665,36 +2184,70 @@ components:
     IndividualGuardianUpdateRequest:
       type: object
       additionalProperties: false
-      required: [ profileType, gender, discoveryStatus ]
+      required:
+        - profileType
+        - gender
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         profileType:
           const: individual
         gender:
-          $ref: "#/components/schemas/Gender"
+          $ref: '#/components/schemas/Gender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     CoupleGuardianUpdateRequest:
       type: object
       additionalProperties: false
-      required: [ profileType, discoveryStatus ]
+      required:
+        - profileType
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         profileType:
           const: couple
         gender:
-          $ref: "#/components/schemas/IgnoredGuardianGender"
+          $ref: '#/components/schemas/IgnoredGuardianGender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     FamilyGuardianUpdateRequest:
       type: object
       additionalProperties: false
-      required: [ profileType, discoveryStatus ]
+      required:
+        - profileType
+        - discoveryStatus
+        - nickname
+        - activityRegionIds
+        - availableTimeSlots
       properties:
         profileType:
           const: family
         gender:
-          $ref: "#/components/schemas/IgnoredGuardianGender"
+          $ref: '#/components/schemas/IgnoredGuardianGender'
         discoveryStatus:
-          $ref: "#/components/schemas/DiscoveryStatus"
+          $ref: '#/components/schemas/DiscoveryStatus'
+        nickname:
+          $ref: '#/components/schemas/GuardianNickname'
+        activityRegionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
     LoginRequest:
       type: object
       additionalProperties: false
@@ -1790,76 +2343,59 @@ components:
     DogSex:
       type: string
       enum: [ female, male ]
-    Sociability:
-      type: string
-      enum: [ low, medium, high ]
-    AggressionLevel:
-      type: string
-      enum: [ none, low, medium, high ]
     WalkIntensity:
       type: string
       enum: [ slow, moderate, active ]
     UnfamiliarDogReaction:
       type: string
-      enum: [ calm, cautious, excited, reactive ]
+      enum: [ calm, cautious, excited ]
     DayOfWeek:
       type: string
-      enum: [ monday, tuesday, wednesday, thursday, friday, saturday, sunday ]
-    ApproximateLocationInput:
-      type: object
-      additionalProperties: false
-      required: [ latitude, longitude ]
-      description: |
-        서버는 입력 좌표를 약 1km 수준(소수점 둘째 자리)으로 낮춰 저장하고 원본 좌표를 보존하지 않는다.
-        이 객체는 소유자 쓰기 요청 전용이며 Dog 응답에는 포함되지 않는다.
-      properties:
-        latitude:
-          type: number
-          format: double
-          minimum: -90
-          maximum: 90
-        longitude:
-          type: number
-          format: double
-          minimum: -180
-          maximum: 180
+      enum: [ mon, tue, wed, thu, fri, sat, sun ]
     AvailableTimeSlot:
       type: object
       additionalProperties: false
       required: [ dayOfWeek, startTime, endTime ]
-      description: startTime은 endTime보다 빨라야 한다.
+      description: Asia/Seoul의 반복 가능한 요일과 10분 단위 HH:mm 시작·종료 시간. startTime < endTime이어야 한다. 추천에서는 같은 요일의 구간이 양의 길이로 겹칠 때만 시간이 맞는
+        것으로 판단한다.
       properties:
         dayOfWeek:
           $ref: "#/components/schemas/DayOfWeek"
         startTime:
           type: string
-          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          pattern: "^([01]\\d|2[0-3]):[0-5]0$"
           example: "09:00"
         endTime:
           type: string
-          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$"
+          pattern: "^([01]\\d|2[0-3]):[0-5]0$"
           example: "11:00"
+    DogBirthDate:
+      type: string
+      format: date
+      description: 필수 생년월일. Asia/Seoul의 오늘 이후 날짜와 만 30세를 초과하는 날짜는 거부한다. 기존 age에서 임의의 생년월일을 생성하지 않는다.
+    DogBreedOther:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: '\S'
+      description: breed=other일 때만 선택 입력한다. 전송값에는 공백이 아닌 문자가 하나 이상 필요하며 프론트와 서버 모두 이를 검증한다. 서버는 앞뒤 공백을 제거해 저장한다. 다른 견종과 함께 전송하면 VALIDATION_FAILED다.
     DogProfileInput:
       type: object
       additionalProperties: false
       required:
         - name
         - breed
-        - age
+        - birthDate
         - sex
         - weightKg
         - sizeGroup
         - neutered
-        - primaryActivityArea
-        - approximateLocation
-        - availableTimeSlots
         - vaccinated
         - animalRegistered
-        - sociability
-        - aggressionLevel
         - preferredWalkIntensity
         - unfamiliarDogReaction
         - selfIntroduction
+      description: birthDate를 저장하고 age·ageMonths는 요청으로 받지 않는다. breedOther는 breed=other일 때만 받으며 다른 견종으로 변경하면 기존 값을 제거한다.
       properties:
         name:
           type: string
@@ -1868,12 +2404,10 @@ components:
           pattern: ".*\\S.*"
         breed:
           $ref: "#/components/schemas/BreedCode"
-        age:
-          type: integer
-          minimum: 0
-          maximum: 30
-          description: 만 나이(년). 1살 미만은 0으로 전달한다.
-          example: 4
+        birthDate:
+          $ref: '#/components/schemas/DogBirthDate'
+        breedOther:
+          $ref: '#/components/schemas/DogBreedOther'
         sex:
           $ref: "#/components/schemas/DogSex"
         weightKg:
@@ -1886,27 +2420,10 @@ components:
           $ref: "#/components/schemas/SizeGroup"
         neutered:
           type: boolean
-        primaryActivityArea:
-          type: string
-          minLength: 2
-          maxLength: 100
-          pattern: ".*\\S.*"
-        approximateLocation:
-          $ref: "#/components/schemas/ApproximateLocationInput"
-        availableTimeSlots:
-          type: array
-          minItems: 1
-          maxItems: 21
-          items:
-            $ref: "#/components/schemas/AvailableTimeSlot"
         vaccinated:
           type: boolean
         animalRegistered:
           type: boolean
-        sociability:
-          $ref: "#/components/schemas/Sociability"
-        aggressionLevel:
-          $ref: "#/components/schemas/AggressionLevel"
         preferredWalkIntensity:
           $ref: "#/components/schemas/WalkIntensity"
         unfamiliarDogReaction:
@@ -1937,16 +2454,15 @@ components:
         - photoUrl
         - breed
         - age
+        - ageMonths
+        - birthDate
+        - breedOther
         - sex
         - weightKg
         - sizeGroup
         - neutered
-        - primaryActivityArea
-        - availableTimeSlots
         - vaccinated
         - animalRegistered
-        - sociability
-        - aggressionLevel
         - preferredWalkIntensity
         - unfamiliarDogReaction
         - selfIntroduction
@@ -1965,10 +2481,24 @@ components:
           description: 비공개 객체의 만료되는 조회 URL.
         breed:
           $ref: "#/components/schemas/BreedCode"
+        birthDate:
+          $ref: '#/components/schemas/DogBirthDate'
+        breedOther:
+          type: [ string, 'null' ]
+          minLength: 1
+          maxLength: 100
+          description: 기타 견종명. 미입력 또는 breed가 other가 아니면 null이다.
+        ageMonths:
+          type: integer
+          minimum: 0
+          readOnly: true
+          description: Asia/Seoul의 응답 날짜 기준 완료한 개월 수. 해당 월에 생일의 일이 없으면 월말에 개월 수가 증가한다. 0~24개월은 개월로, 25개월부터 age로 표시한다.
         age:
           type: integer
           minimum: 0
           maximum: 30
+          readOnly: true
+          description: Asia/Seoul의 응답 날짜 기준 만 나이. 윤년 2월 29일생은 평년 3월 1일에 나이가 증가한다.
         sex:
           $ref: "#/components/schemas/DogSex"
         weightKg:
@@ -1979,24 +2509,10 @@ components:
           $ref: "#/components/schemas/SizeGroup"
         neutered:
           type: boolean
-        primaryActivityArea:
-          type: string
-          minLength: 2
-          maxLength: 100
-        availableTimeSlots:
-          type: array
-          minItems: 1
-          maxItems: 21
-          items:
-            $ref: "#/components/schemas/AvailableTimeSlot"
         vaccinated:
           type: boolean
         animalRegistered:
           type: boolean
-        sociability:
-          $ref: "#/components/schemas/Sociability"
-        aggressionLevel:
-          $ref: "#/components/schemas/AggressionLevel"
         preferredWalkIntensity:
           $ref: "#/components/schemas/WalkIntensity"
         unfamiliarDogReaction:
@@ -2006,27 +2522,40 @@ components:
           minLength: 1
           maxLength: 500
     PublicDog:
-      description: 추천·match에서 노출하는 반려견. 보호자 id와 좌표를 포함하지 않는다.
+      description: 추천·match에서 노출하는 반려견. 보호자 id와 좌표를 포함하지 않으며 지역·시간은 별도 guardian 정보에서 읽는다.
       $ref: "#/components/schemas/Dog"
     CompatibilityGrade:
       type: string
       enum: [ excellent, good, check_conditions ]
+    PublicGuardianProfile:
+      type: object
+      additionalProperties: false
+      required: [ nickname, photoUrl, activityRegions, availableTimeSlots ]
+      properties:
+        nickname:
+          $ref: "#/components/schemas/GuardianNickname"
+        photoUrl:
+          type: [ string, "null" ]
+          format: uri
+          maxLength: 2048
+        activityRegions:
+          $ref: '#/components/schemas/ActivityRegions'
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
+      description: 추천·받은 관심·보낸 관심 상세 전용 상대 보호자 공개 프로필. 닉네임·선택 사진·활동 지역·활동 가능 시간을 제공한다. email·보존 성별·원본 사진 키는 포함하지 않는다. 현재 유형 표시는 별도
+        guardianIdentity를 사용한다.
     RecommendationItem:
       type: object
       additionalProperties: false
       required:
         - dog
-        - guardianIdentity
         - compatibilityGrade
         - reasons
-        - approximateDistanceKm
       properties:
         dog:
-          $ref: "#/components/schemas/PublicDog"
-        guardianIdentity:
-          $ref: "#/components/schemas/GuardianIdentity"
+          $ref: '#/components/schemas/DogSummary'
         compatibilityGrade:
-          $ref: "#/components/schemas/CompatibilityGrade"
+          $ref: '#/components/schemas/CompatibilityGrade'
         reasons:
           type: array
           minItems: 1
@@ -2035,22 +2564,18 @@ components:
             type: string
             minLength: 1
             maxLength: 200
-        approximateDistanceKm:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 200
-          multipleOf: 0.1
+        guardian:
+          $ref: '#/components/schemas/PublicGuardianProfile'
     AppliedRecommendationFilters:
       type: object
       additionalProperties: false
       required:
         - sizeGroups
         - walkIntensities
-        - sociabilityLevels
-        - availableDays
-        - maxDistanceKm
+        - unfamiliarDogReactions
+        - regionIds
         - guardianIdentities
+        - availableTimeSlots
       properties:
         sizeGroups:
           type: array
@@ -2062,25 +2587,21 @@ components:
           maxItems: 3
           items:
             $ref: "#/components/schemas/WalkIntensity"
-        sociabilityLevels:
+        unfamiliarDogReactions:
           type: array
           maxItems: 3
           items:
-            $ref: "#/components/schemas/Sociability"
-        availableDays:
-          type: array
-          maxItems: 7
-          items:
-            $ref: "#/components/schemas/DayOfWeek"
-        maxDistanceKm:
-          type: [ number, "null" ]
-          minimum: 0.5
-          maximum: 50
+            $ref: "#/components/schemas/UnfamiliarDogReaction"
+        regionIds:
+          $ref: '#/components/schemas/ActivityRegionIds'
         guardianIdentities:
           type: array
           maxItems: 4
           items:
             $ref: "#/components/schemas/GuardianIdentity"
+        availableTimeSlots:
+          $ref: '#/components/schemas/AvailableTimeSlots'
+      description: 저장 정보와 임시 필터에서 해석한 실제 추천 조건. regionIds·availableTimeSlots는 기본값까지 채워 반환하며 다른 생략 필터는 빈 배열이다.
     RecommendationList:
       type: object
       additionalProperties: false
@@ -2096,24 +2617,19 @@ components:
     ReceivedLikeItem:
       type: object
       additionalProperties: false
-      required: [ id, dog, guardianIdentity, approximateDistanceKm, receivedAt ]
+      required: [ id, dog, receivedAt ]
       properties:
         id:
           type: string
           format: uuid
           description: 받은 liked interaction ID. 클라이언트 중복 제거에 사용한다.
         dog:
-          $ref: "#/components/schemas/PublicDog"
-        guardianIdentity:
-          $ref: "#/components/schemas/GuardianIdentity"
-        approximateDistanceKm:
-          type: number
-          minimum: 0
-          maximum: 200
-          multipleOf: 0.1
+          $ref: "#/components/schemas/DogSummary"
         receivedAt:
           type: string
           format: date-time
+        guardian:
+          $ref: '#/components/schemas/PublicGuardianProfile'
     ReceivedLikeList:
       type: object
       additionalProperties: false
@@ -2129,6 +2645,32 @@ components:
           minLength: 1
           maxLength: 512
           pattern: "^[A-Za-z0-9_-]+={0,2}$"
+    SentLikeItem:
+      type: object
+      additionalProperties: false
+      required: [ id, dog, sentAt ]
+      properties:
+        id: { type: string, format: uuid }
+        dog:
+          $ref: '#/components/schemas/DogSummary'
+        sentAt: { type: string, format: date-time }
+        guardian:
+          $ref: '#/components/schemas/PublicGuardianProfile'
+    SentLikeList:
+      type: object
+      additionalProperties: false
+      required: [ items, nextCursor ]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/SentLikeItem'
+        nextCursor:
+          type: [ string, 'null' ]
+          minLength: 1
+          maxLength: 512
+          pattern: '^[A-Za-z0-9_-]+={0,2}$'
     DogInteractionStatus:
       type: string
       enum: [ liked, passed ]
@@ -2140,6 +2682,14 @@ components:
         targetDogId:
           type: string
           format: uuid
+        receivedInteractionId:
+          type: string
+          format: uuid
+          description: 받은 관심에 응답할 때 필수다. 받은 관심 목록 항목의 서버 발급 id를 사용한다.
+        clientRequestId:
+          type: string
+          format: uuid
+          description: 새 선제 liked 전송마다 프론트가 UUID v4를 생성해 보낸다. 같은 전송의 재시도에는 최초에 생성한 값을 재사용한다.
         status:
           $ref: "#/components/schemas/DogInteractionStatus"
     DogInteractionResponse:
@@ -2310,6 +2860,39 @@ components:
     AppointmentStatus:
       type: string
       enum: [ proposed, accepted, rejected, canceled ]
+    AppointmentProposalListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - proposal
+        - myDog
+        - otherDog
+      properties:
+        proposal:
+          $ref: '#/components/schemas/AppointmentProposal'
+        myDog:
+          $ref: '#/components/schemas/DogSummary'
+        otherDog:
+          $ref: '#/components/schemas/DogSummary'
+    AppointmentProposalPage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AppointmentProposalListItem'
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          minLength: 1
+          maxLength: 512
+          pattern: ^[A-Za-z0-9_-]+={0,2}$
     AppointmentProposalRequest:
       type: object
       additionalProperties: false
@@ -2681,8 +3264,8 @@ components:
                 instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500/recommendations
                 code: VALIDATION_FAILED
                 fieldErrors:
-                  - field: maxDistanceKm
-                    reason: 0.5 이상 50 이하이어야 합니다.
+                  - field: regionIds
+                    reason: 존재하는 읍·면·동을 중복 없이 최대 3개 선택해 주세요.
                 requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     AuthenticationError:
       description: access token 누락, 오류, 만료 또는 Guardian 없음

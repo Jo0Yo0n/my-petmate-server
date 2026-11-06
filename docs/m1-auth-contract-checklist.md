@@ -129,7 +129,7 @@ M1 전체의 통과 여부는 완료
 #### 완료 조건
 
 - [x] 요청 DTO 테스트가 모두 통과한다.
-- [x] DTO의 validation 규칙과 OpenAPI 스키마 사이에 알려진 차이가 없다.
+- [ ] 닉네임·선택 사진·활동 지역·시간 계약에 맞춰 DTO validation과 OpenAPI의 차이를 해소하고 재검증한다.
 - [x] `./gradlew spotlessApply`와 `./gradlew check`가 통과한다.
 
 ### 2. PostgreSQL migration과 통합 테스트 기반 완성
@@ -547,9 +547,14 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 #### 프론트 검증 — `M1-W-REG-FE`
 
-- [ ] `M1-W-REG-FE-01` OpenAPI로 client type을 생성하고 `application/problem+json`의 status, code, fieldErrors와 requestId를
+- [x] `M1-W-REG-FE-01` OpenAPI로 client type을 생성하고 `application/problem+json`의 status, code, fieldErrors와 requestId를
   파싱한다.
-    - 연관 테스트: M1-REG-FE-01
+    - 연관 테스트: [M1-REG-FE-01](./m1-test-cases-detail.md#m1-reg-fe-01)
+    - 검증
+      근거: [오류 파서 테스트](../../my-petmate-frontend/tests/api/parseProblemDetail.test.ts), [API 클라이언트 테스트](../../my-petmate-frontend/tests/api/client.test.ts), [OpenAPI 타입 생성 명령](../../my-petmate-frontend/package.json)
+    - 로컬 재검증 (2026-11-06): [OpenAPI](./openapi.yaml) SHA-256
+      `4aa5db47c4fc232647089c08a25ce7dd8dacfe6fd14ee1da5768ec88dc443d48` 기준으로 `npm run openapi:generate`,
+      `npm run typecheck`, `npm test -- --runInBand tests/api/parseProblemDetail.test.ts tests/api/client.test.ts` 통과
 - [ ] `M1-W-REG-FE-02` 동시 401에서 refresh 요청을 하나만 보내고 각 원 요청을 한 번만 재시도한다.
     - 연관 테스트: M1-REG-FE-02
 - [ ] `M1-W-REG-FE-03` access token 만료 외의 401에서는 자동 refresh하지 않는다.
@@ -561,7 +566,7 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 - [x] [M1-REG-BE-01](./m1-test-cases-detail.md#m1-reg-be-01)
 - [x] [M1-REG-BE-02](./m1-test-cases-detail.md#m1-reg-be-02)
-- [ ] [M1-REG-FE-01](./m1-test-cases-detail.md#m1-reg-fe-01)
+- [x] [M1-REG-FE-01](./m1-test-cases-detail.md#m1-reg-fe-01)
 - [ ] [M1-REG-FE-02](./m1-test-cases-detail.md#m1-reg-fe-02)
 - [ ] [M1-REG-FE-03](./m1-test-cases-detail.md#m1-reg-fe-03)
 
@@ -583,3 +588,24 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
 
 M1의 개별 구현·보안·자동 검증 항목과 프론트 Playwright API 흐름 검증을 완료한 뒤 [`backend-mvp-plan.md`](./backend-mvp-plan.md#진행-현황)에서 M1을 `완료`로
 변경한다.
+
+## M1-GUARDIAN-PROFILE 보호자 프로필 계약 — 구현·검증 대기
+
+M1 추가 범위
+
+가입·본인 조회/수정의 닉네임·선택 사진·활동 지역·활동 가능 시간 계약은 OpenAPI를 따른다. 지역 카탈로그와 기존 데이터 처리
+과제는 [백엔드 계획](backend-mvp-plan.md#읍면동-지역-필터--구현검증-대기), 검증 내용은 [상세 테스트](m1-test-cases-detail.md#보호자-프로필-계약-변경-검증)를 따른다. 기존
+완료 기록은 변경된 계약의 통과 근거가 아니다.
+
+- [ ] SignupRequest·GuardianUpdateRequest에 nickname·activityRegionIds·availableTimeSlots를 연결하고 Guardian·관련 테이블에 저장한다.
+  계약상 필수 필드가 없는 기존 DTO를 그대로 사용하지 않는다.
+- [ ] 가입·로그인·GET/PATCH me의 Guardian 응답에 nickname·photoUrl·activityRegions·availableTimeSlots를 반환한다. 사진 미등록은
+  photoUrl=null로 표현한다.
+- [ ] nickname의 정규화·검증과 유형별 최초 성별 보존을 함께 적용한다. 수정 시 지역·시간 전체 교체와 나머지 필드를 하나의 트랜잭션으로 저장하고 실패 시 모두 롤백한다.
+- [ ] 기존 계정의 닉네임·지역·시간 이관 정책과 마이그레이션을 마련한다. 기존 반려견 데이터의 차이를 임의로 병합하지 않는다.
+- [ ] GET /api/regions를 가입 전 공개하고 POST /api/guardians/me/photos를 본인 전용으로 구현한다. 사진 업로드와 프로필 수정의 부분 성공을 구분한다.
+- [ ] 기존 가입·수정 fixture와 응답 계약 검증을 최신 필드에 맞춘다. M1-REG-FE-02~03 및 기존 인증 회귀 게이트를 확인한다. 실제 가입·로그인·본인 조회/수정 응답과 로그인 후 프론트 세션
+  저장을 최신 보호자 계약으로 검증한다.
+- [ ] 가입 전 공개 지역 카탈로그와 지역·시간 validation을 검증한다.
+- [ ] 가입→본인 조회→수정→재조회, 다견 공유, 변경 목록의 원자적 전체 교체를 검증한다.
+- [ ] 선택 사진 업로드와 기존 M1 서버·프론트 회귀 게이트를 재검증한다.
