@@ -552,9 +552,9 @@ JWT 검증은 Resource Server에 위임한다. 검증된 JWT의 subject를 사�
     - 연관 테스트: [M1-REG-FE-01](./m1-test-cases-detail.md#m1-reg-fe-01)
     - 검증
       근거: [오류 파서 테스트](../../my-petmate-frontend/tests/api/parseProblemDetail.test.ts), [API 클라이언트 테스트](../../my-petmate-frontend/tests/api/client.test.ts), [OpenAPI 타입 생성 명령](../../my-petmate-frontend/package.json)
-    - 로컬 재검증 (2026-11-06): [OpenAPI](./openapi.yaml) SHA-256
-      `4aa5db47c4fc232647089c08a25ce7dd8dacfe6fd14ee1da5768ec88dc443d48` 기준으로 `npm run openapi:generate`,
-      `npm run typecheck`, `npm test -- --runInBand tests/api/parseProblemDetail.test.ts tests/api/client.test.ts` 통과
+    - 로컬 재검증 (2026-11-06): 백엔드 계약 커밋 `262af2f9c9592a2d8aab6c942b90b784377b1855`, 프론트 검증 커밋
+      `20e89209df4b056a2a6bc0ff7d3f3a06f0cedfbd` 조합으로 `npm run openapi:generate`, `npm run typecheck`,
+      `npm test -- --runInBand tests/api/parseProblemDetail.test.ts tests/api/client.test.ts` 통과
 - [ ] `M1-W-REG-FE-02` 동시 401에서 refresh 요청을 하나만 보내고 각 원 요청을 한 번만 재시도한다.
     - 연관 테스트: M1-REG-FE-02
 - [ ] `M1-W-REG-FE-03` access token 만료 외의 401에서는 자동 refresh하지 않는다.

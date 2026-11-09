@@ -157,6 +157,7 @@ paths:
                   activityRegions:
                     - id: locality-demo-mangwon
                       displayName: 서울특별시 마포구 망원동
+                      retired: false
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -276,6 +277,7 @@ paths:
         Security 인증 과정에서 access token의 subject에 해당하는 Guardian을 찾지 못하면 401 AUTH_TOKEN_INVALID다.
         인증 성공 후 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은 데이터 불일치는
         500 INTERNAL_SERVER_ERROR다.
+        저장된 활동 지역이 폐지된 경우에도 목록에 포함하고, 각 지역의 폐지 여부를 retired로 반환한다.
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -301,6 +303,7 @@ paths:
                 activityRegions:
                   - id: locality-demo-mangwon
                     displayName: 서울특별시 마포구 망원동
+                    retired: false
                 availableTimeSlots:
                   - dayOfWeek: sat
                     startTime: 10:00
@@ -1755,6 +1758,7 @@ components:
       required:
         - id
         - displayName
+        - retired
       properties:
         id:
           type: string
@@ -1765,6 +1769,9 @@ components:
           minLength: 1
           maxLength: 200
           description: 서버의 지역 카탈로그에서 해석한 시도·시군구·읍면동 전체 표시 이름.
+        retired:
+          type: boolean
+          description: 현재 지역 카탈로그에서 폐지된 지역이면 true, 유효한 지역이면 false.
     ActivityRegions:
       type: array
       minItems: 1
