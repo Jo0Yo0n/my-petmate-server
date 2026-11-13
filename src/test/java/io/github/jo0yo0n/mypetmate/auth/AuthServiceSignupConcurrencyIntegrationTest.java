@@ -49,11 +49,25 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
     String canonicalEmail = "guardian-" + UUID.randomUUID() + "@example.com";
     SignupRequest signupRequest =
         new SignupRequest(
+            "보호자",
             canonicalEmail,
             "StringPassword1!",
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
+
+    SignupRequest competingRequest =
+        new SignupRequest(
+            "다른보호자",
+            canonicalEmail,
+            signupRequest.password(),
+            signupRequest.profileType(),
+            signupRequest.gender(),
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
 
     CountDownLatch bothReadyToSave = new CountDownLatch(2);
     CountDownLatch allowSave = new CountDownLatch(1);
@@ -74,7 +88,7 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
 
       // when
       var firstTransaction = executor.submit(() -> authService.signup(signupRequest));
-      var secondTransaction = executor.submit(() -> authService.signup(signupRequest));
+      var secondTransaction = executor.submit(() -> authService.signup(competingRequest));
 
       await(bothReadyToSave);
       allowSave.countDown();

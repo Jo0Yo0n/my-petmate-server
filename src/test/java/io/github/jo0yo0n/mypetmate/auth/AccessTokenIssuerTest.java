@@ -56,6 +56,7 @@ public class AccessTokenIssuerTest {
           Guardian guardian =
               new Guardian(
                   UUID.randomUUID(),
+                  "보호자",
                   "guardian@test.com",
                   "hashed-password",
                   ProfileType.INDIVIDUAL,

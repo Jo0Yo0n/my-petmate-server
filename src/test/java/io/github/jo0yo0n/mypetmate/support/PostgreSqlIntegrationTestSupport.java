@@ -1,5 +1,6 @@
 package io.github.jo0yo0n.mypetmate.support;
 
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -11,6 +12,9 @@ import org.testcontainers.utility.DockerImageName;
 
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public abstract class PostgreSqlIntegrationTestSupport {
+
+  public static final String ANSAN_REGIONS_SQL = "file:scripts/fixtures/ansan-regions.sql";
+  public static final UUID IL_DONG_ID = UUID.fromString("1997243c-3379-4113-985f-12a306295669");
 
   @ServiceConnection
   static final PostgreSQLContainer<?> postgresql =
@@ -24,9 +28,9 @@ public abstract class PostgreSqlIntegrationTestSupport {
 
   // table 추가될 때마다 수정
   @AfterEach
-  void clearDatabaseForNonTransactionalTests() {
+  protected void clearDatabaseForNonTransactionalTests() {
     if (!TestTransaction.isActive()) {
-      jdbcTemplate.execute("TRUNCATE TABLE guardian, refresh_token CASCADE");
+      jdbcTemplate.execute("TRUNCATE TABLE guardian, refresh_token, region CASCADE");
     }
   }
 }

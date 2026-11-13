@@ -44,11 +44,14 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
     // given
     SignupRequest signupRequest =
         new SignupRequest(
+            "보호자",
             "guardian@example.com",
             "StrongPassword1!",
             ProfileType.FAMILY,
             null,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
 
     AuthResponse authResponse = authService.signup(signupRequest);
     String rawRefreshToken = authResponse.refreshToken();

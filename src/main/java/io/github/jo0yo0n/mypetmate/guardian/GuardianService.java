@@ -7,6 +7,9 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.GuardianActivityRegion;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import java.time.Clock;
@@ -19,14 +22,20 @@ class GuardianService {
   private final GuardianRepository guardianRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final Clock clock;
+  private final GuardianActivityRegionRepository activityRegionRepository;
+  private final GuardianAvailableTimeSlotRepository timeSlotRepository;
 
   GuardianService(
       GuardianRepository guardianRepository,
       RefreshTokenRepository refreshTokenRepository,
-      Clock clock) {
+      Clock clock,
+      GuardianActivityRegionRepository activityRegionRepository,
+      GuardianAvailableTimeSlotRepository timeSlotRepository) {
     this.guardianRepository = guardianRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.clock = clock;
+    this.activityRegionRepository = activityRegionRepository;
+    this.timeSlotRepository = timeSlotRepository;
   }
 
   @Transactional(readOnly = true)
@@ -39,7 +48,7 @@ class GuardianService {
                     new UnexpectedFailureException(
                         "Authenticated guardian was not found during service processing"));
     requireActive(guardian);
-    return GuardianResponse.from(guardian);
+    return toResponse(guardian);
   }
 
   @Transactional
@@ -54,7 +63,7 @@ class GuardianService {
     requireActive(guardian);
     guardian.updateProfile(
         request.profileType(), request.gender(), request.discoveryStatus(), clock.instant());
-    return GuardianResponse.from(guardian);
+    return toResponse(guardian);
   }
 
   @Transactional
@@ -70,6 +79,15 @@ class GuardianService {
     var now = clock.instant();
     guardian.withdraw(now);
     refreshTokenRepository.revokeAllByGuardianId(guardianId, now);
+  }
+
+  private GuardianResponse toResponse(Guardian guardian) {
+    var regions =
+        activityRegionRepository.findAllByGuardianId(guardian.getId()).stream()
+            .map(GuardianActivityRegion::getRegion)
+            .toList();
+    return GuardianResponse.from(
+        guardian, regions, timeSlotRepository.findAllByGuardianId(guardian.getId()));
   }
 
   private static void requireActive(Guardian guardian) {

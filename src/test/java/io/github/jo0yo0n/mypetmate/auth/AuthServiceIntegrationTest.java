@@ -20,6 +20,8 @@ import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.error.BusinessException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.*;
+import io.github.jo0yo0n.mypetmate.guardian.domain.Weekday;
+import io.github.jo0yo0n.mypetmate.guardian.dto.AvailableTimeSlotRequest;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
@@ -32,6 +34,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -48,10 +51,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
+import org.springframework.test.context.transaction.AfterTransaction;
 import org.springframework.transaction.annotation.Transactional;
 
+@Sql(
+    scripts = PostgreSqlIntegrationTestSupport.ANSAN_REGIONS_SQL,
+    config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED))
 @SpringBootTest
 public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport {
+
+  @AfterTransaction
+  void clearCommittedFixture() {
+    clearDatabaseForNonTransactionalTests();
+  }
 
   @Autowired private AuthService authService;
   @Autowired private GuardianRepository guardianRepository;
@@ -108,11 +122,14 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     String rawPassword = "StrongPass123!";
     SignupRequest signupRequest =
         new SignupRequest(
+            "보호자",
             "Guardian@example.com  ",
             rawPassword,
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.SEARCHING,
+            List.of(IL_DONG_ID),
+            List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30")));
 
     // When
     AuthResponse authResponse = authService.signup(signupRequest);
@@ -145,22 +162,28 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     String rawPassword = "StrongPass123!";
     SignupRequest signupRequest =
         new SignupRequest(
+            "보호자",
             "  Guardian@ExAmPlE.com ",
             rawPassword,
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.SEARCHING,
+            List.of(IL_DONG_ID),
+            List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30")));
     authService.signup(signupRequest);
     long guardianCountBefore = guardianRepository.count();
     long refreshTokenCountBefore = refreshTokenRepository.count();
 
     SignupRequest duplicatedSignupRequest =
         new SignupRequest(
+            "다른보호자",
             existEmail,
             rawPassword + "a",
             ProfileType.INDIVIDUAL,
             Gender.FEMALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.SEARCHING,
+            List.of(IL_DONG_ID),
+            List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30")));
 
     assertThatThrownBy(() -> authService.signup(duplicatedSignupRequest))
         .isInstanceOf(EmailAlreadyExistsException.class);
@@ -179,11 +202,14 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     AuthResponse signupResponse =
         authService.signup(
             new SignupRequest(
+                "보호자",
                 "guardian@example.com",
                 rawPassword,
                 ProfileType.INDIVIDUAL,
                 Gender.MALE,
-                DiscoveryStatus.SEARCHING));
+                DiscoveryStatus.SEARCHING,
+                List.of(IL_DONG_ID),
+                List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
     long guardianCountBefore = guardianRepository.count();
     long refreshTokenCountBefore = refreshTokenRepository.count();
 
@@ -253,11 +279,14 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
     AuthResponse authResponse =
         authService.signup(
             new SignupRequest(
+                "보호자",
                 "guardian@example.com",
                 "StrongPassword1!",
                 ProfileType.FAMILY,
                 null,
-                DiscoveryStatus.SEARCHING));
+                DiscoveryStatus.SEARCHING,
+                List.of(IL_DONG_ID),
+                List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
 
     Guardian guardian = guardianRepository.findByEmail("guardian@example.com").orElseThrow();
 
@@ -680,6 +709,7 @@ public class AuthServiceIntegrationTest extends PostgreSqlIntegrationTestSupport
   private Guardian newGuardian(GuardianStatus status, String hashedPassword) {
     return new Guardian(
         UUID.randomUUID(),
+        "보호자",
         "guardian@example.com",
         hashedPassword,
         ProfileType.FAMILY,

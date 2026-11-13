@@ -32,10 +32,12 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
+@Sql(PostgreSqlIntegrationTestSupport.ANSAN_REGIONS_SQL)
 @SpringBootTest
 @AutoConfigureMockMvc
 class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
@@ -408,6 +410,14 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   private JsonNode signup(String email, String type, String gender) throws Exception {
     ObjectNode request =
         profile(type, gender, "searching").put("email", email).put("password", "StrongPass123!");
+    request.put("nickname", email.strip().split("@", 2)[0]);
+    request.putArray("activityRegionIds").add(IL_DONG_ID.toString());
+    request
+        .putArray("availableTimeSlots")
+        .addObject()
+        .put("dayOfWeek", "mon")
+        .put("startTime", "09:00")
+        .put("endTime", "10:30");
     MvcResult result =
         mvc.perform(
                 post("/api/auth/signup")
@@ -458,7 +468,17 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertRequestId(result);
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     List<String> expected =
-        List.of("id", "email", "profileType", "gender", "discoveryStatus", "status");
+        List.of(
+            "id",
+            "email",
+            "profileType",
+            "gender",
+            "discoveryStatus",
+            "status",
+            "nickname",
+            "photoUrl",
+            "activityRegions",
+            "availableTimeSlots");
     List<String> actual = new ArrayList<>();
     body.fieldNames().forEachRemaining(actual::add);
     assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
@@ -467,6 +487,11 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(body.path("profileType").asText()).isEqualTo(type);
     assertThat(body.path("discoveryStatus").asText()).isEqualTo(discoveryStatus);
     assertThat(body.path("status").asText()).isEqualTo(accountStatus);
+    assertThat(body.path("nickname").asText())
+        .isEqualToIgnoringCase(email.substring(0, email.indexOf("@")));
+    assertThat(body.path("photoUrl").isNull()).isTrue();
+    assertThat(body.path("activityRegions").isArray()).isTrue();
+    assertThat(body.path("availableTimeSlots").isArray()).isTrue();
     if (gender == null) {
       assertThat(body.path("gender").isNull()).isTrue();
     } else {

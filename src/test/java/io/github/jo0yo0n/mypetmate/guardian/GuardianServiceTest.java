@@ -9,6 +9,8 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import java.time.Clock;
@@ -29,13 +31,21 @@ class GuardianServiceTest {
   @Mock GuardianRepository guardianRepository;
   @Mock RefreshTokenRepository refreshTokenRepository;
   @Mock Clock clock;
+  @Mock GuardianActivityRegionRepository activityRegionRepository;
+  @Mock GuardianAvailableTimeSlotRepository timeSlotRepository;
 
   private final UUID guardianId = UUID.randomUUID();
   private GuardianService guardianService;
 
   @BeforeEach
   void setUp() {
-    guardianService = new GuardianService(guardianRepository, refreshTokenRepository, clock);
+    guardianService =
+        new GuardianService(
+            guardianRepository,
+            refreshTokenRepository,
+            clock,
+            activityRegionRepository,
+            timeSlotRepository);
   }
 
   @Test

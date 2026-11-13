@@ -31,6 +31,10 @@ public enum ErrorCode {
       URI.create("urn:my-petmate:problem:account-withdrawn"), "탈퇴한 계정", HttpStatus.FORBIDDEN),
   EMAIL_ALREADY_EXISTS(
       URI.create("urn:my-petmate:problem:email-already-exists"), "이미 가입된 이메일", HttpStatus.CONFLICT),
+  NICKNAME_ALREADY_EXISTS(
+      URI.create("urn:my-petmate:problem:nickname-already-exists"),
+      "이미 사용 중인 닉네임",
+      HttpStatus.CONFLICT),
   RESOURCE_NOT_FOUND(
       URI.create("urn:my-petmate:problem:resource-not-found"),
       "리소스를 찾을 수 없음",

@@ -16,13 +16,15 @@ class ContractAuth:
         # Withdrawal must not invalidate the account used by other test cases.
         withdrawal = case.path == "/api/guardians/me/withdraw"
         if withdrawal or base_url not in self.tokens:
+            account_id = uuid4().hex
             response = requests.post(
                 base_url + "/api/auth/signup",
                 json={
-                    "email": "contract-" + uuid4().hex + "@example.com",
+                    "email": "contract-" + account_id + "@example.com",
                     "password": "ContractPass123!",
                     "profileType": "family",
-                    "discoveryStatus": "searching",
+                    "discoveryStatus": "paused",
+                    "nickname": account_id[:20],
                 },
                 timeout=10,
             )

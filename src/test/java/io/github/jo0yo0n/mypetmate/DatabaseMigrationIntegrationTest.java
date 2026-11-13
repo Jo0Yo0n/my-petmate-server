@@ -27,13 +27,16 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
   @DisplayName("[M1-DB-01] appliesAllMigrationsToAnEmptyPostgresDatabase")
   @Test
   void appliesAllMigrationsToAnEmptyPostgresDatabase() {
-    Boolean guardianAndRefreshTokenTableExists =
+    Boolean migrationTablesExist =
         jdbcTemplate.queryForObject(
             """
-            SELECT COUNT(*) = 2
+            SELECT COUNT(*) = 5
             FROM information_schema.tables
             WHERE table_schema = 'public'
-                AND table_name IN ('guardian', 'refresh_token')
+                AND table_name IN (
+                    'guardian', 'refresh_token', 'region',
+                    'guardian_activity_region', 'guardian_available_time_slot'
+                )
             """,
             Boolean.class);
     Boolean emailIndexExists =
@@ -49,7 +52,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
             """,
             Boolean.class);
 
-    assertThat(guardianAndRefreshTokenTableExists).isTrue();
+    assertThat(migrationTablesExist).isTrue();
     assertThat(emailIndexExists).isTrue();
   }
 
@@ -97,6 +100,7 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
           .dataSource(dataSource)
           .schemas(schema)
           .defaultSchema(schema)
+          .target(MigrationVersion.fromVersion("4"))
           .load()
           .migrate();
 
@@ -221,11 +225,12 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     jdbcTemplate.update(
         """
         INSERT INTO guardian (
-            id, email, password_hash, profile_type, gender, discovery_status, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+            id, email, nickname, password_hash, profile_type, gender, discovery_status, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         guardianId,
         email,
+        "test" + guardianId.toString().replace("-", "").substring(0, 12),
         "password-hash",
         profileType,
         gender,

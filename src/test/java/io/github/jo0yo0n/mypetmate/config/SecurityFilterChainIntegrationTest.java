@@ -246,6 +246,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
     guardians.saveAndFlush(
         new Guardian(
             id,
+            "보호자",
             id + "@example.com",
             "fixture-hash",
             ProfileType.INDIVIDUAL,

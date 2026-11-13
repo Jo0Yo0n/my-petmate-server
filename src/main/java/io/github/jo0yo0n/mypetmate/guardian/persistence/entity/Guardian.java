@@ -15,6 +15,9 @@ public class Guardian {
 
   @Id private UUID id;
 
+  @Column(nullable = false, length = 20)
+  private String nickname;
+
   @Column(nullable = false, length = 254)
   private String email;
 
@@ -43,6 +46,7 @@ public class Guardian {
 
   public Guardian(
       UUID id,
+      String nickname,
       String email,
       String passwordHash,
       ProfileType profileType,
@@ -52,6 +56,7 @@ public class Guardian {
       Instant createdAt,
       Instant updatedAt) {
     this.id = id;
+    this.nickname = nickname;
     this.email = email;
     this.passwordHash = passwordHash;
     this.profileType = profileType;
@@ -85,6 +90,10 @@ public class Guardian {
 
   public UUID getId() {
     return id;
+  }
+
+  public String getNickname() {
+    return nickname;
   }
 
   public String getEmail() {

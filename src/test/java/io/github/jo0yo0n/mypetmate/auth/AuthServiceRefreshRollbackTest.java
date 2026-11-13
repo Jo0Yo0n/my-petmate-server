@@ -14,6 +14,7 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,11 +32,14 @@ public class AuthServiceRefreshRollbackTest extends PostgreSqlIntegrationTestSup
 
   private final SignupRequest signupRequest =
       new SignupRequest(
+          "보호자",
           "guardian@example.com",
           "StrongPassword!1",
           ProfileType.FAMILY,
           null,
-          DiscoveryStatus.SEARCHING);
+          DiscoveryStatus.PAUSED,
+          List.of(),
+          List.of());
 
   @DisplayName("[보강] rollsBackRefreshTokenRotationWhenRepositorySaveThrows()")
   @Test
