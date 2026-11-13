@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 class GuardianService {
+  private static final String FAILURE_MESSAGE = "요청 처리 중 인증된 보호자를 찾을 수 없습니다.";
   private final GuardianRepository guardianRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final Clock clock;
@@ -43,10 +44,7 @@ class GuardianService {
     Guardian guardian =
         guardianRepository
             .findById(guardianId)
-            .orElseThrow(
-                () ->
-                    new UnexpectedFailureException(
-                        "Authenticated guardian was not found during service processing"));
+            .orElseThrow(() -> new UnexpectedFailureException(FAILURE_MESSAGE));
     requireActive(guardian);
     return toResponse(guardian);
   }
@@ -56,10 +54,7 @@ class GuardianService {
     Guardian guardian =
         guardianRepository
             .findByIdWithPessimisticWriteLock(guardianId)
-            .orElseThrow(
-                () ->
-                    new UnexpectedFailureException(
-                        "Authenticated guardian was not found during service processing"));
+            .orElseThrow(() -> new UnexpectedFailureException(FAILURE_MESSAGE));
     requireActive(guardian);
     guardian.updateProfile(
         request.profileType(), request.gender(), request.discoveryStatus(), clock.instant());
@@ -71,10 +66,7 @@ class GuardianService {
     Guardian guardian =
         guardianRepository
             .findByIdWithPessimisticWriteLock(guardianId)
-            .orElseThrow(
-                () ->
-                    new UnexpectedFailureException(
-                        "Authenticated guardian was not found during service processing"));
+            .orElseThrow(() -> new UnexpectedFailureException(FAILURE_MESSAGE));
     requireActive(guardian);
     var now = clock.instant();
     guardian.withdraw(now);

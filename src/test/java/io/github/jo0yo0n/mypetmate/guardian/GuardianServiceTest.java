@@ -25,8 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GuardianServiceTest {
-  private static final String FAILURE_MESSAGE =
-      "Authenticated guardian was not found during service processing";
+  private static final String FAILURE_MESSAGE = "요청 처리 중 인증된 보호자를 찾을 수 없습니다.";
 
   @Mock GuardianRepository guardianRepository;
   @Mock RefreshTokenRepository refreshTokenRepository;

@@ -363,8 +363,7 @@ class ErrorTestController {
   static final String INTERNAL_SQL = "SELECT password_hash FROM guardian";
   static final String PASSWORD = "fixture-password";
   static final String TOKEN = "fixture-token";
-  static final String UNEXPECTED_FAILURE_MESSAGE =
-      "Authenticated guardian was not found during service processing";
+  static final String UNEXPECTED_FAILURE_MESSAGE = "요청 처리 중 인증된 보호자를 찾을 수 없습니다.";
 
   record TestRequest(@NotBlank String name) {}
 

@@ -7,6 +7,6 @@ public class UnexpectedFailureException extends RuntimeException {
   }
 
   public UnexpectedFailureException() {
-    super("unexpected error occurred");
+    super("예기치 않은 오류가 발생했습니다.");
   }
 }
