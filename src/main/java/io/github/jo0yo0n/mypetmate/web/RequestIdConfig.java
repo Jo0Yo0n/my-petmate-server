@@ -1,6 +1,5 @@
-package io.github.jo0yo0n.mypetmate.config;
+package io.github.jo0yo0n.mypetmate.web;
 
-import io.github.jo0yo0n.mypetmate.web.RequestIdFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
