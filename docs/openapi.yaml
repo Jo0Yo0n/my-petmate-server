@@ -325,10 +325,10 @@ paths:
         인증 성공 후 수정 잠금을 위해 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은
         데이터 불일치는 500 INTERNAL_SERVER_ERROR다.
 
-        지역·시간 목록은 다른 수정 필드와 원자적으로 전체 교체한다. 추천 필터 조작은 이 API를 호출하지 않는다.
-        닉네임·유형·찾기 상태·활동 지역·시간과 개인 유형의 성별을 모두 전송한다. 사진은 /photos의 별도 요청으로 처리한다.
-        이미 저장된 폐지 지역은 프로필 수정 시 목록에서 모두 제거하거나 유효한 지역으로 교체한다. 최종 목록에는 유효한 읍·면·동 ID를 1~3개 포함한다.
-        폐지된 지역 ID를 전송하면 activityRegionIds의 입력값 검증 실패로 400 VALIDATION_FAILED를 반환하며 수정 내용을 저장하지 않는다.
+        paused에서는 지역·시간 목록 각각의 생략·null·빈 배열을 허용하고 해당 목록의 기존 값을 유지한다.
+        값이 있는 목록은 요청을 최종 선택 목록으로 적용한다. 다른 수정 필드와 함께 원자적으로 저장한다. 추천 필터 조작은 이 API를 호출하지 않는다.
+        닉네임·유형·찾기 상태와 개인 유형의 성별도 모두 전송한다. 사진은 /photos의 별도 요청으로 처리한다.
+        searching 요청은 지역 1~3개·시간대 1개 이상을 반드시 포함한다. 기존 값이 있어도 생략·null·빈 배열은 해당 필드를 fieldErrors에 표시하는 400 VALIDATION_FAILED로 거부하며 수정 내용을 저장하지 않는다.
         취소한 초안은 전송하지 않으며 저장 성공 응답의 Guardian을 본인 정보의 기준으로 사용한다.
       requestBody:
         required: true
@@ -341,7 +341,7 @@ paths:
               discoveryStatus: paused
               nickname: 보리네
               activityRegionIds:
-                - locality-demo-mangwon
+                - 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
               availableTimeSlots:
                 - dayOfWeek: sat
                   startTime: 10:00
@@ -686,8 +686,7 @@ paths:
           in: query
           schema:
             type: string
-            minLength: 1
-            maxLength: 100
+            format: uuid
       responses:
         '200':
           description: 직계 하위 지역. 표시 순서대로 반환한다.
@@ -697,10 +696,10 @@ paths:
                 $ref: '#/components/schemas/RegionList'
               example:
                 items:
-                  - id: locality-demo-mangwon
+                  - id: 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
                     name: 망원동
                     level: locality
-                    parentId: mapo-demo
+                    parentId: a3b7e901-2c54-4d68-8f12-9e0a6b5c7d43
         '400':
           $ref: '#/components/responses/ValidationError'
         '404':
@@ -2239,7 +2238,11 @@ components:
         individual 요청의 성별이 기존 값과 다르면 409 STATE_CONFLICT로 거부한다.
         DB 확인과 저장은 동시 요청에서도 최초 성별이 덮어써지지 않도록 수행한다.
 
-        지역 목록과 시간대 목록은 요청 값으로 전체 교체하고 다른 필드와 함께 원자적으로 저장한다.
+        paused에서는 지역·시간 목록 각각의 생략·null·빈 배열을 허용하고 해당 목록의 기존 값을 유지한다.
+        값이 있는 목록은 요청을 최종 선택 목록으로 적용한다. 기존과 요청에 모두 있는 항목은 유지할 수 있고 요청에만 있는 항목은 추가하며 기존에만 있는 항목은 제거한다. 모든 행의 삭제·재삽입을 요구하지 않는다.
+        searching 요청은 지역 1~3개·시간대 1개 이상을 반드시 포함한다. 기존 값이 있어도 생략·null·빈 배열은 해당 필드를 fieldErrors에 표시하는 400 VALIDATION_FAILED로 거부한다.
+        두 목록은 각각 처리하며 GET /api/guardians/me는 paused에서도 저장된 지역·시간을 반환한다. 미등록 응답만 빈 배열이다.
+        전달된 항목은 상태와 관계없이 검증한다. 최종 상태 검증과 다른 필드의 저장을 같은 트랜잭션에서 수행하며 실패하면 전체 롤백하고 400 VALIDATION_FAILED를 반환한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardianUpdateRequest"
         - $ref: "#/components/schemas/CoupleGuardianUpdateRequest"
@@ -2258,8 +2261,21 @@ components:
         - gender
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: individual
@@ -2270,9 +2286,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     CoupleGuardianUpdateRequest:
       type: object
       additionalProperties: false
@@ -2280,8 +2300,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: couple
@@ -2292,9 +2325,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     FamilyGuardianUpdateRequest:
       type: object
       additionalProperties: false
@@ -2302,8 +2339,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: family
@@ -2314,9 +2364,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     LoginRequest:
       type: object
       additionalProperties: false
