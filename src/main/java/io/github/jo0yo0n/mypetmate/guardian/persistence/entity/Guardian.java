@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.persistence;
+package io.github.jo0yo0n.mypetmate.guardian.persistence.entity;
 
 import io.github.jo0yo0n.mypetmate.error.StateConflictException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.*;

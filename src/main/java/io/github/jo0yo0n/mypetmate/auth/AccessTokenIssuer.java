@@ -2,7 +2,7 @@ package io.github.jo0yo0n.mypetmate.auth;
 
 import io.github.jo0yo0n.mypetmate.config.JwtProperties;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

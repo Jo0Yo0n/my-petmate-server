@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.validation;
+package io.github.jo0yo0n.mypetmate.guardian.validation.profile;
 
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import jakarta.validation.ConstraintValidator;

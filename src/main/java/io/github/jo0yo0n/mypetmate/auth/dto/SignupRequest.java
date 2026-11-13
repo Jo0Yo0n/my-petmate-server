@@ -1,12 +1,12 @@
 package io.github.jo0yo0n.mypetmate.auth.dto;
 
+import io.github.jo0yo0n.mypetmate.auth.validation.ValidSignupPassword;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.support.EmailNormalizer;
-import io.github.jo0yo0n.mypetmate.guardian.validation.GuardianProfileFields;
-import io.github.jo0yo0n.mypetmate.guardian.validation.ValidGuardianProfile;
-import io.github.jo0yo0n.mypetmate.guardian.validation.ValidSignupPassword;
+import io.github.jo0yo0n.mypetmate.guardian.validation.profile.GuardianProfileFields;
+import io.github.jo0yo0n.mypetmate.guardian.validation.profile.ValidGuardianProfile;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

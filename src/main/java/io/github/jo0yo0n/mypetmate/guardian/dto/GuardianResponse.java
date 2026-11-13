@@ -4,7 +4,7 @@ import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
 import java.util.UUID;
 
 public record GuardianResponse(

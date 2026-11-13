@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.persistence;
+package io.github.jo0yo0n.mypetmate.guardian.persistence.converter;
 
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import jakarta.persistence.AttributeConverter;

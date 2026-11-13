@@ -3,8 +3,8 @@ package io.github.jo0yo0n.mypetmate.guardian.dto;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.validation.GuardianProfileFields;
-import io.github.jo0yo0n.mypetmate.guardian.validation.ValidGuardianProfile;
+import io.github.jo0yo0n.mypetmate.guardian.validation.profile.GuardianProfileFields;
+import io.github.jo0yo0n.mypetmate.guardian.validation.profile.ValidGuardianProfile;
 import jakarta.validation.constraints.NotNull;
 
 @ValidGuardianProfile

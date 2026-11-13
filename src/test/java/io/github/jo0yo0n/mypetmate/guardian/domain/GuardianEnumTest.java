@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.DiscoveryStatusConverter;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GenderConverter;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianStatusConverter;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.ProfileTypeConverter;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.converter.DiscoveryStatusConverter;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.converter.GenderConverter;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.converter.GuardianStatusConverter;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.converter.ProfileTypeConverter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
