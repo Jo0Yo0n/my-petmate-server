@@ -54,7 +54,10 @@ PostgreSQL 기반의 인증 토대 (M1)를 구현 중입니다.
 - 오류와 요청 ID 계약: [error-response.md](./error-response.md)
 - WebSocket 계약: [websocket-protocol.md](./websocket-protocol.md)
 - 개발·검증 규칙: [development-conventions.md](./development-conventions.md)
-- 상세 문서 안내와 기능별 읽기 순서: [documentation-guide.md](./documentation-guide.md)
+- 마일스톤의 목표·범위와 완료 기준: [백엔드 로드맵](./backend-mvp-plan.md)
+- 작업 순서·상태와 검증 근거: [GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestones)의 Issues
+
+착수할 때 개발 규칙과 현재 마일스톤을 확인하고, 변경 범위에 해당하는 계약을 읽습니다. 계약과 계획이 충돌할 때는 [기준 우선순위](../AGENTS.md)를 따릅니다.
 
 ## 로컬 실행
 
@@ -87,7 +90,7 @@ Schemathesis 계약 검증은 `uvx`로 Python 3.12와 Schemathesis 4.32.1을 사
 실행마다 계정이 DB에 추가되므로 개발 DB와 분리한 계약 검증 DB에서 실행합니다. 서버는 테스트 전에 별도로 실행해야 합니다.
 
 전역 차단 메서드의 검증 범위는 [오류 계약](./error-response.md#http-메서드-차단과-계약-적용-범위)을 따릅니다.
-별도 보안 회귀 테스트의 입력과 검증 항목은 [M1-SEC-11](./m1-test-cases-detail.md#m1-sec-11)에서 관리합니다.
+별도 보안 회귀 테스트의 입력과 검증 항목은 [BlockedHttpMethodIntegrationTest](../src/test/java/io/github/jo0yo0n/mypetmate/config/BlockedHttpMethodIntegrationTest.java)에서 관리합니다.
 `./gradlew check`에 포함되며, 단독 실행은 `./gradlew test --tests '*BlockedHttpMethodIntegrationTest'`입니다.
 HTTP 헤더에 허용되지 않는 제어문자는 생성 대상에서 제외합니다. 회원가입의 이메일 중복과 프로필의 최초 성별 변경 제한은
 상태에 따른 정상적인 409로 검증하며, 응답 상태·본문 스키마 검사는 유지합니다.
