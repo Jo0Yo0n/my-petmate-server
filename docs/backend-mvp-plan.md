@@ -6,7 +6,7 @@
 - REST 요청·응답의 상세 계약: [`openapi.yaml`](./openapi.yaml)
 - 오류와 요청 ID 계약: [`error-response.md`](./error-response.md)
 - WebSocket 계약: [`websocket-protocol.md`](./websocket-protocol.md)
-- 문서 전체 위치 안내: [`documentation-guide.md`](./documentation-guide.md)
+- 문서 지도: [README](./README.md#문서-지도)
 
 상세 계약을 이 문서에 복사하지 않는다. 계약이 바뀌면 해당 기준 문서를 먼저 수정하고 이 문서에는 범위와 검증 기준만 반영한다.
 
@@ -15,7 +15,8 @@
 - 한 번에 마일스톤 하나만 `진행 중`으로 둔다.
 - 이전 마일스톤의 자동 테스트와 짧은 수동 API 확인이 끝난 뒤 다음 마일스톤을 시작한다.
 - 일정 날짜가 아니라 완료 조건을 기준으로 상태를 바꾼다.
-- 상태 값은 `예정`, `진행 중`, `완료`만 사용한다.
+- 로드맵 상태는 `예정`, `진행 중`, `완료`를 사용한다. 세부 작업과 검증 근거는 해당 GitHub 마일스톤의 Issue에서 관리한다.
+- 예정 단계의 세부 Issue는 착수할 때 만든다. 작업 및 검증 절차는 [개발 규칙](./development-conventions.md#작업-흐름)을 따른다.
 
 ## 진행 현황
 
@@ -30,11 +31,13 @@
 | 6    | M6. 약속과 평가     | 예정    | 약속 상태 전이와 종료 후 비공개 평가를 연결한다.                   |
 | 7    | M7. 안전 조치       | 예정    | 차단·신고와 추천·채팅 제외를 완성한다.                             |
 
-현재 프로젝트는 **M1을 진행 중**이다.
+현재 프로젝트는 **M1을 진행 중**이다. [M1 작업 목록](https://github.com/Jo0Yo0n/my-petmate-server/milestone/1)에서 선행 작업과 검증 상태를 확인한다.
 
 ## 마일스톤별 계획
 
 ### M0. 백엔드 스캐폴드
+
+프로젝트 초기 단계다. 완료 기록은 아래 검증 항목에 있다.
 
 #### 범위
 
@@ -51,7 +54,9 @@
 
 ### M1. 인증 기반
 
-작업 전 [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md)를 끝까지 읽고 강제 진입 조건을 확인한다.
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/1) · 선행 조건은 M0 완료다.
+
+보호자 프로필·지역·사진의 F1 연동은 [상위 Issue #17](https://github.com/Jo0Yo0n/my-petmate-server/issues/17)에서 추적한다. [인증·오류·프론트 토큰 회귀 #25](https://github.com/Jo0Yo0n/my-petmate-server/issues/25)는 M1 전체 완료를 검증한다.
 
 #### API 범위
 
@@ -84,19 +89,19 @@
 - [ ] 유형·찾기 상태 검증과 최초 성별 보존·변경 금지가 동작한다.
 - [ ] 보호된 API가 access token 누락·오류 요청을 거부한다.
 - [ ] validation, 인증, 권한, 리소스 없음, 충돌 오류가 공통 `ProblemDetail` 계약과 일치한다.
-- [ ] [`m1-auth-contract-checklist.md`](./m1-auth-contract-checklist.md)의 모든 검증·완료 게이트를 통과한다.
+- [ ] 지역 카탈로그와 프로필 저장·재조회 및 사진 등록·교체가 계약대로 동작한다. 새 마이그레이션과 fixture는 빈 개발 DB에서 검증한다.
+- [ ] 실제 서버로 F1 세션과 내 정보 화면을 검증하고, 현행 OpenAPI와 실행 응답 사이에 알려진 불일치가 없다.
+- [ ] 서버 인증·보안 회귀와 프론트 토큰 갱신·Playwright 검증을 완료하고 관련 Issue에 결과를 연결한다.
 
 #### 핵심 검증
 
-- token 생성·검증·회전·폐기 단위 테스트
-- 인증 API와 현재 보호자 API의 정상·실패 통합 테스트
-- 보호자 유형별 조건부 validation과 활동 지역·시간대 검증 및 저장·재조회 테스트
-- MVC 4xx와 Security 401·403 오류 계약 테스트
-- 정상·오류 응답의 요청 ID 형식·유일성·전달·정리 테스트
-
-보호자 프로필 계약의 구현·이관·재검증은 [M1-GUARDIAN-PROFILE](m1-auth-contract-checklist.md#m1-guardian-profile-보호자-프로필-계약--구현검증-대기)에서 관리한다. 기존 완료 기록을 변경된 계약의 통과 근거로 쓰지 않는다.
+- token 생성·검증·회전·폐기, 접근 거부와 동시성·롤백
+- 가입·로그인·현재 보호자 수정 및 재조회, 지역·시간 입력과 원자적 갱신
+- 공통 REST 오류·요청 ID 및 로그와 응답의 민감 정보 비노출
 
 ### M2. 반려견 프로필
+
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/2) · 선행 조건은 M1 완료다.
 
 #### 생년월일·기타 견종명 — 구현·이관·검증 대기
 
@@ -107,7 +112,7 @@
 - [ ] 0·24·25개월, 생일 전후·월말·윤년·한국 날짜 경계와 미래/상한 날짜를 검증한다.
 - [ ] 기타 견종명 선택 입력·정규화·견종 변경 시 제거·저장 후 재조회를 검증한다. 빈 문자열·공백만 있는 입력을 프론트와 서버에서 각각 거부하는지 확인한다.
 
-지역·시간은 M1 보호자 소유이며 Dog에 중복 저장하지 않는다. 지역 카탈로그와 기존 데이터의 미결 사항은 [읍면동 지역 필터](#읍면동-지역-필터--구현검증-대기)를 따른다.
+지역·시간은 M1 보호자 소유이며 Dog에 중복 저장하지 않는다. 지역 카탈로그는 [M1](#m1-인증-기반)을 따른다. 반려견 요청·응답에서 지역·시간·좌표를 제거하고 공개 보호자 프로필이 지역·시간을 제공하는지 후속 추천·관심 상세에서 검증한다.
 
 #### API 범위
 
@@ -141,6 +146,8 @@
 
 ### M3. 추천
 
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/3) · 선행 조건은 M2 완료다.
+
 #### API 범위
 
 - `GET /api/dogs/{dogId}/recommendations`
@@ -150,6 +157,7 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 
 #### 구현 초점
 
+- 한 보호자의 여러 반려견이 저장된 지역·시간을 공유하고 변경이 다음 추천 요청부터 반영되는지 확인한다. 추천·관심 상세의 공개 보호자 응답 및 추천·받은 관심의 거리 필드 제거와 기존 데이터 처리를 검증한다.
 - 저장된 보호자 지역·시간과 선택한 반려견을 기준으로 필터 없이도 요청 시점에 기본 추천 계산
 - `안전·차단·신고 제외 → 양쪽 찾기 상태 → 저장 정보·임시 필터 → 궁합 정렬` 순서 보장
 - 현재 보호자 유형 필터와 searching/paused 추천 참여 제어
@@ -177,6 +185,8 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 - 안전 규칙 우회 방지와 위치·신원 privacy 테스트
 
 ### M4. 좋아요와 매칭
+
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/4) · 선행 조건은 M3 완료다.
 
 #### API 범위
 
@@ -218,6 +228,8 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 - 새 endpoint의 요청 ID·ProblemDetail·method/Accept 처리와 기존 인증 회귀를 검증한다.
 
 ### M5. 채팅
+
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/5) · 선행 조건은 M4 완료다.
 
 #### API 범위
 
@@ -264,6 +276,8 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 
 ### M6. 약속과 평가
 
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/6) · 선행 조건은 M5 완료다.
+
 #### API 범위
 
 - `POST /api/matches/{matchId}/appointment-proposals`
@@ -292,7 +306,18 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 - 시간·점수·태그 validation 테스트
 - 평가 고유 제약·권한·privacy 테스트
 
+#### 약속 목록
+
+M6에 GET /api/appointment-proposals의 box=sent/received/accepted/canceled cursor 목록을 추가한다. 기존 수락·거절·취소 명령을 재사용한다. 채팅 카드와 매칭 탭 목록은 같은 서버 약속 상태를 사용한다. 서버 쿼리와 UI 연동을 함께 검증한다.
+
+- [ ] 본인 참여·종료/차단 제외·찾기 상태 무관 조회 검증.
+- [ ] `sent`·`received`의 방향별 `proposed`·`rejected` 분류, 방향과 무관한 `accepted` 분류, `canceled`의 양방향 취소 약속과 `cancellationReason` 표시 검증.
+- [ ] cursor 경계·동률·잘못된 box/cursor·탭 변경 초기화·상태 변경 중 페이지 이동 검증.
+- [ ] 채팅·목록에서 같은 약속 수락/거절/취소 동시 수행 시 기존 상태 전이·충돌·중복 처리 검증.
+
 ### M7. 안전 조치
+
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/7) · 선행 조건은 M6 완료다.
 
 #### API 범위
 
@@ -320,31 +345,8 @@ query parameter의 이름과 형식은 `openapi.yaml`의 해당 경로를 기준
 
 ## 상태 변경 절차
 
-1. 현재 마일스톤의 완료 기준과 핵심 검증을 모두 확인한다.
+1. 현재 마일스톤의 완료 기준을 충족한 Issue와 증거를 확인한다.
 2. `./gradlew check`와 필요한 수동 API 확인을 수행한다.
 3. 보안·인증·데이터베이스·트랜잭션 변경은 사람 개발자의 검토 결과를 기록한다.
 4. 현재 마일스톤을 `완료`로 바꾼다.
 5. 다음 마일스톤 하나만 `진행 중`으로 바꾼다.
-
-## 약속 목록 승인 추가 — 구현·검증 대기
-
-M6에 GET /api/appointment-proposals의 box=sent/received/accepted/canceled cursor 목록을 추가한다. 기존 수락·거절·취소 명령을 재사용한다. 채팅 카드와 매칭 탭 목록은 같은 서버 약속 상태를 사용한다. 서버 구현·쿼리·UI 통합 검증은 미완료다.
-
-- [ ] 본인 참여·종료/차단 제외·찾기 상태 무관 조회 검증.
-- [ ] `sent`·`received`의 방향별 `proposed`·`rejected` 분류, 방향과 무관한 `accepted` 분류, `canceled`의 양방향 취소 약속과 `cancellationReason` 표시 검증.
-- [ ] cursor 경계·동률·잘못된 box/cursor·탭 변경 초기화·상태 변경 중 페이지 이동 검증.
-- [ ] 채팅·목록에서 같은 약속 수락/거절/취소 동시 수행 시 기존 상태 전이·충돌·중복 처리 검증.
-
-추천·관심 상세의 PublicGuardianProfile 응답 및 약속 accepted 분류는 서버 구현·재검증 대기다. 평점은 기존 1~5 정수 계약을 유지한다.
-
-## 읍면동 지역 필터 — 구현·검증 대기
-
-가입 전 공개 `GET /api/regions` 카탈로그를 사용한다. M1의 가입·본인 조회/수정에서 보호자 활동 지역·시간을 저장하고, M3 기본 추천과 임시 필터에서 사용한다. 상세 필드·상한·대체 규칙은 OpenAPI, 제품 정책은 seed를 따른다. 전국 원천·안정 ID·갱신 및 기존 계정·지역·시간 데이터 처리를 구현 전에 확정한다. 기존 반려견별 데이터가 다르면 임의로 하나를 선택하거나 합치지 않는다. 좌표로 지역을 추정하지 않는다.
-
-- [ ] 가입 전 하위 지역 조회·알 수 없는 parentId·최종 locality 선택 검증.
-- [ ] 가입·수정의 지역 누락/1개/3개/4개/중복/알 수 없는 ID/상위 지역 ID 검증.
-- [ ] 시간대 필수·요일·시각 형식·역전·중복·겹침·자정 경계 및 목록 전체 교체의 원자성 검증.
-- [ ] 같은 이름의 다른 시군구 구분·지역 ID 갱신·기존 계정 데이터 처리 검증.
-- [ ] 필터 생략의 저장값 사용·명시값 대체·지역 OR와 시간/다른 필터 AND 검증.
-- [ ] 반려견 요청·응답에서 지역·시간·좌표를 제거하고 공개 보호자 응답으로 지역·시간을 제공하는지 검증.
-- [ ] 추천·받은 관심에서 거리 필드를 제거하고 기존 저장 데이터 처리를 확인한다.
