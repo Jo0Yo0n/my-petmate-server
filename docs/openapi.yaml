@@ -96,7 +96,7 @@ paths:
                   discoveryStatus: searching
                   nickname: 보리네
                   activityRegionIds:
-                    - 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
+                    - 1997243c-3379-4113-985f-12a306295669
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -107,16 +107,16 @@ paths:
                   password: StrongPass123!
                   profileType: couple
                   discoveryStatus: paused
-                  nickname: 보리네
+                  nickname: 보리커플
               family:
                 value:
                   email: family@example.com
                   password: StrongPass123!
                   profileType: family
                   discoveryStatus: searching
-                  nickname: 보리네
+                  nickname: 보리가족
                   activityRegionIds:
-                    - 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
+                    - 1997243c-3379-4113-985f-12a306295669
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -150,14 +150,14 @@ paths:
                   nickname: 보리네
                   photoUrl:
                   activityRegions:
-                    - id: 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
+                    - id: 1997243c-3379-4113-985f-12a306295669
                       path:
                         - level: province
-                          name: 서울특별시
+                          name: 경기도
                         - level: district
-                          name: 마포구
+                          name: 안산시 상록구
                         - level: locality
-                          name: 망원동
+                          name: 일동
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -300,14 +300,14 @@ paths:
                 nickname: 보리네
                 photoUrl:
                 activityRegions:
-                  - id: 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
+                  - id: 1997243c-3379-4113-985f-12a306295669
                     path:
                       - level: province
-                        name: 서울특별시
+                        name: 경기도
                       - level: district
-                        name: 마포구
+                        name: 안산시 상록구
                       - level: locality
-                        name: 망원동
+                        name: 일동
                 availableTimeSlots:
                   - dayOfWeek: sat
                     startTime: 10:00
@@ -339,9 +339,9 @@ paths:
             example:
               profileType: couple
               discoveryStatus: paused
-              nickname: 보리네
+              nickname: 새보리네
               activityRegionIds:
-                - 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
+                - 1997243c-3379-4113-985f-12a306295669
               availableTimeSlots:
                 - dayOfWeek: sat
                   startTime: 10:00
@@ -696,10 +696,10 @@ paths:
                 $ref: '#/components/schemas/RegionList'
               example:
                 items:
-                  - id: 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35
-                    name: 망원동
+                  - id: 1997243c-3379-4113-985f-12a306295669
+                    name: 일동
                     level: locality
-                    parentId: a3b7e901-2c54-4d68-8f12-9e0a6b5c7d43
+                    parentId: 2d032bc3-37d8-4ab3-b634-c1cd5d472eb4
         '400':
           $ref: '#/components/responses/ValidationError'
         '404':
@@ -764,7 +764,7 @@ paths:
                   walkIntensities:
                     - moderate
                   unfamiliarDogReactions: [ ]
-                  regionIds: [ 6f5d9c20-8b31-4a72-9e64-2c0d7f8a1b35 ]
+                  regionIds: [ 1997243c-3379-4113-985f-12a306295669 ]
                   guardianIdentities:
                     - male
                   availableTimeSlots:
