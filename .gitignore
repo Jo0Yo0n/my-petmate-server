@@ -40,6 +40,7 @@ out/
 .vscode/
 
 ### Codex agents ###
+/AGENTS.md
 .agents/
 /.codegraph
 
