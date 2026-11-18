@@ -9,19 +9,19 @@
 BEGIN;
 
 INSERT INTO region (id, name, level, parent_id)
-VALUES ('fa77a358-f57b-4eb8-8491-984e0ae7cc65', '경기도', 'province', NULL)
+VALUES ('fa77a358-f57b-4eb8-8491-984e0ae7cc65', '경기도', 'sido', NULL)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO region (id, name, level, parent_id)
-VALUES ('2d032bc3-37d8-4ab3-b634-c1cd5d472eb4', '안산시 상록구', 'district', 'fa77a358-f57b-4eb8-8491-984e0ae7cc65'),
-       ('492c66cd-d012-4149-97eb-a832f0252132', '안산시 단원구', 'district', 'fa77a358-f57b-4eb8-8491-984e0ae7cc65')
+VALUES ('2d032bc3-37d8-4ab3-b634-c1cd5d472eb4', '안산시 상록구', 'sgg', 'fa77a358-f57b-4eb8-8491-984e0ae7cc65'),
+       ('492c66cd-d012-4149-97eb-a832f0252132', '안산시 단원구', 'sgg', 'fa77a358-f57b-4eb8-8491-984e0ae7cc65')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO region (id, name, level, parent_id)
-VALUES ('1997243c-3379-4113-985f-12a306295669', '일동', 'locality', '2d032bc3-37d8-4ab3-b634-c1cd5d472eb4'),
-       ('c39f2f04-fcde-404c-a459-f4845cbf888e', '이동', 'locality', '2d032bc3-37d8-4ab3-b634-c1cd5d472eb4'),
-       ('137455a6-38b2-44af-ae72-cedbcffb1629', '고잔동', 'locality', '492c66cd-d012-4149-97eb-a832f0252132'),
-       ('0efdc187-bd92-4aa4-8fa9-cb7f34bc9753', '초지동', 'locality', '492c66cd-d012-4149-97eb-a832f0252132')
+VALUES ('1997243c-3379-4113-985f-12a306295669', '일동', 'umd', '2d032bc3-37d8-4ab3-b634-c1cd5d472eb4'),
+       ('c39f2f04-fcde-404c-a459-f4845cbf888e', '이동', 'umd', '2d032bc3-37d8-4ab3-b634-c1cd5d472eb4'),
+       ('137455a6-38b2-44af-ae72-cedbcffb1629', '고잔동', 'umd', '492c66cd-d012-4149-97eb-a832f0252132'),
+       ('0efdc187-bd92-4aa4-8fa9-cb7f34bc9753', '초지동', 'umd', '492c66cd-d012-4149-97eb-a832f0252132')
 ON CONFLICT (id) DO NOTHING;
 
 COMMIT;

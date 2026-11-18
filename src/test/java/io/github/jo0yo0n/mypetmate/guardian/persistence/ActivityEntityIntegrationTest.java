@@ -25,12 +25,12 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
   @Test
   void persistsAndRestoresRegionHierarchyAndGuardianActivity() {
-    Region province = new Region(UUID.randomUUID(), "경기도", RegionLevel.PROVINCE, null);
-    Region district = new Region(UUID.randomUUID(), "안산시 상록구", RegionLevel.DISTRICT, province);
-    Region locality = new Region(UUID.randomUUID(), "일동", RegionLevel.LOCALITY, district);
-    entityManager.persist(province);
-    entityManager.persist(district);
-    entityManager.persist(locality);
+    Region sido = new Region(UUID.randomUUID(), "경기도", RegionLevel.SIDO, null);
+    Region sgg = new Region(UUID.randomUUID(), "안산시 상록구", RegionLevel.SGG, sido);
+    Region umd = new Region(UUID.randomUUID(), "일동", RegionLevel.UMD, sgg);
+    entityManager.persist(sido);
+    entityManager.persist(sgg);
+    entityManager.persist(umd);
     Instant now = Instant.parse("2026-11-10T00:00:00Z");
     Guardian guardian =
         new Guardian(
@@ -46,7 +46,7 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
             now);
     entityManager.persist(guardian);
     GuardianActivityRegion activity =
-        new GuardianActivityRegion(UUID.randomUUID(), guardian, locality);
+        new GuardianActivityRegion(UUID.randomUUID(), guardian, umd);
     entityManager.persist(activity);
     for (Weekday day : Weekday.values()) {
       entityManager.persist(
@@ -55,21 +55,21 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
     entityManager.flush();
     entityManager.clear();
 
-    Region restoredLocality = entityManager.find(Region.class, locality.getId());
-    assertThat(restoredLocality.getLevel()).isEqualTo(RegionLevel.LOCALITY);
+    Region restoredUmd = entityManager.find(Region.class, umd.getId());
+    assertThat(restoredUmd.getLevel()).isEqualTo(RegionLevel.UMD);
     assertThat(
             entityManager
                 .getEntityManagerFactory()
                 .getPersistenceUnitUtil()
-                .isLoaded(restoredLocality, "parent"))
+                .isLoaded(restoredUmd, "parent"))
         .isFalse();
-    assertThat(restoredLocality.getParent().getName()).isEqualTo("안산시 상록구");
-    assertThat(restoredLocality.getParent().getParent().getLevel()).isEqualTo(RegionLevel.PROVINCE);
-    assertThat(restoredLocality.getParent().getParent().getParent()).isNull();
+    assertThat(restoredUmd.getParent().getName()).isEqualTo("안산시 상록구");
+    assertThat(restoredUmd.getParent().getParent().getLevel()).isEqualTo(RegionLevel.SIDO);
+    assertThat(restoredUmd.getParent().getParent().getParent()).isNull();
     GuardianActivityRegion restoredActivity =
         entityManager.find(GuardianActivityRegion.class, activity.getId());
     assertThat(restoredActivity.getGuardian().getId()).isEqualTo(guardian.getId());
-    assertThat(restoredActivity.getRegion().getId()).isEqualTo(locality.getId());
+    assertThat(restoredActivity.getRegion().getId()).isEqualTo(umd.getId());
     var slots =
         entityManager
             .createQuery(
@@ -86,7 +86,7 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
               assertThat(slot.getEndMinute()).isEqualTo(630);
             });
     assertThat(jdbcTemplate.queryForList("select level from region", String.class))
-        .containsExactlyInAnyOrder("province", "district", "locality");
+        .containsExactlyInAnyOrder("sido", "sgg", "umd");
     assertThat(
             jdbcTemplate.queryForList(
                 "select day_of_week from guardian_available_time_slot", String.class))

@@ -4,9 +4,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum RegionLevel {
-  PROVINCE("province"),
-  DISTRICT("district"),
-  LOCALITY("locality");
+  SIDO("sido"),
+  SGG("sgg"),
+  UMD("umd");
 
   private final String value;
 

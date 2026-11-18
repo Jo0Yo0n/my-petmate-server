@@ -17,7 +17,7 @@ public interface RegionRepository extends JpaRepository<Region, UUID> {
     select r
     from Region r
     where r.id in :ids
-    and r.level = io.github.jo0yo0n.mypetmate.region.domain.RegionLevel.LOCALITY
+    and r.level = io.github.jo0yo0n.mypetmate.region.domain.RegionLevel.UMD
 """)
-  List<Region> findSelectableLocalitiesByIdIn(@Param("ids") Collection<UUID> ids);
+  List<Region> findSelectableUmdsByIdIn(@Param("ids") Collection<UUID> ids);
 }

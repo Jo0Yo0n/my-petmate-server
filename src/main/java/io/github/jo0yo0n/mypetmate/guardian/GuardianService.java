@@ -131,7 +131,7 @@ class GuardianService {
     }
 
     var desiredIds = new HashSet<>(requestedIds);
-    var desiredRegions = regionRepository.findSelectableLocalitiesByIdIn(requestedIds);
+    var desiredRegions = regionRepository.findSelectableUmdsByIdIn(requestedIds);
     if (desiredRegions.size() != requestedIds.size()) {
       throw new InvalidActivityRegionException(requestedIds, desiredRegions);
     }

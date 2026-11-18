@@ -30,7 +30,7 @@ class ActivityEnumJsonTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"PROVINCE,province", "DISTRICT,district", "LOCALITY,locality"})
+  @CsvSource({"SIDO,sido", "SGG,sgg", "UMD,umd"})
   void convertsRegionLevelToAndFromContractJson(RegionLevel level, String value) throws Exception {
     String json = "\"" + value + "\"";
     assertThat(objectMapper.writeValueAsString(level)).isEqualTo(json);
@@ -43,7 +43,7 @@ class ActivityEnumJsonTest {
       assertThatThrownBy(() -> objectMapper.readValue(json, Weekday.class))
           .isInstanceOf(JsonProcessingException.class);
     }
-    for (String json : new String[] {"\"PROVINCE\"", "\"unknown\"", "\"\""}) {
+    for (String json : new String[] {"\"SIDO\"", "\"unknown\"", "\"\""}) {
       assertThatThrownBy(() -> objectMapper.readValue(json, RegionLevel.class))
           .isInstanceOf(JsonProcessingException.class);
     }

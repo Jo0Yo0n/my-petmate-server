@@ -9,11 +9,11 @@ CREATE TABLE region
     name      VARCHAR(100) NOT NULL,
     level     VARCHAR(16)  NOT NULL,
     parent_id UUID,
-    CONSTRAINT ck_region_level CHECK (level IN ('province', 'district', 'locality')),
+    CONSTRAINT ck_region_level CHECK (level IN ('sido', 'sgg', 'umd')),
     CONSTRAINT ck_region_parent
         CHECK (
-            (level = 'province' AND parent_id IS NULL)
-                OR (level IN ('district', 'locality') AND parent_id IS NOT NULL AND parent_id <> id)
+            (level = 'sido' AND parent_id IS NULL)
+                OR (level IN ('sgg', 'umd') AND parent_id IS NOT NULL AND parent_id <> id)
             ),
     CONSTRAINT fk_region_parent FOREIGN KEY (parent_id) REFERENCES region (id)
 );
