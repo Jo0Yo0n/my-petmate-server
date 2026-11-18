@@ -14,7 +14,7 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class PostgreSqlIntegrationTestSupport {
 
   public static final String ANSAN_REGIONS_SQL = "file:scripts/fixtures/ansan-regions.sql";
-  public static final UUID IL_DONG_ID = UUID.fromString("1997243c-3379-4113-985f-12a306295669");
+  public static final UUID IL_DONG_ID = UUID.fromString("c6cd82c5-907c-50f8-b341-44c379916e78");
 
   @ServiceConnection
   static final PostgreSQLContainer<?> postgresql =

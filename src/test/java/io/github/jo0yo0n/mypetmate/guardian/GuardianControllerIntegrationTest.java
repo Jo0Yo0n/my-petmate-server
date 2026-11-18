@@ -47,8 +47,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 @AutoConfigureMockMvc
 class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private static final String PATH = "/api/guardians/me";
-  private static final String I_DONG_ID = "c39f2f04-fcde-404c-a459-f4845cbf888e";
-  private static final String GOJAN_DONG_ID = "137455a6-38b2-44af-ae72-cedbcffb1629";
+  private static final String I_DONG_ID = "e17a6e67-2cc5-58e9-be85-fd029ea4f53a";
+  private static final String GOJAN_DONG_ID = "c6a667c5-fdf8-5558-a3f8-0eb7ea59e4db";
   private static final String REQUEST_ID = "My-Petmate-Request-Id";
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper mapper;
@@ -239,7 +239,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
         .putArray("activityRegionIds")
         .add("00000000-0000-0000-0000-000000000001")
         .add(IL_DONG_ID.toString())
-        .add("2d032bc3-37d8-4ab3-b634-c1cd5d472eb4");
+        .add("c328470e-f1ce-5c02-9349-5cb331c61fc6");
 
     JsonNode error =
         assertProblem(update(auth, request), "VALIDATION_FAILED", "validation-failed", "입력값 검증 실패");

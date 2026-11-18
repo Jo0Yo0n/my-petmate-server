@@ -1,0 +1,26 @@
+{
+  "source": "https://apis.data.go.kr/1741000/StanReginCd/getStanReginCdList",
+  "collected_at": "2026-11-18T06:46:26.550076+00:00",
+  "scopes": {
+    "11": "서울특별시",
+    "41": "경기도"
+  },
+  "pages": [
+    {
+      "file": "11-0001.xml",
+      "sha256": "e6447f46c176deac4f4eaa6e1297f7fef7c7e78328b7cd4fd72fd76d8bc1406a"
+    },
+    {
+      "file": "41-0001.xml",
+      "sha256": "d8112142b4d1470e429b3b3f6d3b4f23da6ebeeefd9532629aa15d60b297f208"
+    },
+    {
+      "file": "41-0002.xml",
+      "sha256": "2382a171f31258d2cb60f5bb7939ba2cffa1e4c614aa59ab85fdf6adb7efb371"
+    },
+    {
+      "file": "41-0003.xml",
+      "sha256": "d2f0aa9bd6ed0cec6b257ab7235d2a7fc3829f1c1d8bfc2a5cfbc90337840b8a"
+    }
+  ]
+}

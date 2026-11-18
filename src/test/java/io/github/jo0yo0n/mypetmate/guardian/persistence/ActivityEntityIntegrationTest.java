@@ -45,8 +45,7 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
             now,
             now);
     entityManager.persist(guardian);
-    GuardianActivityRegion activity =
-        new GuardianActivityRegion(UUID.randomUUID(), guardian, umd);
+    GuardianActivityRegion activity = new GuardianActivityRegion(UUID.randomUUID(), guardian, umd);
     entityManager.persist(activity);
     for (Weekday day : Weekday.values()) {
       entityManager.persist(
@@ -85,7 +84,13 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
               assertThat(slot.getStartMinute()).isEqualTo(540);
               assertThat(slot.getEndMinute()).isEqualTo(630);
             });
-    assertThat(jdbcTemplate.queryForList("select level from region", String.class))
+    assertThat(
+            jdbcTemplate.queryForList(
+                "select level from region where id in (?, ?, ?)",
+                String.class,
+                sido.getId(),
+                sgg.getId(),
+                umd.getId()))
         .containsExactlyInAnyOrder("sido", "sgg", "umd");
     assertThat(
             jdbcTemplate.queryForList(

@@ -30,7 +30,7 @@ public class SignupRequestJsonTest {
     String json =
         """
             {"nickname":"보호자","email":"guardian@example.com", "password":"StrongPass123!", "profileType":"individual", "gender":"female", "discoveryStatus":"searching",
-             "activityRegionIds":["1997243c-3379-4113-985f-12a306295669"],
+             "activityRegionIds":["c6cd82c5-907c-50f8-b341-44c379916e78"],
              "availableTimeSlots":[{"dayOfWeek":"mon","startTime":"09:00","endTime":"10:30"}]}
             """;
 
@@ -43,7 +43,7 @@ public class SignupRequestJsonTest {
                 ProfileType.INDIVIDUAL,
                 Gender.FEMALE,
                 DiscoveryStatus.SEARCHING,
-                List.of(UUID.fromString("1997243c-3379-4113-985f-12a306295669")),
+                List.of(UUID.fromString("c6cd82c5-907c-50f8-b341-44c379916e78")),
                 List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
   }
 
@@ -57,7 +57,7 @@ public class SignupRequestJsonTest {
     String familyJson =
         """
             {"nickname":"보호자","email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "discoveryStatus":"searching",
-             "activityRegionIds":["1997243c-3379-4113-985f-12a306295669"],
+             "activityRegionIds":["c6cd82c5-907c-50f8-b341-44c379916e78"],
              "availableTimeSlots":[{"dayOfWeek":"mon","startTime":"09:00","endTime":"10:30"}]}
             """;
 
@@ -81,7 +81,7 @@ public class SignupRequestJsonTest {
                 ProfileType.FAMILY,
                 null,
                 DiscoveryStatus.SEARCHING,
-                List.of(UUID.fromString("1997243c-3379-4113-985f-12a306295669")),
+                List.of(UUID.fromString("c6cd82c5-907c-50f8-b341-44c379916e78")),
                 List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
   }
 
