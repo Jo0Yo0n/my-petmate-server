@@ -114,6 +114,62 @@ class DatabaseMigrationIntegrationTest extends PostgreSqlIntegrationTestSupport 
     }
   }
 
+  @Test
+  void migratesStoredActivityTimesToMinutes() {
+    String schema = "migration_" + UUID.randomUUID().toString().replace("-", "");
+    try {
+      var flyway = Flyway.configure().dataSource(dataSource).defaultSchema(schema);
+      flyway.target(MigrationVersion.fromVersion("5")).load().migrate();
+
+      UUID guardianId = UUID.randomUUID();
+      UUID slotId = UUID.randomUUID();
+      jdbcTemplate.update(
+          """
+          INSERT INTO %s.guardian (id, email, password_hash, profile_type, gender, discovery_status, nickname)
+          VALUES (?, 'legacy@example.com', 'password-hash', 'individual', 'female', 'paused', 'legacy')
+          """
+              .formatted(schema),
+          guardianId);
+      jdbcTemplate.update(
+          """
+          INSERT INTO %s.guardian_available_time_slot (id, guardian_id, day_of_week, start_time, end_time)
+          VALUES (?, ?, 'mon', TIME '00:00', TIME '23:50')
+          """
+              .formatted(schema),
+          slotId,
+          guardianId);
+
+      flyway.target(MigrationVersion.LATEST).load().migrate();
+
+      assertThat(
+              jdbcTemplate.queryForMap(
+                  "SELECT start_minute, end_minute FROM %s.guardian_available_time_slot WHERE id = ?"
+                      .formatted(schema),
+                  slotId))
+          .containsEntry("start_minute", 0)
+          .containsEntry("end_minute", 1430);
+
+      String insert =
+          """
+          INSERT INTO %s.guardian_available_time_slot (id, guardian_id, day_of_week, start_minute, end_minute)
+          VALUES (?, ?, 'mon', ?, ?)
+          """
+              .formatted(schema);
+      assertThat(jdbcTemplate.update(insert, UUID.randomUUID(), guardianId, 1430, 1440))
+          .isEqualTo(1);
+      assertThatThrownBy(
+              () -> jdbcTemplate.update(insert, UUID.randomUUID(), guardianId, 1430, 1440))
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasMessageContaining("uk_guardian_available_time_slot");
+      assertThatThrownBy(
+              () -> jdbcTemplate.update(insert, UUID.randomUUID(), guardianId, 1430, 1450))
+          .isInstanceOf(DataIntegrityViolationException.class)
+          .hasMessageContaining("ck_guardian_available_time_slot_time_order");
+    } finally {
+      jdbcTemplate.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
+    }
+  }
+
   @DisplayName("[M1-DB-02A] guardianAcceptsValidEnumAndProfileTypeGenderCombinations")
   @Test
   void guardianAcceptsValidEnumAndProfileTypeGenderCombinations() {

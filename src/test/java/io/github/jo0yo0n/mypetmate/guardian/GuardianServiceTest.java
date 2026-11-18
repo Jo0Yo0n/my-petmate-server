@@ -8,11 +8,11 @@ import io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.region.persistence.repository.RegionRepository;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +32,7 @@ class GuardianServiceTest {
   @Mock Clock clock;
   @Mock GuardianActivityRegionRepository activityRegionRepository;
   @Mock GuardianAvailableTimeSlotRepository timeSlotRepository;
+  @Mock RegionRepository regionRepository;
 
   private final UUID guardianId = UUID.randomUUID();
   private GuardianService guardianService;
@@ -44,7 +45,8 @@ class GuardianServiceTest {
             refreshTokenRepository,
             clock,
             activityRegionRepository,
-            timeSlotRepository);
+            timeSlotRepository,
+            regionRepository);
   }
 
   @Test
@@ -64,7 +66,8 @@ class GuardianServiceTest {
     given(guardianRepository.findByIdWithPessimisticWriteLock(guardianId))
         .willReturn(Optional.empty());
     var request =
-        new GuardianUpdateRequest(ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING);
+        new GuardianUpdateCommand(
+            "보호자", ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.PAUSED, null, null);
 
     assertThatThrownBy(() -> guardianService.updateCurrentGuardian(guardianId, request))
         .isInstanceOf(UnexpectedFailureException.class)

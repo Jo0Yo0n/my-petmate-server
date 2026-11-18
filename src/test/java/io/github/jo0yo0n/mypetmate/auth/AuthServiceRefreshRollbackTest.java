@@ -8,7 +8,6 @@ import static org.mockito.BDDMockito.willThrow;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
@@ -30,8 +29,8 @@ public class AuthServiceRefreshRollbackTest extends PostgreSqlIntegrationTestSup
   @MockitoSpyBean private RefreshTokenRepository refreshTokenRepository;
   @MockitoSpyBean private RefreshTokenGenerator refreshTokenGenerator;
 
-  private final SignupRequest signupRequest =
-      new SignupRequest(
+  private final SignupCommand signupRequest =
+      new SignupCommand(
           "보호자",
           "guardian@example.com",
           "StrongPassword!1",

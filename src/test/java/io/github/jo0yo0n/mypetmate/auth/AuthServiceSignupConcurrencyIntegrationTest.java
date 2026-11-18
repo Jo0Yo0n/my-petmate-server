@@ -6,7 +6,6 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
@@ -47,8 +46,8 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
 
     // given
     String canonicalEmail = "guardian-" + UUID.randomUUID() + "@example.com";
-    SignupRequest signupRequest =
-        new SignupRequest(
+    SignupCommand signupRequest =
+        new SignupCommand(
             "보호자",
             canonicalEmail,
             "StringPassword1!",
@@ -58,8 +57,8 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
             List.of(),
             List.of());
 
-    SignupRequest competingRequest =
-        new SignupRequest(
+    SignupCommand competingRequest =
+        new SignupCommand(
             "다른보호자",
             canonicalEmail,
             signupRequest.password(),

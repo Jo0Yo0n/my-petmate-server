@@ -68,6 +68,7 @@ public class Guardian {
   }
 
   public void updateProfile(
+      String nickname,
       ProfileType profileType,
       Gender requestedGender,
       DiscoveryStatus discoveryStatus,
@@ -78,6 +79,7 @@ public class Guardian {
       }
       gender = requestedGender;
     }
+    this.nickname = nickname;
     this.profileType = profileType;
     this.discoveryStatus = discoveryStatus;
     updatedAt = now;

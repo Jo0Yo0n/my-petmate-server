@@ -12,7 +12,6 @@ import io.github.jo0yo0n.mypetmate.region.persistence.entity.Region;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.LocalTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,8 +50,7 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
     entityManager.persist(activity);
     for (Weekday day : Weekday.values()) {
       entityManager.persist(
-          new GuardianAvailableTimeSlot(
-              UUID.randomUUID(), guardian, day, LocalTime.of(9, 0), LocalTime.of(10, 30)));
+          new GuardianAvailableTimeSlot(UUID.randomUUID(), guardian, day, 540, 630));
     }
     entityManager.flush();
     entityManager.clear();
@@ -84,8 +82,8 @@ class ActivityEntityIntegrationTest extends PostgreSqlIntegrationTestSupport {
         .allSatisfy(
             slot -> {
               assertThat(slot.getGuardian().getId()).isEqualTo(guardian.getId());
-              assertThat(slot.getStartTime()).isEqualTo(LocalTime.of(9, 0));
-              assertThat(slot.getEndTime()).isEqualTo(LocalTime.of(10, 30));
+              assertThat(slot.getStartMinute()).isEqualTo(540);
+              assertThat(slot.getEndMinute()).isEqualTo(630);
             });
     assertThat(jdbcTemplate.queryForList("select level from region", String.class))
         .containsExactlyInAnyOrder("province", "district", "locality");

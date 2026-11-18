@@ -1794,7 +1794,7 @@ components:
       minItems: 0
       maxItems: 21
       uniqueItems: true
-      description: Asia/Seoul의 반복 가능한 요일별 시간대. paused는 빈 배열을 허용하고 searching의 최종 저장값에는 1개 이상 필요하다. 미등록 응답은 빈 배열이며 null은 허용하지 않는다. 같은 요일의 구간 중복·겹침은 거부하며 맞닿은 구간은 허용한다. 시작·종료는 같은 요일 안의 시각이며 자정을 넘는 단일 구간은 허용하지 않는다.
+      description: Asia/Seoul의 반복 가능한 요일별 시간대. paused는 빈 배열을 허용하고 searching의 최종 저장값에는 1개 이상 필요하다. 미등록 응답은 빈 배열이며 null은 허용하지 않는다. 같은 요일의 구간 중복·겹침은 거부하며 맞닿은 구간은 허용한다. 종료 시각 24:00은 해당 요일의 끝을 뜻한다. 자정을 넘는 일정은 요일별 구간으로 나눈다.
       items:
         $ref: '#/components/schemas/AvailableTimeSlot'
     Region:
@@ -1846,7 +1846,7 @@ components:
       minLength: 2
       maxLength: 20
       pattern: '^[a-zA-Z가-힣0-9]+$'
-      description: 앞뒤 공백을 제거한 2~20자 닉네임. 영문, 한글 완성형, 숫자만 사용할 수 있다. 대소문자를 구분하며 중복을 허용하지 않는다. 가입·본인 정보 수정에서 필수이며 인증 식별자로 사용하지 않는다.
+      description: 공백을 허용하지 않는 2~20자 닉네임. 앞뒤 공백도 거부한다. 영문, 한글 완성형, 숫자만 사용할 수 있다. 대소문자를 구분하며 중복을 허용하지 않는다. 가입·본인 정보 수정에서 필수이며 인증 식별자로 사용하지 않는다.
     DiscoveryStatus:
       type: string
       enum: [ searching, paused ]
@@ -2479,7 +2479,7 @@ components:
       type: object
       additionalProperties: false
       required: [ dayOfWeek, startTime, endTime ]
-      description: Asia/Seoul의 반복 가능한 요일과 10분 단위 HH:mm 시작·종료 시간. startTime < endTime이어야 한다. 추천에서는 같은 요일의 구간이 양의 길이로 겹칠 때만 시간이 맞는
+      description: Asia/Seoul의 반복 가능한 요일과 10분 단위 HH:mm 시작·종료 시간. startTime < endTime이어야 한다. 24:00은 종료 시각에만 허용한다. 추천에서는 같은 요일의 구간이 양의 길이로 겹칠 때만 시간이 맞는
         것으로 판단한다.
       properties:
         dayOfWeek:
@@ -2490,7 +2490,7 @@ components:
           example: "09:00"
         endTime:
           type: string
-          pattern: "^([01]\\d|2[0-3]):[0-5]0$"
+          pattern: "^(?:([01]\\d|2[0-3]):[0-5]0|24:00)$"
           example: "11:00"
     DogBirthDate:
       type: string
@@ -2717,7 +2717,6 @@ components:
             $ref: "#/components/schemas/UnfamiliarDogReaction"
         regionIds:
           $ref: '#/components/schemas/ActivityRegionIds'
-          minItems: 1
         guardianIdentities:
           type: array
           maxItems: 4
@@ -2725,7 +2724,6 @@ components:
             $ref: "#/components/schemas/GuardianIdentity"
         availableTimeSlots:
           $ref: '#/components/schemas/AvailableTimeSlots'
-          minItems: 1
       description: 저장 정보와 임시 필터에서 해석한 실제 추천 조건. regionIds·availableTimeSlots는 기본값까지 채워 반환하며 다른 생략 필터는 빈 배열이다.
     RecommendationList:
       type: object

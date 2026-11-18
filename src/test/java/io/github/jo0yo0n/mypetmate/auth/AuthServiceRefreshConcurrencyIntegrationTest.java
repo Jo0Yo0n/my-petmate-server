@@ -7,7 +7,6 @@ import static org.mockito.Mockito.clearInvocations;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
@@ -42,8 +41,8 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
   void allowOnlyOneConcurrencyRefreshRequest() throws Exception {
 
     // given
-    SignupRequest signupRequest =
-        new SignupRequest(
+    SignupCommand signupRequest =
+        new SignupCommand(
             "보호자",
             "guardian@example.com",
             "StrongPassword1!",

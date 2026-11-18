@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
-import java.time.LocalTime;
 import java.util.UUID;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -52,8 +51,8 @@ class SignupActivityIntegrationTest extends PostgreSqlIntegrationTestSupport {
             .andExpect(jsonPath("$.guardian.activityRegions[0].path[2].name").value("일동"))
             .andExpect(jsonPath("$.guardian.availableTimeSlots.length()").value(1))
             .andExpect(jsonPath("$.guardian.availableTimeSlots[0].dayOfWeek").value("mon"))
-            .andExpect(jsonPath("$.guardian.availableTimeSlots[0].startTime").value("09:00"))
-            .andExpect(jsonPath("$.guardian.availableTimeSlots[0].endTime").value("10:30"))
+            .andExpect(jsonPath("$.guardian.availableTimeSlots[0].startTime").value("23:50"))
+            .andExpect(jsonPath("$.guardian.availableTimeSlots[0].endTime").value("24:00"))
             .andReturn();
 
     UUID guardianId =
@@ -67,14 +66,10 @@ class SignupActivityIntegrationTest extends PostgreSqlIntegrationTestSupport {
         .containsExactly(IL_DONG_ID);
     assertThat(
             jdbc.query(
-                "select day_of_week, start_time, end_time from guardian_available_time_slot where guardian_id = ?",
-                (row, index) ->
-                    new StoredSlot(
-                        row.getString(1),
-                        row.getObject(2, LocalTime.class),
-                        row.getObject(3, LocalTime.class)),
+                "select day_of_week, start_minute, end_minute from guardian_available_time_slot where guardian_id = ?",
+                (row, index) -> new StoredSlot(row.getString(1), row.getInt(2), row.getInt(3)),
                 guardianId))
-        .containsExactly(new StoredSlot("mon", LocalTime.of(9, 0), LocalTime.of(10, 30)));
+        .containsExactly(new StoredSlot("mon", 1430, 1440));
   }
 
   @ParameterizedTest
@@ -82,13 +77,17 @@ class SignupActivityIntegrationTest extends PostgreSqlIntegrationTestSupport {
     "activityRegionIds,omitted",
     "activityRegionIds,empty",
     "activityRegionIds,null",
+    "activityRegionIds,duplicate",
+    "activityRegionIds[1],unknown",
     "availableTimeSlots,omitted",
     "availableTimeSlots,empty",
     "availableTimeSlots,null"
   })
-  void searchingRequiresEachActivityList(String field, String input) throws Exception {
+  void searchingRejectsInvalidActivityLists(String field, String input) throws Exception {
     ObjectNode request = request("searching", true);
     switch (input) {
+      case "unknown" -> request.withArray("activityRegionIds").add(UUID.randomUUID().toString());
+      case "duplicate" -> request.withArray(field).add(IL_DONG_ID.toString());
       case "omitted" -> request.remove(field);
       case "empty" -> request.putArray(field);
       case "null" -> request.putNull(field);
@@ -153,8 +152,8 @@ class SignupActivityIntegrationTest extends PostgreSqlIntegrationTestSupport {
           .putArray("availableTimeSlots")
           .addObject()
           .put("dayOfWeek", "mon")
-          .put("startTime", "09:00")
-          .put("endTime", "10:30");
+          .put("startTime", "23:50")
+          .put("endTime", "24:00");
     }
     return request;
   }
@@ -166,5 +165,5 @@ class SignupActivityIntegrationTest extends PostgreSqlIntegrationTestSupport {
             .content(mapper.writeValueAsBytes(request)));
   }
 
-  private record StoredSlot(String dayOfWeek, LocalTime start, LocalTime end) {}
+  private record StoredSlot(String dayOfWeek, int startMinute, int endMinute) {}
 }

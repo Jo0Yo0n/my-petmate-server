@@ -6,12 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
+import io.github.jo0yo0n.mypetmate.guardian.domain.ActivityTimeSlot;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Weekday;
-import io.github.jo0yo0n.mypetmate.guardian.dto.AvailableTimeSlotRequest;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
@@ -19,7 +18,6 @@ import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepos
 import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.region.domain.RegionLevel;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
-import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -47,8 +45,8 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
         .when(refreshTokenRepository)
         .save(any(RefreshToken.class));
 
-    SignupRequest signupRequest =
-        new SignupRequest(
+    SignupCommand signupRequest =
+        new SignupCommand(
             "보호자",
             "guardian@example.com",
             "StrongPassword1!",
@@ -56,7 +54,7 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
             Gender.MALE,
             DiscoveryStatus.PAUSED,
             null,
-            List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30")));
+            List.of(new ActivityTimeSlot(Weekday.MONDAY, 540, 630)));
 
     assertThat(guardianRepository.count()).isEqualTo(0);
     assertThat(refreshTokenRepository.count()).isEqualTo(0);
@@ -73,7 +71,7 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
   @Test
   void returnsStoredProfileAtSignupAndLogin() {
     var request =
-        new SignupRequest(
+        new SignupCommand(
             "보호자",
             "guardian@example.com",
             "StrongPassword1!",
@@ -81,7 +79,7 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
             Gender.MALE,
             DiscoveryStatus.PAUSED,
             List.of(IL_DONG_ID),
-            List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30")));
+            List.of(new ActivityTimeSlot(Weekday.MONDAY, 1430, 1440)));
 
     var signupProfile = authService.signup(request).guardian();
     assertThat(signupProfile.nickname()).isEqualTo("보호자");
@@ -95,7 +93,7 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
                     new GuardianResponse.RegionPathSegment(RegionLevel.DISTRICT, "안산시 상록구"),
                     new GuardianResponse.RegionPathSegment(RegionLevel.LOCALITY, "일동"))));
     assertThat(signupProfile.availableTimeSlots())
-        .containsExactly(new GuardianResponse.AvailableTimeSlot(Weekday.MONDAY, "09:00", "10:30"));
+        .containsExactly(new GuardianResponse.AvailableTimeSlot(Weekday.MONDAY, "23:50", "24:00"));
     assertThat(authService.login(new LoginRequest(request.email(), request.password())).guardian())
         .isEqualTo(signupProfile);
     var guardian = guardianRepository.findByEmail(request.email()).orElseThrow();
@@ -106,8 +104,8 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
             slot -> {
               assertThat(slot.getGuardian().getId()).isEqualTo(guardian.getId());
               assertThat(slot.getDayOfWeek()).isEqualTo(Weekday.MONDAY);
-              assertThat(slot.getStartTime()).isEqualTo(LocalTime.of(9, 0));
-              assertThat(slot.getEndTime()).isEqualTo(LocalTime.of(10, 30));
+              assertThat(slot.getStartMinute()).isEqualTo(1430);
+              assertThat(slot.getEndMinute()).isEqualTo(1440);
             });
   }
 }

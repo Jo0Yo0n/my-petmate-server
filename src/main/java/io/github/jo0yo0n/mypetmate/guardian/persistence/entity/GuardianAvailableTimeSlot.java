@@ -2,7 +2,6 @@ package io.github.jo0yo0n.mypetmate.guardian.persistence.entity;
 
 import io.github.jo0yo0n.mypetmate.guardian.domain.Weekday;
 import jakarta.persistence.*;
-import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -17,21 +16,21 @@ public class GuardianAvailableTimeSlot {
   @Column(name = "day_of_week", nullable = false, length = 3)
   private Weekday dayOfWeek;
 
-  @Column(name = "start_time", nullable = false)
-  private LocalTime startTime;
+  @Column(name = "start_minute", nullable = false)
+  private int startMinute;
 
-  @Column(name = "end_time", nullable = false)
-  private LocalTime endTime;
+  @Column(name = "end_minute", nullable = false)
+  private int endMinute;
 
   protected GuardianAvailableTimeSlot() {}
 
   public GuardianAvailableTimeSlot(
-      UUID id, Guardian guardian, Weekday dayOfWeek, LocalTime startTime, LocalTime endTime) {
+      UUID id, Guardian guardian, Weekday dayOfWeek, int startMinute, int endMinute) {
     this.id = id;
     this.guardian = guardian;
     this.dayOfWeek = dayOfWeek;
-    this.startTime = startTime;
-    this.endTime = endTime;
+    this.startMinute = startMinute;
+    this.endMinute = endMinute;
   }
 
   public UUID getId() {
@@ -46,11 +45,11 @@ public class GuardianAvailableTimeSlot {
     return dayOfWeek;
   }
 
-  public LocalTime getStartTime() {
-    return startTime;
+  public int getStartMinute() {
+    return startMinute;
   }
 
-  public LocalTime getEndTime() {
-    return endTime;
+  public int getEndMinute() {
+    return endMinute;
   }
 }

@@ -140,6 +140,42 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   }
 
   @Test
+  void rejectsNicknameContainingWhitespaceWithoutCreatingGuardian() throws Exception {
+    long guardians = count("guardian");
+    long refreshTokens = count("refresh_token");
+    for (String nickname : List.of(" 보호자", "보호자 ", "보 호자", "\t보호자", "보호자\n", "보호\u3000자")) {
+      JsonNode error =
+          assertProblemResponse(
+              SIGNUP_PATH,
+              request("family", null, "paused").put("nickname", nickname),
+              400,
+              "VALIDATION_FAILED",
+              "validation-failed",
+              "입력값 검증 실패");
+      assertThat(error.path("fieldErrors"))
+          .extracting(field -> field.path("field").asText())
+          .contains("nickname");
+      assertCountUnchanged(guardians, refreshTokens);
+    }
+  }
+
+  @Test
+  void rejectsNonStringNicknameWithoutCreatingGuardian() throws Exception {
+    long guardians = count("guardian");
+    long refreshTokens = count("refresh_token");
+    for (ObjectNode request :
+        List.of(
+            request("family", null, "paused").put("nickname", 1234),
+            request("family", null, "paused").put("nickname", true))) {
+      JsonNode error =
+          assertProblemResponse(
+              SIGNUP_PATH, request, 400, "MALFORMED_REQUEST", "malformed-request", "잘못된 요청 형식");
+      assertThat(error.has("fieldErrors")).isFalse();
+      assertCountUnchanged(guardians, refreshTokens);
+    }
+  }
+
+  @Test
   @DisplayName("[M1-API-SU-02B] rejectsUnknownSignupFieldWithoutCreatingGuardian")
   void rejectsUnknownSignupFieldWithoutCreatingGuardian() throws Exception {
     ObjectNode request = request("individual", "female", "searching");
@@ -182,7 +218,7 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     ObjectNode duplicate =
         request("individual", "female", "searching")
             .put("email", "another@example.com")
-            .put("nickname", "  보호자  ");
+            .put("nickname", "보호자");
     JsonNode error =
         assertProblemResponse(
             SIGNUP_PATH,

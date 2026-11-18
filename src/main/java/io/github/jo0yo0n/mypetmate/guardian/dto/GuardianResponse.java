@@ -10,7 +10,6 @@ import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
 import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.GuardianAvailableTimeSlot;
 import io.github.jo0yo0n.mypetmate.region.domain.RegionLevel;
 import io.github.jo0yo0n.mypetmate.region.persistence.entity.Region;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Locale;
@@ -27,9 +26,6 @@ public record GuardianResponse(
     @JsonInclude(JsonInclude.Include.ALWAYS) String photoUrl,
     List<ActivityRegion> activityRegions,
     List<AvailableTimeSlot> availableTimeSlots) {
-
-  private static final DateTimeFormatter SLOT_TIME =
-      DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
   public static GuardianResponse from(
       Guardian guardian, List<Region> regions, List<GuardianAvailableTimeSlot> slots) {
@@ -61,9 +57,11 @@ public record GuardianResponse(
   public record AvailableTimeSlot(Weekday dayOfWeek, String startTime, String endTime) {
     private static AvailableTimeSlot from(GuardianAvailableTimeSlot slot) {
       return new AvailableTimeSlot(
-          slot.getDayOfWeek(),
-          slot.getStartTime().format(SLOT_TIME),
-          slot.getEndTime().format(SLOT_TIME));
+          slot.getDayOfWeek(), formatTime(slot.getStartMinute()), formatTime(slot.getEndMinute()));
+    }
+
+    private static String formatTime(int minute) {
+      return String.format(Locale.ROOT, "%02d:%02d", minute / 60, minute % 60);
     }
   }
 }

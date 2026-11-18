@@ -69,7 +69,7 @@ acceptance_criteria:
     보호자는 채팅 안과 매칭 탭의 약속에서 약속을 확인한다. 매칭 탭 안에서 보낸 제안·받은 약속·성사된 약속·취소된 약속으로 분류하고 취소 사유를 함께 표시한다. 성사된 약속은 보낸 방향과 받은 방향을 모두 포함한다.
   - >
     보호자는 가입 시 닉네임을 입력하고 본인 정보에서 닉네임과 선택 사진을 조회·수정한다.
-    닉네임은 앞뒤 공백 제거 후 영문, 한글 완성형, 숫자로 구성된 2~20자이고 고유해야 한다. 사진은 비공개 저장·만료 조회 URL을 사용한다.
+    닉네임은 공백 없이 영문, 한글 완성형, 숫자로 구성된 2~20자이고 고유해야 한다. 앞뒤 공백도 허용하지 않는다. 사진은 비공개 저장·만료 조회 URL을 사용한다.
   - >
     임시 정지·탈퇴 계정은 로그인, token 갱신 및 모든 보호된 API 접근이 불가능하며 앱에서 상태별 안내를 구분한다.
     MVP에서 탈퇴 복구는 지원하지 않는다. active 보호자는 프로필 수정과 별개로 본인 계정을 탈퇴할 수 있다.
@@ -415,11 +415,13 @@ ontology_schema:
         - name: day_of_week
           type: enum
           required: true
-        - name: start_time
-          type: time
+        - name: start_minute
+          type: integer
+          description: 자정부터 지난 분이다.
           required: true
-        - name: end_time
-          type: time
+        - name: end_minute
+          type: integer
+          description: 자정부터 지난 분이다. 해당 요일의 끝은 1440이다.
           required: true
 
     - name: Recommendation
