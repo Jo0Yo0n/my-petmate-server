@@ -36,9 +36,8 @@ public class ProblemDetailFactory {
 
     ProblemDetail problemDetail = create(errorCode, detail, instance, requestId);
 
-    if (!fieldErrors.isEmpty()) {
+    if (errorCode == ErrorCode.VALIDATION_FAILED || !fieldErrors.isEmpty()) {
       problemDetail.setProperty("fieldErrors", fieldErrors);
-      return problemDetail;
     }
 
     return problemDetail;

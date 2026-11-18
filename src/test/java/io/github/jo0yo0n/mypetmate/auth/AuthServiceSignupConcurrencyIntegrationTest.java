@@ -6,15 +6,14 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mockingDetails;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
@@ -47,13 +46,27 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
 
     // given
     String canonicalEmail = "guardian-" + UUID.randomUUID() + "@example.com";
-    SignupRequest signupRequest =
-        new SignupRequest(
+    SignupCommand signupRequest =
+        new SignupCommand(
+            "보호자",
             canonicalEmail,
             "StringPassword1!",
             ProfileType.INDIVIDUAL,
             Gender.MALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
+
+    SignupCommand competingRequest =
+        new SignupCommand(
+            "다른보호자",
+            canonicalEmail,
+            signupRequest.password(),
+            signupRequest.profileType(),
+            signupRequest.gender(),
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
 
     CountDownLatch bothReadyToSave = new CountDownLatch(2);
     CountDownLatch allowSave = new CountDownLatch(1);
@@ -74,7 +87,7 @@ public class AuthServiceSignupConcurrencyIntegrationTest extends PostgreSqlInteg
 
       // when
       var firstTransaction = executor.submit(() -> authService.signup(signupRequest));
-      var secondTransaction = executor.submit(() -> authService.signup(signupRequest));
+      var secondTransaction = executor.submit(() -> authService.signup(competingRequest));
 
       await(bothReadyToSave);
       allowSave.countDown();

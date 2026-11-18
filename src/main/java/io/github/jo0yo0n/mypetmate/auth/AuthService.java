@@ -3,23 +3,33 @@ package io.github.jo0yo0n.mypetmate.auth;
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.AccountRestrictedException;
 import io.github.jo0yo0n.mypetmate.auth.exception.AccountWithdrawnException;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
+import io.github.jo0yo0n.mypetmate.auth.exception.InvalidActivityRegionException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidCredentialsException;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
+import io.github.jo0yo0n.mypetmate.auth.exception.NicknameAlreadyExistsException;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
+import io.github.jo0yo0n.mypetmate.guardian.domain.ActivityTimeSlot;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianResponse;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.GuardianActivityRegion;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.GuardianAvailableTimeSlot;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.region.persistence.entity.Region;
+import io.github.jo0yo0n.mypetmate.region.persistence.repository.RegionRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -27,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -38,6 +49,9 @@ public class AuthService {
   private final GuardianRepository guardianRepository;
   private final RefreshTokenRepository refreshTokenRepository;
   private final RefreshTokenGenerator refreshTokenGenerator;
+  private final GuardianActivityRegionRepository guardianActivityRegionRepository;
+  private final GuardianAvailableTimeSlotRepository guardianAvailableTimeSlotRepository;
+  private final RegionRepository regionRepository;
   private final PasswordEncoder passwordEncoder;
   private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
@@ -48,6 +62,9 @@ public class AuthService {
       GuardianRepository guardianRepository,
       RefreshTokenRepository refreshTokenRepository,
       RefreshTokenGenerator refreshTokenGenerator,
+      GuardianActivityRegionRepository guardianActivityRegionRepository,
+      GuardianAvailableTimeSlotRepository guardianAvailableTimeSlotRepository,
+      RegionRepository regionRepository,
       PasswordEncoder passwordEncoder) {
 
     this.clock = clock;
@@ -56,11 +73,14 @@ public class AuthService {
     this.guardianRepository = guardianRepository;
     this.refreshTokenRepository = refreshTokenRepository;
     this.refreshTokenGenerator = refreshTokenGenerator;
+    this.guardianActivityRegionRepository = guardianActivityRegionRepository;
+    this.guardianAvailableTimeSlotRepository = guardianAvailableTimeSlotRepository;
+    this.regionRepository = regionRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
   @Transactional
-  AuthResponse signup(SignupRequest signupRequest) {
+  AuthResponse signup(SignupCommand command) {
 
     Instant now = clock.instant();
     Guardian guardian;
@@ -69,13 +89,12 @@ public class AuthService {
           guardianRepository.saveAndFlush(
               new Guardian(
                   UUID.randomUUID(),
-                  signupRequest.email(),
-                  passwordEncoder.encode(signupRequest.password()),
-                  signupRequest.profileType(),
-                  signupRequest.profileType() == ProfileType.INDIVIDUAL
-                      ? signupRequest.gender()
-                      : null,
-                  signupRequest.discoveryStatus(),
+                  command.nickname(),
+                  command.email(),
+                  passwordEncoder.encode(command.password()),
+                  command.profileType(),
+                  command.profileType() == ProfileType.INDIVIDUAL ? command.gender() : null,
+                  command.discoveryStatus(),
                   GuardianStatus.ACTIVE,
                   now,
                   now));
@@ -84,8 +103,12 @@ public class AuthService {
 
       while (cause != null) {
         if (cause instanceof ConstraintViolationException violation) {
-          if ("uk_guardian_email_lower".equals(violation.getConstraintName())) {
+          String constraintName = violation.getConstraintName();
+          if ("uk_guardian_email_lower".equals(constraintName)) {
             throw new EmailAlreadyExistsException();
+          }
+          if ("uk_guardian_nickname".equals(constraintName)) {
+            throw new NicknameAlreadyExistsException();
           }
         }
         cause = cause.getCause();
@@ -93,12 +116,50 @@ public class AuthService {
       throw exception;
     }
 
-    AuthResponse authResponse = makeAuthResponse(guardian, now);
+    List<UUID> requestedRegionIds =
+        Objects.requireNonNullElse(command.activityRegionIds(), List.of());
+
+    List<Region> regions =
+        requestedRegionIds.isEmpty()
+            ? List.of()
+            : regionRepository.findSelectableLocalitiesByIdIn(requestedRegionIds);
+
+    if (regions.size() != requestedRegionIds.size()) {
+      throw new InvalidActivityRegionException(requestedRegionIds, regions);
+    }
+
+    if (!regions.isEmpty()) {
+      guardianActivityRegionRepository.saveAll(
+          regions.stream()
+              .map(region -> new GuardianActivityRegion(UUID.randomUUID(), guardian, region))
+              .toList());
+    }
+
+    List<ActivityTimeSlot> requestedSlots = command.availableTimeSlots();
+    List<GuardianAvailableTimeSlot> slots =
+        requestedSlots == null
+            ? List.of()
+            : requestedSlots.stream()
+                .map(
+                    slot ->
+                        new GuardianAvailableTimeSlot(
+                            UUID.randomUUID(),
+                            guardian,
+                            slot.dayOfWeek(),
+                            slot.startMinute(),
+                            slot.endMinute()))
+                .toList();
+    if (!slots.isEmpty()) {
+      guardianAvailableTimeSlotRepository.saveAll(slots);
+    }
+
+    AuthResponse authResponse =
+        makeAuthResponse(guardian, now, GuardianResponse.from(guardian, regions, slots));
     log.info("signup processing completed");
     return authResponse;
   }
 
-  @Transactional
+  @Transactional(isolation = Isolation.REPEATABLE_READ)
   AuthResponse login(LoginRequest loginRequest) {
 
     Instant now = clock.instant();
@@ -117,7 +178,19 @@ public class AuthService {
       throw new AccountRestrictedException();
     }
 
-    AuthResponse authResponse = makeAuthResponse(guardian, now);
+    var regions =
+        guardianActivityRegionRepository.findAllByGuardianId(guardian.getId()).stream()
+            .map(GuardianActivityRegion::getRegion)
+            .toList();
+
+    AuthResponse authResponse =
+        makeAuthResponse(
+            guardian,
+            now,
+            GuardianResponse.from(
+                guardian,
+                regions,
+                guardianAvailableTimeSlotRepository.findAllByGuardianId(guardian.getId())));
     log.info("login processing completed");
     return authResponse;
   }
@@ -185,7 +258,7 @@ public class AuthService {
             });
   }
 
-  private AuthResponse makeAuthResponse(Guardian guardian, Instant now) {
+  private AuthResponse makeAuthResponse(Guardian guardian, Instant now, GuardianResponse profile) {
 
     String refreshToken = generateAndSaveRefreshToken(guardian, now);
     String accessToken = accessTokenIssuer.issue(guardian, now);
@@ -196,7 +269,7 @@ public class AuthService {
         tokenProperties.tokenType(),
         Math.toIntExact(tokenProperties.accessTokenTtl().toSeconds()),
         Math.toIntExact(tokenProperties.refreshTokenTtl().toSeconds()),
-        GuardianResponse.from(guardian));
+        profile);
   }
 
   private String generateAndSaveRefreshToken(Guardian guardian, Instant now) {

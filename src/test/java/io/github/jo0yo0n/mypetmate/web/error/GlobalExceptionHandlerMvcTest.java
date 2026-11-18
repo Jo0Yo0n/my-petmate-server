@@ -13,10 +13,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jo0yo0n.mypetmate.auth.exception.AccountRestrictedException;
 import io.github.jo0yo0n.mypetmate.auth.exception.AccountWithdrawnException;
 import io.github.jo0yo0n.mypetmate.auth.exception.EmailAlreadyExistsException;
-import io.github.jo0yo0n.mypetmate.config.RequestIdConfig;
 import io.github.jo0yo0n.mypetmate.error.ErrorCode;
 import io.github.jo0yo0n.mypetmate.error.StateConflictException;
 import io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException;
+import io.github.jo0yo0n.mypetmate.web.RequestIdConfig;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -363,8 +363,7 @@ class ErrorTestController {
   static final String INTERNAL_SQL = "SELECT password_hash FROM guardian";
   static final String PASSWORD = "fixture-password";
   static final String TOKEN = "fixture-token";
-  static final String UNEXPECTED_FAILURE_MESSAGE =
-      "Authenticated guardian was not found during service processing";
+  static final String UNEXPECTED_FAILURE_MESSAGE = "요청 처리 중 인증된 보호자를 찾을 수 없습니다.";
 
   record TestRequest(@NotBlank String name) {}
 

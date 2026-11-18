@@ -7,13 +7,12 @@ import static org.mockito.Mockito.clearInvocations;
 
 import io.github.jo0yo0n.mypetmate.auth.dto.AuthResponse;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
-import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
 import io.github.jo0yo0n.mypetmate.auth.exception.InvalidRefreshTokenException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshToken;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -42,13 +41,16 @@ public class AuthServiceRefreshConcurrencyIntegrationTest extends PostgreSqlInte
   void allowOnlyOneConcurrencyRefreshRequest() throws Exception {
 
     // given
-    SignupRequest signupRequest =
-        new SignupRequest(
+    SignupCommand signupRequest =
+        new SignupCommand(
+            "보호자",
             "guardian@example.com",
             "StrongPassword1!",
             ProfileType.FAMILY,
             null,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
 
     AuthResponse authResponse = authService.signup(signupRequest);
     String rawRefreshToken = authResponse.refreshToken();

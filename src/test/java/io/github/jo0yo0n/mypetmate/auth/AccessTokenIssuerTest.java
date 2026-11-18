@@ -7,7 +7,7 @@ import io.github.jo0yo0n.mypetmate.config.JwtConfig;
 import io.github.jo0yo0n.mypetmate.config.JwtProperties;
 import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.*;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -56,6 +56,7 @@ public class AccessTokenIssuerTest {
           Guardian guardian =
               new Guardian(
                   UUID.randomUUID(),
+                  "보호자",
                   "guardian@test.com",
                   "hashed-password",
                   ProfileType.INDIVIDUAL,

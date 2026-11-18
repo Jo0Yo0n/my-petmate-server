@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.github.jo0yo0n.mypetmate.guardian.domain.*;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
 import io.github.jo0yo0n.mypetmate.guardian.support.EmailNormalizer;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import jakarta.persistence.EntityManager;
@@ -44,6 +48,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     guardianRepository.saveAndFlush(
         new Guardian(
             guardianId,
+            "보호자",
             email,
             "password-hash",
             ProfileType.INDIVIDUAL,
@@ -74,7 +79,7 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
     guardianRepository.saveAndFlush(newGuardian(email));
 
     assertThat(duplicateEmail).isEqualTo(email);
-    assertThatThrownBy(() -> guardianRepository.saveAndFlush(newGuardian(duplicateEmail)))
+    assertThatThrownBy(() -> guardianRepository.saveAndFlush(newGuardian(duplicateEmail, "다른보호자")))
         .isInstanceOf(DataIntegrityViolationException.class)
         .isInstanceOfSatisfying(
             DataIntegrityViolationException.class,
@@ -194,9 +199,14 @@ class GuardianPersistenceIntegrationTest extends PostgreSqlIntegrationTestSuppor
   }
 
   private Guardian newGuardian(String email) {
+    return newGuardian(email, "보호자");
+  }
+
+  private Guardian newGuardian(String email, String nickname) {
     Instant now = clock.instant();
     return new Guardian(
         UUID.randomUUID(),
+        nickname,
         email,
         "password-hash",
         ProfileType.INDIVIDUAL,

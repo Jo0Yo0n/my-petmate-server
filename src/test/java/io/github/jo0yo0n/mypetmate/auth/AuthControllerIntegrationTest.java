@@ -23,10 +23,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
+@Sql(PostgreSqlIntegrationTestSupport.ANSAN_REGIONS_SQL)
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
@@ -80,12 +82,26 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
 
     JsonNode guardian = body.path("guardian");
     List<String> expectedFields =
-        List.of("id", "email", "profileType", "gender", "discoveryStatus", "status");
+        List.of(
+            "id",
+            "email",
+            "profileType",
+            "gender",
+            "discoveryStatus",
+            "status",
+            "nickname",
+            "photoUrl",
+            "activityRegions",
+            "availableTimeSlots");
     assertThat(fields(guardian)).containsExactlyInAnyOrderElementsOf(expectedFields);
     assertThat(guardian.path("email").asText()).isEqualTo(EMAIL);
     assertThat(guardian.path("profileType").asText()).isEqualTo(profileType);
     assertThat(guardian.path("discoveryStatus").asText()).isEqualTo(discoveryStatus);
     assertThat(guardian.path("status").asText()).isEqualTo("active");
+    assertThat(guardian.path("nickname").asText()).isEqualTo("보호자");
+    assertThat(guardian.path("photoUrl").isNull()).isTrue();
+    assertThat(guardian.path("activityRegions").isArray()).isTrue();
+    assertThat(guardian.path("availableTimeSlots").isArray()).isTrue();
     String expectedGender = "individual".equals(profileType) ? gender : null;
     if (expectedGender == null) {
       assertThat(guardian.path("gender").isNull()).isTrue();
@@ -124,6 +140,42 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   }
 
   @Test
+  void rejectsNicknameContainingWhitespaceWithoutCreatingGuardian() throws Exception {
+    long guardians = count("guardian");
+    long refreshTokens = count("refresh_token");
+    for (String nickname : List.of(" 보호자", "보호자 ", "보 호자", "\t보호자", "보호자\n", "보호\u3000자")) {
+      JsonNode error =
+          assertProblemResponse(
+              SIGNUP_PATH,
+              request("family", null, "paused").put("nickname", nickname),
+              400,
+              "VALIDATION_FAILED",
+              "validation-failed",
+              "입력값 검증 실패");
+      assertThat(error.path("fieldErrors"))
+          .extracting(field -> field.path("field").asText())
+          .contains("nickname");
+      assertCountUnchanged(guardians, refreshTokens);
+    }
+  }
+
+  @Test
+  void rejectsNonStringNicknameWithoutCreatingGuardian() throws Exception {
+    long guardians = count("guardian");
+    long refreshTokens = count("refresh_token");
+    for (ObjectNode request :
+        List.of(
+            request("family", null, "paused").put("nickname", 1234),
+            request("family", null, "paused").put("nickname", true))) {
+      JsonNode error =
+          assertProblemResponse(
+              SIGNUP_PATH, request, 400, "MALFORMED_REQUEST", "malformed-request", "잘못된 요청 형식");
+      assertThat(error.has("fieldErrors")).isFalse();
+      assertCountUnchanged(guardians, refreshTokens);
+    }
+  }
+
+  @Test
   @DisplayName("[M1-API-SU-02B] rejectsUnknownSignupFieldWithoutCreatingGuardian")
   void rejectsUnknownSignupFieldWithoutCreatingGuardian() throws Exception {
     ObjectNode request = request("individual", "female", "searching");
@@ -148,12 +200,34 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     JsonNode error =
         assertProblemResponse(
             SIGNUP_PATH,
-            request("individual", "female", "searching"),
+            request("individual", "female", "searching").put("nickname", "다른보호자"),
             409,
             "EMAIL_ALREADY_EXISTS",
             "email-already-exists",
             "이미 가입된 이메일");
     assertThat(error.has("fieldErrors")).isFalse();
+    assertCountUnchanged(guardians, refreshTokens);
+  }
+
+  @Test
+  void returnsNicknameConflictForDuplicateSignup() throws Exception {
+    signup(request("individual", "female", "searching")).andExpect(status().isCreated());
+    long guardians = count("guardian");
+    long refreshTokens = count("refresh_token");
+
+    ObjectNode duplicate =
+        request("individual", "female", "searching")
+            .put("email", "another@example.com")
+            .put("nickname", "보호자");
+    JsonNode error =
+        assertProblemResponse(
+            SIGNUP_PATH,
+            duplicate,
+            409,
+            "NICKNAME_ALREADY_EXISTS",
+            "nickname-already-exists",
+            "이미 사용 중인 닉네임");
+    assertThat(error.path("detail").asText()).isEqualTo("이미 사용 중인 닉네임입니다.");
     assertCountUnchanged(guardians, refreshTokens);
   }
 
@@ -391,9 +465,19 @@ class AuthControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
     ObjectNode request = mapper.createObjectNode();
     request.put("email", "  Guardian@Example.COM  ");
     request.put("password", PASSWORD);
+    request.put("nickname", "보호자");
     request.put("profileType", type);
     if (gender != null) request.put("gender", gender);
     request.put("discoveryStatus", discoveryStatus);
+    if ("searching".equals(discoveryStatus)) {
+      request.putArray("activityRegionIds").add(IL_DONG_ID.toString());
+      request
+          .putArray("availableTimeSlots")
+          .addObject()
+          .put("dayOfWeek", "mon")
+          .put("startTime", "09:00")
+          .put("endTime", "10:30");
+    }
     return request;
   }
 

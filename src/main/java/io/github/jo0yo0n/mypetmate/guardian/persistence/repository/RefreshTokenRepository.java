@@ -1,5 +1,6 @@
-package io.github.jo0yo0n.mypetmate.guardian.persistence;
+package io.github.jo0yo0n.mypetmate.guardian.persistence.repository;
 
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.RefreshToken;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;

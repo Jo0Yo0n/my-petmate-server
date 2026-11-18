@@ -77,7 +77,8 @@ paths:
       description: >-
         회원가입 화면의 필수 비밀번호 확인은 클라이언트에서만 원문과 정확히 비교한다. 미입력·불일치 시 요청을 보내지 않는다. 비밀번호 확인 값은 요청 필드가 아니며 API 전송·영속 저장·로그 기록 대상이 아니다.
         SignupRequest에는 password만 전송한다. 서버는 기존 password 규칙을 독립적으로 검증한다.
-         보호자 활동 지역 1~3개와 활동 가능 시간대는 필수이며 가입 전에 공개 지역 카탈로그로 선택한다.
+        searching 가입은 활동 지역 1~3개와 활동 가능 시간대 1개 이상이 필수다. paused 가입은 각 목록을 생략하거나 null 또는 빈 배열로 보낼 수 있으며 미등록 목록은 빈 배열로 저장·응답한다.
+        지역은 가입 전에 공개 지역 카탈로그로 선택한다. 전달한 항목은 찾기 상태와 관계없이 검증한다.
       security: [ ]
       requestBody:
         required: true
@@ -95,7 +96,7 @@ paths:
                   discoveryStatus: searching
                   nickname: 보리네
                   activityRegionIds:
-                    - locality-demo-mangwon
+                    - 1997243c-3379-4113-985f-12a306295669
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -106,22 +107,16 @@ paths:
                   password: StrongPass123!
                   profileType: couple
                   discoveryStatus: paused
-                  nickname: 보리네
-                  activityRegionIds:
-                    - locality-demo-mangwon
-                  availableTimeSlots:
-                    - dayOfWeek: sat
-                      startTime: 10:00
-                      endTime: 12:00
+                  nickname: 보리커플
               family:
                 value:
                   email: family@example.com
                   password: StrongPass123!
                   profileType: family
                   discoveryStatus: searching
-                  nickname: 보리네
+                  nickname: 보리가족
                   activityRegionIds:
-                    - locality-demo-mangwon
+                    - 1997243c-3379-4113-985f-12a306295669
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -155,9 +150,14 @@ paths:
                   nickname: 보리네
                   photoUrl:
                   activityRegions:
-                    - id: locality-demo-mangwon
-                      displayName: 서울특별시 마포구 망원동
-                      retired: false
+                    - id: 1997243c-3379-4113-985f-12a306295669
+                      path:
+                        - level: province
+                          name: 경기도
+                        - level: district
+                          name: 안산시 상록구
+                        - level: locality
+                          name: 일동
                   availableTimeSlots:
                     - dayOfWeek: sat
                       startTime: 10:00
@@ -165,7 +165,7 @@ paths:
         "400":
           $ref: "#/components/responses/RequestBodyError"
         "409":
-          $ref: "#/components/responses/EmailAlreadyExistsError"
+          $ref: "#/components/responses/SignupConflictError"
   /api/auth/login:
     post:
       tags: [ Auth ]
@@ -277,7 +277,6 @@ paths:
         Security 인증 과정에서 access token의 subject에 해당하는 Guardian을 찾지 못하면 401 AUTH_TOKEN_INVALID다.
         인증 성공 후 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은 데이터 불일치는
         500 INTERNAL_SERVER_ERROR다.
-        저장된 활동 지역이 폐지된 경우에도 목록에 포함하고, 각 지역의 폐지 여부를 retired로 반환한다.
       responses:
         "405":
           $ref: "#/components/responses/MethodNotAllowedError"
@@ -301,9 +300,14 @@ paths:
                 nickname: 보리네
                 photoUrl:
                 activityRegions:
-                  - id: locality-demo-mangwon
-                    displayName: 서울특별시 마포구 망원동
-                    retired: false
+                  - id: 1997243c-3379-4113-985f-12a306295669
+                    path:
+                      - level: province
+                        name: 경기도
+                      - level: district
+                        name: 안산시 상록구
+                      - level: locality
+                        name: 일동
                 availableTimeSlots:
                   - dayOfWeek: sat
                     startTime: 10:00
@@ -321,10 +325,10 @@ paths:
         인증 성공 후 수정 잠금을 위해 현재 Guardian을 조회하는 과정에서 Guardian이 사라지는 예기치 않은
         데이터 불일치는 500 INTERNAL_SERVER_ERROR다.
 
-        지역·시간 목록은 다른 수정 필드와 원자적으로 전체 교체한다. 추천 필터 조작은 이 API를 호출하지 않는다.
-        닉네임·유형·찾기 상태·활동 지역·시간과 개인 유형의 성별을 모두 전송한다. 사진은 /photos의 별도 요청으로 처리한다.
-        이미 저장된 폐지 지역은 프로필 수정 시 목록에서 모두 제거하거나 유효한 지역으로 교체한다. 최종 목록에는 유효한 읍·면·동 ID를 1~3개 포함한다.
-        폐지된 지역 ID를 전송하면 activityRegionIds의 입력값 검증 실패로 400 VALIDATION_FAILED를 반환하며 수정 내용을 저장하지 않는다.
+        paused에서는 지역·시간 목록 각각의 생략·null·빈 배열을 허용하고 해당 목록의 기존 값을 유지한다.
+        값이 있는 목록은 요청을 최종 선택 목록으로 적용한다. 다른 수정 필드와 함께 원자적으로 저장한다. 추천 필터 조작은 이 API를 호출하지 않는다.
+        닉네임·유형·찾기 상태와 개인 유형의 성별도 모두 전송한다. 사진은 /photos의 별도 요청으로 처리한다.
+        searching 요청은 지역 1~3개·시간대 1개 이상을 반드시 포함한다. 기존 값이 있어도 생략·null·빈 배열은 해당 필드를 fieldErrors에 표시하는 400 VALIDATION_FAILED로 거부하며 수정 내용을 저장하지 않는다.
         취소한 초안은 전송하지 않으며 저장 성공 응답의 Guardian을 본인 정보의 기준으로 사용한다.
       requestBody:
         required: true
@@ -335,9 +339,9 @@ paths:
             example:
               profileType: couple
               discoveryStatus: paused
-              nickname: 보리네
+              nickname: 새보리네
               activityRegionIds:
-                - locality-demo-mangwon
+                - 1997243c-3379-4113-985f-12a306295669
               availableTimeSlots:
                 - dayOfWeek: sat
                   startTime: 10:00
@@ -682,8 +686,7 @@ paths:
           in: query
           schema:
             type: string
-            minLength: 1
-            maxLength: 100
+            format: uuid
       responses:
         '200':
           description: 직계 하위 지역. 표시 순서대로 반환한다.
@@ -693,10 +696,10 @@ paths:
                 $ref: '#/components/schemas/RegionList'
               example:
                 items:
-                  - id: locality-demo-mangwon
-                    name: 망원동
+                  - id: 1997243c-3379-4113-985f-12a306295669
+                    name: 일동
                     level: locality
-                    parentId: mapo-demo
+                    parentId: 2d032bc3-37d8-4ab3-b634-c1cd5d472eb4
         '400':
           $ref: '#/components/responses/ValidationError'
         '404':
@@ -761,7 +764,7 @@ paths:
                   walkIntensities:
                     - moderate
                   unfamiliarDogReactions: [ ]
-                  regionIds: [ locality-demo-mangwon ]
+                  regionIds: [ 1997243c-3379-4113-985f-12a306295669 ]
                   guardianIdentities:
                     - male
                   availableTimeSlots:
@@ -985,8 +988,7 @@ paths:
       summary: 추천 또는 받은 관심에 like 또는 pass
       description: |
         새 선제 관심은 양쪽 보호자가 searching일 때만 허용한다.
-        새 선제 liked 전송에서 요청 보호자의 저장된 활동 지역에 폐지된 지역이 하나라도 있으면 409 STATE_CONFLICT를 반환한다.
-        받은 관심의 liked/passed 응답은 receivedInteractionId로 전송 건을 지정한다. 양쪽 보호자의 찾기 상태나 저장된 활동 지역의 폐지 여부와 관계없이 응답할 수 있다.
+        받은 관심의 liked/passed 응답은 receivedInteractionId로 전송 건을 지정한다. 양쪽 보호자의 찾기 상태와 관계없이 응답할 수 있다.
         ID가 없으면 선제 요청으로 처리하며 다른 관심에 대한 응답으로 연결하지 않는다. 선제 요청 시 반대 방향의 응답 대기 관심이 있으면 409 STATE_CONFLICT로 받은 관심을 다시 조회하도록 한다.
         지정한 ID가 없거나 요청 반려견 쌍과 방향이 일치하지 않으면 404다. 지정한 관심이 취소됐다면 409 STATE_CONFLICT이며 프론트는 받은 관심 첫 페이지를 다시 조회한다.
         취소된 관심 이후 같은 쌍에 새 관심이 도착해도 이전 관심에 대한 응답을 새 관심에 적용하지 않는다.
@@ -1622,6 +1624,7 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/AvailableTimeSlots'
+            minItems: 1
           example:
             - dayOfWeek: sat
               startTime: 10:00
@@ -1709,8 +1712,7 @@ components:
         uniqueItems: true
         items:
           type: string
-          minLength: 1
-          maxLength: 100
+          format: uuid
     GuardianIdentities:
       name: guardianIdentities
       in: query
@@ -1747,47 +1749,52 @@ components:
   schemas:
     ActivityRegionIds:
       type: array
-      minItems: 1
+      minItems: 0
       maxItems: 3
       uniqueItems: true
-      description: 지역 카탈로그의 locality ID를 1~3개 선택한다. 중복·알 수 없는 ID·상위 지역 ID는 거부한다. 순서는 추천 우선순위가 아니다.
+      description: 지역 카탈로그의 locality ID를 최대 3개 선택한다. paused는 빈 배열을 허용하고 searching의 최종 저장값에는 1개 이상 필요하다. null은 허용하지 않는다. 중복·알 수 없는 ID·상위 지역 ID는 거부한다. 순서는 추천 우선순위가 아니다.
       items:
         type: string
-        minLength: 1
-        maxLength: 100
+        format: uuid
     ActivityRegion:
       type: object
       additionalProperties: false
       required:
         - id
-        - displayName
-        - retired
+        - path
       properties:
         id:
           type: string
-          minLength: 1
-          maxLength: 100
-        displayName:
-          type: string
-          minLength: 1
-          maxLength: 200
-          description: 서버의 지역 카탈로그에서 해석한 시도·시군구·읍면동 전체 표시 이름.
-        retired:
-          type: boolean
-          description: 현재 지역 카탈로그에서 폐지된 지역이면 true, 유효한 지역이면 false.
+          format: uuid
+        path:
+          type: array
+          minItems: 1
+          maxItems: 3
+          description: 서버의 지역 카탈로그에서 해석한 상위 지역부터 선택한 읍·면·동까지의 경로.
+          items:
+            $ref: '#/components/schemas/RegionPathSegment'
+    RegionPathSegment:
+      type: object
+      additionalProperties: false
+      required: [ level, name ]
+      properties:
+        level:
+          $ref: '#/components/schemas/Region/properties/level'
+        name:
+          $ref: '#/components/schemas/Region/properties/name'
     ActivityRegions:
       type: array
-      minItems: 1
+      minItems: 0
       maxItems: 3
-      description: 보호자가 저장한 주 활동 지역. ID가 중복되지 않으며 표시 이름은 서버 카탈로그를 따른다.
+      description: 보호자가 저장한 주 활동 지역. 미등록은 빈 배열이며 searching의 최종 저장값에는 1개 이상 필요하다. ID가 중복되지 않으며 경로는 서버 카탈로그를 따른다.
       items:
         $ref: '#/components/schemas/ActivityRegion'
     AvailableTimeSlots:
       type: array
-      minItems: 1
+      minItems: 0
       maxItems: 21
       uniqueItems: true
-      description: Asia/Seoul의 반복 가능한 요일별 시간대. 같은 요일의 구간 중복·겹침은 거부하며 맞닿은 구간은 허용한다. 시작·종료는 같은 요일 안의 시각이며 자정을 넘는 단일 구간은 허용하지 않는다.
+      description: Asia/Seoul의 반복 가능한 요일별 시간대. paused는 빈 배열을 허용하고 searching의 최종 저장값에는 1개 이상 필요하다. 미등록 응답은 빈 배열이며 null은 허용하지 않는다. 같은 요일의 구간 중복·겹침은 거부하며 맞닿은 구간은 허용한다. 종료 시각 24:00은 해당 요일의 끝을 뜻한다. 자정을 넘는 일정은 요일별 구간으로 나눈다.
       items:
         $ref: '#/components/schemas/AvailableTimeSlot'
     Region:
@@ -1801,8 +1808,7 @@ components:
       properties:
         id:
           type: string
-          minLength: 1
-          maxLength: 100
+          format: uuid
         name:
           type: string
           minLength: 1
@@ -1810,15 +1816,15 @@ components:
         level:
           type: string
           enum:
-            - sido
-            - sigungu
+            - province
+            - district
             - locality
+          description: province는 시·도, district는 시·군·구, locality는 읍·면·동을 나타낸다.
         parentId:
           type:
             - string
             - 'null'
-          minLength: 1
-          maxLength: 100
+          format: uuid
     RegionList:
       type: object
       additionalProperties: false
@@ -1837,10 +1843,10 @@ components:
       enum: [ female, male ]
     GuardianNickname:
       type: string
-      minLength: 1
-      maxLength: 30
-      pattern: ".*\\S.*"
-      description: 앞뒤 공백을 제거한 1~30자 닉네임. 중복을 허용하며 인증 식별자로 사용하지 않는다. 가입·본인 정보 수정에서 필수다.
+      minLength: 2
+      maxLength: 20
+      pattern: '^[a-zA-Z가-힣0-9]+$'
+      description: 공백을 허용하지 않는 2~20자 닉네임. 앞뒤 공백도 거부한다. 영문, 한글 완성형, 숫자만 사용할 수 있다. 대소문자를 구분하며 중복을 허용하지 않는다. 가입·본인 정보 수정에서 필수이며 인증 식별자로 사용하지 않는다.
     DiscoveryStatus:
       type: string
       enum: [ searching, paused ]
@@ -2048,6 +2054,7 @@ components:
         availableTimeSlots:
           $ref: '#/components/schemas/AvailableTimeSlots'
     SignupRequest:
+      description: searching에서는 지역·시간이 필수다. paused에서는 각 목록의 생략·null·빈 배열을 허용하고 미등록은 빈 배열로 저장·응답한다. 전달된 항목은 상태와 관계없이 검증한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualSignupRequest"
         - $ref: "#/components/schemas/CoupleSignupRequest"
@@ -2068,8 +2075,21 @@ components:
         - gender
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         email:
           type: string
@@ -2094,9 +2114,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     CoupleSignupRequest:
       type: object
       additionalProperties: false
@@ -2106,8 +2130,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         email:
           type: string
@@ -2132,9 +2169,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     FamilySignupRequest:
       type: object
       additionalProperties: false
@@ -2144,8 +2185,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         email:
           type: string
@@ -2170,9 +2224,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     GuardianUpdateRequest:
       description: |-
         닉네임·유형·성별·찾기 상태·주 활동 지역·활동 가능 시간을 수정하며 계정 상태는 받지 않는다. individual은 gender가 필수다.
@@ -2180,7 +2238,11 @@ components:
         individual 요청의 성별이 기존 값과 다르면 409 STATE_CONFLICT로 거부한다.
         DB 확인과 저장은 동시 요청에서도 최초 성별이 덮어써지지 않도록 수행한다.
 
-        지역 목록과 시간대 목록은 요청 값으로 전체 교체하고 다른 필드와 함께 원자적으로 저장한다.
+        paused에서는 지역·시간 목록 각각의 생략·null·빈 배열을 허용하고 해당 목록의 기존 값을 유지한다.
+        값이 있는 목록은 요청을 최종 선택 목록으로 적용한다. 기존과 요청에 모두 있는 항목은 유지할 수 있고 요청에만 있는 항목은 추가하며 기존에만 있는 항목은 제거한다. 모든 행의 삭제·재삽입을 요구하지 않는다.
+        searching 요청은 지역 1~3개·시간대 1개 이상을 반드시 포함한다. 기존 값이 있어도 생략·null·빈 배열은 해당 필드를 fieldErrors에 표시하는 400 VALIDATION_FAILED로 거부한다.
+        두 목록은 각각 처리하며 GET /api/guardians/me는 paused에서도 저장된 지역·시간을 반환한다. 미등록 응답만 빈 배열이다.
+        전달된 항목은 상태와 관계없이 검증한다. 최종 상태 검증과 다른 필드의 저장을 같은 트랜잭션에서 수행하며 실패하면 전체 롤백하고 400 VALIDATION_FAILED를 반환한다.
       oneOf:
         - $ref: "#/components/schemas/IndividualGuardianUpdateRequest"
         - $ref: "#/components/schemas/CoupleGuardianUpdateRequest"
@@ -2199,8 +2261,21 @@ components:
         - gender
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: individual
@@ -2211,9 +2286,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     CoupleGuardianUpdateRequest:
       type: object
       additionalProperties: false
@@ -2221,8 +2300,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: couple
@@ -2233,9 +2325,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     FamilyGuardianUpdateRequest:
       type: object
       additionalProperties: false
@@ -2243,8 +2339,21 @@ components:
         - profileType
         - discoveryStatus
         - nickname
-        - activityRegionIds
-        - availableTimeSlots
+      allOf:
+        - if:
+            properties:
+              discoveryStatus:
+                const: searching
+            required: [ discoveryStatus ]
+          then:
+            required: [ activityRegionIds, availableTimeSlots ]
+            properties:
+              activityRegionIds:
+                type: array
+                minItems: 1
+              availableTimeSlots:
+                type: array
+                minItems: 1
       properties:
         profileType:
           const: family
@@ -2255,9 +2364,13 @@ components:
         nickname:
           $ref: '#/components/schemas/GuardianNickname'
         activityRegionIds:
-          $ref: '#/components/schemas/ActivityRegionIds'
+          anyOf:
+            - $ref: '#/components/schemas/ActivityRegionIds'
+            - type: 'null'
         availableTimeSlots:
-          $ref: '#/components/schemas/AvailableTimeSlots'
+          anyOf:
+            - $ref: '#/components/schemas/AvailableTimeSlots'
+            - type: 'null'
     LoginRequest:
       type: object
       additionalProperties: false
@@ -2366,7 +2479,7 @@ components:
       type: object
       additionalProperties: false
       required: [ dayOfWeek, startTime, endTime ]
-      description: Asia/Seoul의 반복 가능한 요일과 10분 단위 HH:mm 시작·종료 시간. startTime < endTime이어야 한다. 추천에서는 같은 요일의 구간이 양의 길이로 겹칠 때만 시간이 맞는
+      description: Asia/Seoul의 반복 가능한 요일과 10분 단위 HH:mm 시작·종료 시간. startTime < endTime이어야 한다. 24:00은 종료 시각에만 허용한다. 추천에서는 같은 요일의 구간이 양의 길이로 겹칠 때만 시간이 맞는
         것으로 판단한다.
       properties:
         dayOfWeek:
@@ -2377,7 +2490,7 @@ components:
           example: "09:00"
         endTime:
           type: string
-          pattern: "^([01]\\d|2[0-3]):[0-5]0$"
+          pattern: "^(?:([01]\\d|2[0-3]):[0-5]0|24:00)$"
           example: "11:00"
     DogBirthDate:
       type: string
@@ -3109,6 +3222,7 @@ components:
         - ACCOUNT_WITHDRAWN
         - RESOURCE_NOT_FOUND
         - EMAIL_ALREADY_EXISTS
+        - NICKNAME_ALREADY_EXISTS
         - STATE_CONFLICT
         - MATCH_CLOSED
         - MATCH_BLOCKED
@@ -3364,20 +3478,31 @@ components:
             instance: /api/dogs/70f7bb4f-d399-469f-b5a5-31b229ec4500
             code: RESOURCE_NOT_FOUND
             requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
-    EmailAlreadyExistsError:
-      description: 이미 가입된 이메일과 충돌
+    SignupConflictError:
+      description: 이미 사용 중인 이메일 또는 닉네임과 충돌
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
-          example:
-            type: urn:my-petmate:problem:email-already-exists
-            title: 이미 가입된 이메일
-            status: 409
-            detail: 이미 사용 중인 이메일입니다.
-            instance: /api/auth/signup
-            code: EMAIL_ALREADY_EXISTS
-            requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+          examples:
+            emailAlreadyExists:
+              value:
+                type: urn:my-petmate:problem:email-already-exists
+                title: 이미 가입된 이메일
+                status: 409
+                detail: 이미 사용 중인 이메일입니다.
+                instance: /api/auth/signup
+                code: EMAIL_ALREADY_EXISTS
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
+            nicknameAlreadyExists:
+              value:
+                type: urn:my-petmate:problem:nickname-already-exists
+                title: 이미 사용 중인 닉네임
+                status: 409
+                detail: 이미 사용 중인 닉네임입니다.
+                instance: /api/auth/signup
+                code: NICKNAME_ALREADY_EXISTS
+                requestId: req-01ARZ3NDEKTSV4RRFFQ69G5FAV
     ConflictError:
       description: 현재 리소스 상태 또는 중복 요청과 충돌
       content:

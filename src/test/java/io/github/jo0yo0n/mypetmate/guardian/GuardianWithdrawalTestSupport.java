@@ -30,8 +30,8 @@ abstract class GuardianWithdrawalTestSupport extends PostgreSqlIntegrationTestSu
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(
                         """
-            {"email":"guardian@example.com","password":"StrongPass123!",
-             "profileType":"individual","gender":"female","discoveryStatus":"searching"}
+            {"nickname":"보호자","email":"guardian@example.com","password":"StrongPass123!",
+             "profileType":"individual","gender":"female","discoveryStatus":"paused"}
             """))
             .andExpect(status().isCreated())
             .andReturn();

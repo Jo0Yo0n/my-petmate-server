@@ -69,7 +69,7 @@ acceptance_criteria:
     보호자는 채팅 안과 매칭 탭의 약속에서 약속을 확인한다. 매칭 탭 안에서 보낸 제안·받은 약속·성사된 약속·취소된 약속으로 분류하고 취소 사유를 함께 표시한다. 성사된 약속은 보낸 방향과 받은 방향을 모두 포함한다.
   - >
     보호자는 가입 시 닉네임을 입력하고 본인 정보에서 닉네임과 선택 사진을 조회·수정한다.
-    닉네임은 앞뒤 공백 제거 후 1~30자이고 중복을 허용한다. 사진은 비공개 저장·만료 조회 URL을 사용한다.
+    닉네임은 공백 없이 영문, 한글 완성형, 숫자로 구성된 2~20자이고 고유해야 한다. 앞뒤 공백도 허용하지 않는다. 사진은 비공개 저장·만료 조회 URL을 사용한다.
   - >
     임시 정지·탈퇴 계정은 로그인, token 갱신 및 모든 보호된 API 접근이 불가능하며 앱에서 상태별 안내를 구분한다.
     MVP에서 탈퇴 복구는 지원하지 않는다. active 보호자는 프로필 수정과 별개로 본인 계정을 탈퇴할 수 있다.
@@ -100,8 +100,11 @@ acceptance_criteria:
     받은/보낸 관심 목록은 상대 반려견 사진·이름·전송 시각을 표시하며 방향은 탭 이름으로 구분한다.
     상대 보호자의 닉네임·선택 사진·현재 유형·등록 활동 지역·가능 시간은 상세에서 제공한다.
   - >
-    보호자는 가입 시 주 활동 지역을 읍·면·동 1~3개와 활동 가능한 요일·시간을 10분 단위로 등록하고,
-    내 정보에서 조회·수정한다. 지역과 시간은 계정 소유이며 여러 반려견이 공유한다.
+    보호자는 searching으로 가입하거나 전환할 때 주 활동 지역 읍·면·동 1~3개와 활동 가능한 요일·시간 1개 이상을 갖추며 시간은 10분 단위로 등록하고,
+    내 정보에서 조회·수정한다. paused 가입에서는 지역·시간을 각각 생략할 수 있고 미등록은 빈 목록으로 관리한다.
+    paused 수정에서는 지역·시간 목록 각각의 생략·null·빈 목록을 기존 설정 유지로 처리하고, 값이 있는 목록은 최종 선택 목록으로 적용한다.
+    searching 수정은 지역 1~3개·시간대 1개 이상을 요청에 포함해야 한다. paused에서도 본인 조회는 기존 설정을 반환해 다시 찾기를 시작할 때 사용할 수 있다.
+    지역과 시간은 계정 소유이며 여러 반려견이 공유한다.
     산책 강도와 낯선 반려견 반응은 반려견에 속한다.
   - >
     기본 추천은 보호자 간 활동 지역이 하나 이상 같고 같은 요일의 활동 가능 시간이 실제로 겹치는 후보를 대상으로 한다.
@@ -243,8 +246,8 @@ ontology_schema:
       description: 한 마리 이상의 반려견을 등록하는 계정 소유자다.
       constraints:
         - email은 고유하다.
-        - 주 활동 지역은 카탈로그의 읍·면·동 ID 1~3개이며 중복을 허용하지 않는다.
-        - 활동 가능 시간은 GuardianAvailableTimeSlot로 관리하며 모든 소유 반려견의 추천에서 공유한다.
+        - 주 활동 지역은 카탈로그의 읍·면·동 ID 최대 3개이며 중복을 허용하지 않는다. searching은 지역 1개 이상과 활동 가능 시간 1개 이상이 필요하고 paused는 각 목록이 비어 있어도 된다.
+        - 주 활동 지역은 GuardianActivityRegion으로, 활동 가능 시간은 GuardianAvailableTimeSlot로 관리하며 모든 소유 반려견의 추천에서 공유한다.
       fields:
         - name: id
           type: uuid
@@ -255,11 +258,21 @@ ontology_schema:
         - name: photo_object_key
           type: string
           required: false
-        - name: activity_region_ids
+        - name: activity_regions
           type: array
+          items:
+            type: GuardianActivityRegion
+          description: guardian_id로 연결된 주 활동 지역 목록이다. Guardian의 별도 저장 필드가 아닌 관계를 나타낸다.
           required: true
-          min_items: 1
+          min_items: 0
           max_items: 3
+        - name: available_time_slots
+          type: array
+          items:
+            type: GuardianAvailableTimeSlot
+          description: guardian_id로 연결된 활동 가능 시간 목록이다. Guardian의 별도 저장 필드가 아닌 관계를 나타낸다.
+          required: true
+          min_items: 0
         - name: email
           type: string
           required: true
@@ -374,6 +387,22 @@ ontology_schema:
           type: string
           required: true
 
+    - name: GuardianActivityRegion
+      description: 보호자와 주 활동 지역 카탈로그의 연결이다.
+      constraints:
+        - guardian_id와 region_id의 조합은 고유하다.
+        - region_id는 카탈로그의 읍·면·동 ID를 참조한다.
+      fields:
+        - name: id
+          type: uuid
+          required: true
+        - name: guardian_id
+          type: uuid
+          required: true
+        - name: region_id
+          type: uuid
+          required: true
+
     - name: GuardianAvailableTimeSlot
       description: 보호자의 반복 가능한 산책 시간대다. 같은 요일에서 겹치는 구간은 중복 저장하지 않는다.
       fields:
@@ -386,11 +415,13 @@ ontology_schema:
         - name: day_of_week
           type: enum
           required: true
-        - name: start_time
-          type: time
+        - name: start_minute
+          type: integer
+          description: 자정부터 지난 분이다.
           required: true
-        - name: end_time
-          type: time
+        - name: end_minute
+          type: integer
+          description: 자정부터 지난 분이다. 해당 요일의 끝은 1440이다.
           required: true
 
     - name: Recommendation

@@ -8,9 +8,11 @@ import io.github.jo0yo0n.mypetmate.error.UnexpectedFailureException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.region.persistence.repository.RegionRepository;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,19 +25,28 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class GuardianServiceTest {
-  private static final String FAILURE_MESSAGE =
-      "Authenticated guardian was not found during service processing";
+  private static final String FAILURE_MESSAGE = "요청 처리 중 인증된 보호자를 찾을 수 없습니다.";
 
   @Mock GuardianRepository guardianRepository;
   @Mock RefreshTokenRepository refreshTokenRepository;
   @Mock Clock clock;
+  @Mock GuardianActivityRegionRepository activityRegionRepository;
+  @Mock GuardianAvailableTimeSlotRepository timeSlotRepository;
+  @Mock RegionRepository regionRepository;
 
   private final UUID guardianId = UUID.randomUUID();
   private GuardianService guardianService;
 
   @BeforeEach
   void setUp() {
-    guardianService = new GuardianService(guardianRepository, refreshTokenRepository, clock);
+    guardianService =
+        new GuardianService(
+            guardianRepository,
+            refreshTokenRepository,
+            clock,
+            activityRegionRepository,
+            timeSlotRepository,
+            regionRepository);
   }
 
   @Test
@@ -55,7 +66,8 @@ class GuardianServiceTest {
     given(guardianRepository.findByIdWithPessimisticWriteLock(guardianId))
         .willReturn(Optional.empty());
     var request =
-        new GuardianUpdateRequest(ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING);
+        new GuardianUpdateCommand(
+            "보호자", ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.PAUSED, null, null);
 
     assertThatThrownBy(() -> guardianService.updateCurrentGuardian(guardianId, request))
         .isInstanceOf(UnexpectedFailureException.class)

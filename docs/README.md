@@ -88,6 +88,11 @@ Schemathesis 계약 검증은 `uvx`로 Python 3.12와 Schemathesis 4.32.1을 사
 `schemathesis.toml`에서 `contract_hooks.py` 인증 공급자를 로드합니다. 공급자는 회원가입 API로 고유 이메일의 검증용 계정을 만들고,
 응답의 access token을 테스트 요청에 적용합니다. 탈퇴 요청은 매번 별도 계정을 사용해 다른 테스트의 인증 상태를 훼손하지 않습니다.
 실행마다 계정이 DB에 추가되므로 개발 DB와 분리한 계약 검증 DB에서 실행합니다. 서버는 테스트 전에 별도로 실행해야 합니다.
+서버 시작 후 계약 검증 DB에 [안산 지역 fixture](../scripts/fixtures/ansan-regions.sql)를 적용합니다.
+가입·본인 정보 수정의 정상 생성 요청은 fixture의 읍·면·동 ID를 사용합니다.
+정상 생성 요청의 시간대가 역전·동일 시각·겹침 규칙을 위반하면 같은 개수의 유효한 슬롯으로 대체합니다.
+잘못된 시간대의 거부 동작은 `GuardianControllerIntegrationTest`에서 검증합니다.
+보호자 사진 경로(`/api/guardians/me/photos`)는 구현 후 계약 검증 대상에 포함합니다.
 
 전역 차단 메서드의 검증 범위는 [오류 계약](./error-response.md#http-메서드-차단과-계약-적용-범위)을 따릅니다.
 별도 보안 회귀 테스트의 입력과 검증 항목은 [BlockedHttpMethodIntegrationTest](../src/test/java/io/github/jo0yo0n/mypetmate/config/BlockedHttpMethodIntegrationTest.java)에서 관리합니다.

@@ -5,11 +5,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.Weekday;
+import io.github.jo0yo0n.mypetmate.guardian.dto.AvailableTimeSlotRequest;
 import io.github.jo0yo0n.mypetmate.guardian.dto.GuardianUpdateRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,34 +59,29 @@ class RequestValidationTest {
   @DisplayName("[M1-DTO-02D] appliesTheSameProfileRuleToGuardianUpdates")
   @Test
   void appliesTheSameProfileRuleToGuardianUpdates() {
+    assertThat(violations(searchingUpdate(ProfileType.INDIVIDUAL, Gender.FEMALE))).isEmpty();
     assertThat(
             violations(
                 new GuardianUpdateRequest(
-                    ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
+                    "보호자", ProfileType.COUPLE, null, DiscoveryStatus.PAUSED, null, null)))
         .isEmpty();
-    assertThat(
-            violations(new GuardianUpdateRequest(ProfileType.COUPLE, null, DiscoveryStatus.PAUSED)))
-        .isEmpty();
-    assertThat(
-            violations(
-                new GuardianUpdateRequest(ProfileType.FAMILY, null, DiscoveryStatus.SEARCHING)))
-        .isEmpty();
+    assertThat(violations(searchingUpdate(ProfileType.FAMILY, null))).isEmpty();
 
-    assertThat(
-            violations(
-                new GuardianUpdateRequest(ProfileType.INDIVIDUAL, null, DiscoveryStatus.SEARCHING)))
+    assertThat(violations(searchingUpdate(ProfileType.INDIVIDUAL, null)))
         .extracting(violation -> violation.getPropertyPath().toString())
         .contains("gender");
-    assertThat(
-            violations(
-                new GuardianUpdateRequest(
-                    ProfileType.COUPLE, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
-        .isEmpty();
-    assertThat(
-            violations(
-                new GuardianUpdateRequest(
-                    ProfileType.FAMILY, Gender.FEMALE, DiscoveryStatus.SEARCHING)))
-        .isEmpty();
+    assertThat(violations(searchingUpdate(ProfileType.COUPLE, Gender.FEMALE))).isEmpty();
+    assertThat(violations(searchingUpdate(ProfileType.FAMILY, Gender.FEMALE))).isEmpty();
+  }
+
+  private static GuardianUpdateRequest searchingUpdate(ProfileType type, Gender gender) {
+    return new GuardianUpdateRequest(
+        "보호자",
+        type,
+        gender,
+        DiscoveryStatus.SEARCHING,
+        List.of(UUID.randomUUID()),
+        List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:00")));
   }
 
   @DisplayName("[M1-DTO-03A] acceptsPasswordContainingEveryRequiredAsciiCharacterGroup")
@@ -131,7 +130,7 @@ class RequestValidationTest {
   @DisplayName("[M1-DTO-05C] validatesEmailAndRequiredSignupFields")
   @Test
   void validatesEmailAndRequiredSignupFields() {
-    SignupRequest request = new SignupRequest("invalid", null, null, null, null);
+    SignupRequest request = new SignupRequest(null, "invalid", null, null, null, null, null, null);
 
     assertThat(violations(request))
         .extracting(violation -> violation.getPropertyPath().toString())
@@ -149,11 +148,14 @@ class RequestValidationTest {
   void normalizesSignupAndLoginEmailsBeforeValidation() {
     SignupRequest signup =
         new SignupRequest(
+            "보호자",
             "  GUARDIAN@EXAMPLE.COM  ",
             "StrongPass123!",
             ProfileType.INDIVIDUAL,
             Gender.FEMALE,
-            DiscoveryStatus.SEARCHING);
+            DiscoveryStatus.PAUSED,
+            List.of(),
+            List.of());
     LoginRequest login = new LoginRequest("  GUARDIAN@EXAMPLE.COM  ", "x");
 
     assertThat(signup.email()).isEqualTo("guardian@example.com");
@@ -323,21 +325,38 @@ class RequestValidationTest {
 
   private SignupRequest signup(ProfileType profileType, Gender gender) {
     return new SignupRequest(
-        "guardian@example.com", "StrongPass123!", profileType, gender, DiscoveryStatus.SEARCHING);
+        "보호자",
+        "guardian@example.com",
+        "StrongPass123!",
+        profileType,
+        gender,
+        DiscoveryStatus.PAUSED,
+        List.of(),
+        List.of());
   }
 
   private SignupRequest signup(String password) {
     return new SignupRequest(
+        "보호자",
         "guardian@example.com",
         password,
         ProfileType.INDIVIDUAL,
         Gender.FEMALE,
-        DiscoveryStatus.SEARCHING);
+        DiscoveryStatus.PAUSED,
+        List.of(),
+        List.of());
   }
 
   private SignupRequest signupWithEmail(String email) {
     return new SignupRequest(
-        email, "StrongPass123!", ProfileType.INDIVIDUAL, Gender.FEMALE, DiscoveryStatus.SEARCHING);
+        "보호자",
+        email,
+        "StrongPass123!",
+        ProfileType.INDIVIDUAL,
+        Gender.FEMALE,
+        DiscoveryStatus.PAUSED,
+        List.of(),
+        List.of());
   }
 
   private String longestValidEmail() {

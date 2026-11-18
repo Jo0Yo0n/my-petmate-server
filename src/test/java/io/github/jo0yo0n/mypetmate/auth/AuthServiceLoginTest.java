@@ -11,9 +11,12 @@ import io.github.jo0yo0n.mypetmate.config.TokenProperties;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianActivityRegionRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianAvailableTimeSlotRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.RefreshTokenRepository;
+import io.github.jo0yo0n.mypetmate.region.persistence.repository.RegionRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,6 +41,9 @@ class AuthServiceLoginTest {
   @Mock RefreshTokenRepository refreshTokenRepository;
   @Mock RefreshTokenGenerator refreshTokenGenerator;
   @Mock PasswordEncoder passwordEncoder;
+  @Mock GuardianActivityRegionRepository activityRegionRepository;
+  @Mock GuardianAvailableTimeSlotRepository timeSlotRepository;
+  @Mock RegionRepository regionRepository;
 
   private static final long ACCESS_TOKEN_TTL = 900;
   private static final long REFRESH_TOKEN_TTL = 2592000;
@@ -59,6 +65,9 @@ class AuthServiceLoginTest {
             guardianRepository,
             refreshTokenRepository,
             refreshTokenGenerator,
+            activityRegionRepository,
+            timeSlotRepository,
+            regionRepository,
             passwordEncoder);
   }
 
@@ -112,6 +121,7 @@ class AuthServiceLoginTest {
   private Guardian newGuardian() {
     return new Guardian(
         UUID.randomUUID(),
+        "보호자",
         "guardian@example.com",
         "hashed-password",
         ProfileType.FAMILY,

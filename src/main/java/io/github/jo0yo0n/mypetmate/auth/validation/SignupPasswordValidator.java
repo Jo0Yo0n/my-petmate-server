@@ -1,4 +1,4 @@
-package io.github.jo0yo0n.mypetmate.guardian.validation;
+package io.github.jo0yo0n.mypetmate.auth.validation;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

@@ -105,5 +105,7 @@ tasks.register<Exec>("openApiContractTest") {
         "Auth",
         "--include-tag",
         "Guardians",
+        "--exclude-path",
+        "/api/guardians/me/photos",
     )
 }

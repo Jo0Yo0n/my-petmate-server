@@ -8,8 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.jo0yo0n.mypetmate.guardian.domain.*;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
 import java.time.Clock;
 import java.time.Instant;
@@ -246,6 +246,7 @@ class SecurityFilterChainIntegrationTest extends PostgreSqlIntegrationTestSuppor
     guardians.saveAndFlush(
         new Guardian(
             id,
+            "보호자",
             id + "@example.com",
             "fixture-hash",
             ProfileType.INDIVIDUAL,

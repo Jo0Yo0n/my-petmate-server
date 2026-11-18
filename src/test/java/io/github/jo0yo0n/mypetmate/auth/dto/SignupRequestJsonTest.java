@@ -10,6 +10,10 @@ import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.DiscoveryStatus;
 import io.github.jo0yo0n.mypetmate.guardian.domain.Gender;
 import io.github.jo0yo0n.mypetmate.guardian.domain.ProfileType;
+import io.github.jo0yo0n.mypetmate.guardian.domain.Weekday;
+import io.github.jo0yo0n.mypetmate.guardian.dto.AvailableTimeSlotRequest;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,17 +29,22 @@ public class SignupRequestJsonTest {
   void acceptsValidSignupJson() throws Exception {
     String json =
         """
-            {"email":"guardian@example.com", "password":"StrongPass123!", "profileType":"individual", "gender":"female", "discoveryStatus":"searching"}
+            {"nickname":"보호자","email":"guardian@example.com", "password":"StrongPass123!", "profileType":"individual", "gender":"female", "discoveryStatus":"searching",
+             "activityRegionIds":["1997243c-3379-4113-985f-12a306295669"],
+             "availableTimeSlots":[{"dayOfWeek":"mon","startTime":"09:00","endTime":"10:30"}]}
             """;
 
     assertThat(objectMapper.readValue(json, SignupRequest.class))
         .isEqualTo(
             new SignupRequest(
+                "보호자",
                 "guardian@example.com",
                 "StrongPass123!",
                 ProfileType.INDIVIDUAL,
                 Gender.FEMALE,
-                DiscoveryStatus.SEARCHING));
+                DiscoveryStatus.SEARCHING,
+                List.of(UUID.fromString("1997243c-3379-4113-985f-12a306295669")),
+                List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
   }
 
   @DisplayName("[보강] acceptsCoupleAndFamilySignupJsonWithoutGender")
@@ -43,29 +52,37 @@ public class SignupRequestJsonTest {
   void acceptsCoupleAndFamilySignupJsonWithoutGender() throws Exception {
     String coupleJson =
         """
-            {"email":"couple@example.com", "password":"StrongPass123!", "profileType":"couple", "discoveryStatus":"paused"}
+            {"nickname":"보호자","email":"couple@example.com", "password":"StrongPass123!", "profileType":"couple", "discoveryStatus":"paused"}
             """;
     String familyJson =
         """
-            {"email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "discoveryStatus":"searching"}
+            {"nickname":"보호자","email":"family@example.com", "password":"StrongPass123!", "profileType":"family", "discoveryStatus":"searching",
+             "activityRegionIds":["1997243c-3379-4113-985f-12a306295669"],
+             "availableTimeSlots":[{"dayOfWeek":"mon","startTime":"09:00","endTime":"10:30"}]}
             """;
 
     assertThat(objectMapper.readValue(coupleJson, SignupRequest.class))
         .isEqualTo(
             new SignupRequest(
+                "보호자",
                 "couple@example.com",
                 "StrongPass123!",
                 ProfileType.COUPLE,
                 null,
-                DiscoveryStatus.PAUSED));
+                DiscoveryStatus.PAUSED,
+                null,
+                null));
     assertThat(objectMapper.readValue(familyJson, SignupRequest.class))
         .isEqualTo(
             new SignupRequest(
+                "보호자",
                 "family@example.com",
                 "StrongPass123!",
                 ProfileType.FAMILY,
                 null,
-                DiscoveryStatus.SEARCHING));
+                DiscoveryStatus.SEARCHING,
+                List.of(UUID.fromString("1997243c-3379-4113-985f-12a306295669")),
+                List.of(new AvailableTimeSlotRequest(Weekday.MONDAY, "09:00", "10:30"))));
   }
 
   @DisplayName("[M1-DTO-08A] rejectsUnknownSignupJsonField")
@@ -73,7 +90,7 @@ public class SignupRequestJsonTest {
   void rejectsUnknownSignupJsonField() {
     String json =
         """
-            {"email":"guardian@example.com","password":"StrongPass123!","profileType":"individual",\
+            {"nickname":"보호자","email":"guardian@example.com","password":"StrongPass123!","profileType":"individual",\
             "gender":"female","discoveryStatus":"searching","unexpected":true}
             """;
 
@@ -103,7 +120,7 @@ public class SignupRequestJsonTest {
       String profileType, String gender, String discoveryStatus, String expectedField) {
     String json =
         """
-            {"email":"guardian@example.com","password":"StrongPass123!","profileType":"%s",\
+            {"nickname":"보호자","email":"guardian@example.com","password":"StrongPass123!","profileType":"%s",\
             "gender":"%s","discoveryStatus":"%s"}
             """
             .formatted(profileType, gender, discoveryStatus);

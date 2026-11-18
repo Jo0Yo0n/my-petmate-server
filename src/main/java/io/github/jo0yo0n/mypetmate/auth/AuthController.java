@@ -5,8 +5,10 @@ import io.github.jo0yo0n.mypetmate.auth.dto.LoginRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.RefreshRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.SignupRequest;
 import io.github.jo0yo0n.mypetmate.auth.dto.TokenResponse;
+import io.github.jo0yo0n.mypetmate.guardian.dto.AvailableTimeSlotRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,17 +25,27 @@ class AuthController {
     this.authService = authService;
   }
 
-  @PostMapping("/signup")
+  @PostMapping(value = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
   ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(request));
+    var command =
+        new SignupCommand(
+            request.nickname(),
+            request.email(),
+            request.password(),
+            request.profileType(),
+            request.gender(),
+            request.discoveryStatus(),
+            request.activityRegionIds(),
+            AvailableTimeSlotRequest.toActivityTimeSlots(request.availableTimeSlots()));
+    return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(command));
   }
 
-  @PostMapping("/login")
+  @PostMapping(value = "/login", produces = MediaType.APPLICATION_JSON_VALUE)
   AuthResponse login(@Valid @RequestBody LoginRequest request) {
     return authService.login(request);
   }
 
-  @PostMapping("/refresh")
+  @PostMapping(value = "/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
   TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
     return authService.refresh(request);
   }

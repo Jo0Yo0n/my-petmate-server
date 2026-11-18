@@ -1,16 +1,20 @@
 package io.github.jo0yo0n.mypetmate.guardian;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.jo0yo0n.mypetmate.support.PostgreSqlIntegrationTestSupport;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,19 +36,25 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+@Sql(PostgreSqlIntegrationTestSupport.ANSAN_REGIONS_SQL)
 @SpringBootTest
 @AutoConfigureMockMvc
 class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport {
   private static final String PATH = "/api/guardians/me";
+  private static final String I_DONG_ID = "c39f2f04-fcde-404c-a459-f4845cbf888e";
+  private static final String GOJAN_DONG_ID = "137455a6-38b2-44af-ae72-cedbcffb1629";
   private static final String REQUEST_ID = "My-Petmate-Request-Id";
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper mapper;
   @Autowired JdbcTemplate jdbc;
 
+  // GET /api/guardians/me
   @ParameterizedTest
   @CsvSource({
     "individual,female,active",
@@ -66,11 +76,12 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertGuardian(result, id, "guardian@example.com", type, gender, "searching", accountStatus);
   }
 
+  // PATCH /api/guardians/me
   @ParameterizedTest
   @CsvSource({"individual,female,paused", "couple,,paused", "family,,searching"})
-  @DisplayName("[M1-API-ME-03] updatesCurrentGuardianWithValidProfile")
-  void updatesCurrentGuardianWithValidProfile(String type, String gender, String discoveryStatus)
-      throws Exception {
+  @DisplayName("[M1-API-ME-03] patchUpdatesCurrentGuardianWithValidProfile")
+  void patchUpdatesCurrentGuardianWithValidProfile(
+      String type, String gender, String discoveryStatus) throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "individual", "female");
     MvcResult result =
@@ -105,8 +116,337 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   }
 
   @Test
-  @DisplayName("[M1-API-ME-04A] preservesGuardianWhenUpdateValidationFails")
-  void preservesGuardianWhenUpdateValidationFails() throws Exception {
+  void patchReplacesProvidedActivityListsAndReturnsTheSavedProfile() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("couple", null, "paused").put("nickname", "보리네");
+    request.putArray("activityRegionIds").add(I_DONG_ID);
+    request.putArray("availableTimeSlots");
+
+    update(auth, request)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nickname").value("보리네"))
+        .andExpect(jsonPath("$.activityRegions.length()").value(1))
+        .andExpect(jsonPath("$.activityRegions[0].id").value(I_DONG_ID))
+        .andExpect(jsonPath("$.availableTimeSlots[0].dayOfWeek").value("mon"));
+
+    request.putNull("activityRegionIds");
+    request
+        .putArray("availableTimeSlots")
+        .addObject()
+        .put("dayOfWeek", "sat")
+        .put("startTime", "14:00")
+        .put("endTime", "15:00");
+
+    for (int attempt = 0; attempt < 2; attempt++) {
+      update(auth, request)
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.activityRegions[0].id").value(I_DONG_ID))
+          .andExpect(jsonPath("$.availableTimeSlots.length()").value(1))
+          .andExpect(jsonPath("$.availableTimeSlots[0].dayOfWeek").value("sat"));
+    }
+
+    mvc.perform(get(PATH).header(HttpHeaders.AUTHORIZATION, bearer(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nickname").value("보리네"))
+        .andExpect(jsonPath("$.activityRegions.length()").value(1))
+        .andExpect(jsonPath("$.activityRegions[0].id").value(I_DONG_ID))
+        .andExpect(jsonPath("$.availableTimeSlots.length()").value(1))
+        .andExpect(jsonPath("$.availableTimeSlots[0].startTime").value("14:00"));
+  }
+
+  @Test
+  void patchStoresThreeDistinctLocalityIds() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("individual", "female", "searching");
+    request.withArray("activityRegionIds").add(I_DONG_ID).add(GOJAN_DONG_ID);
+    var expectedIds = containsInAnyOrder(IL_DONG_ID.toString(), I_DONG_ID, GOJAN_DONG_ID);
+
+    update(auth, request)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.activityRegions[*].id", expectedIds));
+    mvc.perform(get(PATH).header(HttpHeaders.AUTHORIZATION, bearer(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.activityRegions[*].id", expectedIds));
+  }
+
+  @Test
+  void patchRollsBackProfileAndBothActivityListsWhenCommitFails() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    UUID guardianId = id(auth);
+    var beforeProfile = snapshot(guardianId);
+    var beforeRegions =
+        jdbc.queryForList(
+            "SELECT * FROM guardian_activity_region WHERE guardian_id = ? ORDER BY id", guardianId);
+    var beforeSlots =
+        jdbc.queryForList(
+            "SELECT * FROM guardian_available_time_slot WHERE guardian_id = ? ORDER BY id",
+            guardianId);
+
+    ObjectNode request = profile("family", null, "searching").put("nickname", "보리네");
+    request.putArray("activityRegionIds").add(I_DONG_ID);
+    request
+        .putArray("availableTimeSlots")
+        .addObject()
+        .put("dayOfWeek", "sat")
+        .put("startTime", "14:00")
+        .put("endTime", "15:00");
+
+    jdbc.execute(
+        """
+        CREATE FUNCTION fail_activity_commit() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          RAISE EXCEPTION 'test activity commit failure' USING ERRCODE = '23514';
+        END;
+        $$
+        """);
+    try {
+      jdbc.execute(
+          """
+          CREATE CONSTRAINT TRIGGER fail_activity_commit
+          AFTER INSERT ON guardian_available_time_slot
+          DEFERRABLE INITIALLY DEFERRED
+          FOR EACH ROW WHEN (NEW.day_of_week = 'sat')
+          EXECUTE FUNCTION fail_activity_commit()
+          """);
+
+      var result = update(auth, request).andExpect(status().isInternalServerError()).andReturn();
+      assertThat(result.getResolvedException())
+          .hasStackTraceContaining("test activity commit failure");
+
+      assertThat(snapshot(guardianId)).isEqualTo(beforeProfile);
+      assertThat(
+              jdbc.queryForList(
+                  "SELECT * FROM guardian_activity_region WHERE guardian_id = ? ORDER BY id",
+                  guardianId))
+          .isEqualTo(beforeRegions);
+      assertThat(
+              jdbc.queryForList(
+                  "SELECT * FROM guardian_available_time_slot WHERE guardian_id = ? ORDER BY id",
+                  guardianId))
+          .isEqualTo(beforeSlots);
+    } finally {
+      jdbc.execute("DROP TRIGGER IF EXISTS fail_activity_commit ON guardian_available_time_slot");
+      jdbc.execute("DROP FUNCTION fail_activity_commit()");
+    }
+  }
+
+  @Test
+  void patchReturnsEachInvalidRegionIndexAndRollsBackProfileUpdate() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    Map<String, Object> before = snapshot(id(auth));
+    ObjectNode request = profile("family", null, "searching").put("nickname", "보리네");
+    request
+        .putArray("activityRegionIds")
+        .add("00000000-0000-0000-0000-000000000001")
+        .add(IL_DONG_ID.toString())
+        .add("2d032bc3-37d8-4ab3-b634-c1cd5d472eb4");
+
+    JsonNode error =
+        assertProblem(update(auth, request), "VALIDATION_FAILED", "validation-failed", "입력값 검증 실패");
+    JsonNode fieldErrors = error.path("fieldErrors");
+    assertThat(fieldErrors.isArray()).isTrue();
+    assertThat(fieldErrors)
+        .extracting(item -> item.path("field").asText())
+        .containsExactly("activityRegionIds[0]", "activityRegionIds[2]");
+    assertThat(fieldErrors)
+        .allSatisfy(
+            item -> assertThat(item.path("reason").asText()).isEqualTo("존재하지 않는 읍·면·동 입니다."));
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+  }
+
+  @Test
+  void patchRejectsAnAlreadyUsedNicknameAsStateConflict() throws Exception {
+    JsonNode auth = signup("first@example.com", "individual", "female");
+    signup("other@example.com", "individual", "male");
+    Map<String, Object> before = snapshot(id(auth));
+
+    update(auth, profile("couple", null, "paused").put("nickname", "other"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("STATE_CONFLICT"));
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+  }
+
+  @Test
+  void patchRejectsUnsupportedAcceptWithoutSavingProfile() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    Map<String, Object> before = snapshot(id(auth));
+    ObjectNode request = profile("family", null, "paused").put("nickname", "보리네");
+
+    mvc.perform(patchRequest(auth, request).accept(MediaType.APPLICATION_XML))
+        .andExpect(status().isNotAcceptable())
+        .andExpect(jsonPath("$.code").value("NOT_ACCEPTABLE"));
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "activityRegionIds,omitted",
+    "activityRegionIds,null",
+    "activityRegionIds,empty",
+    "availableTimeSlots,omitted",
+    "availableTimeSlots,null",
+    "availableTimeSlots,empty"
+  })
+  void patchSearchingRequiresEachActivityListEvenWhenAlreadySaved(String field, String input)
+      throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("family", null, "searching").put("nickname", "보리네");
+    switch (input) {
+      case "omitted" -> request.remove(field);
+      case "null" -> request.putNull(field);
+      case "empty" -> request.putArray(field);
+      default -> throw new IllegalArgumentException(input);
+    }
+
+    assertRejectedProfileField(auth, request, field);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"duplicate,2", "tooMany,4"})
+  void patchRejectsDuplicateOrTooManyActivityRegionIds(String input, int count) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("family", null, "paused").put("nickname", "보리네");
+    var ids = request.putArray("activityRegionIds");
+    for (int index = 0; index < count; index++) {
+      UUID id = "duplicate".equals(input) ? IL_DONG_ID : UUID.randomUUID();
+      ids.add(id.toString());
+    }
+
+    assertRejectedProfileField(auth, request, "activityRegionIds");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"09:00,10:30", "10:00,11:00"})
+  void patchRejectsDuplicateOrOverlappingTimeSlots(String start, String end) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("family", null, "searching").put("nickname", "보리네");
+    request
+        .withArray("availableTimeSlots")
+        .addObject()
+        .put("dayOfWeek", "mon")
+        .put("startTime", start)
+        .put("endTime", end);
+
+    assertRejectedProfileField(auth, request, "availableTimeSlots");
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "omitted,09:00,10:30,dayOfWeek",
+    "null,09:00,10:30,dayOfWeek",
+    "mon,9:00,10:30,startTime",
+    "mon,09:05,10:30,startTime",
+    "mon,09:00,10:35,endTime",
+    "mon,10:30,09:00,endTime",
+    "mon,09:00,09:00,endTime",
+    "mon,23:50,00:00,endTime",
+    "mon,23:50,24:10,endTime",
+    "mon,24:00,24:00,startTime"
+  })
+  void patchRejectsInvalidTimeSlot(String day, String start, String end, String field)
+      throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("individual", "female", "searching").put("nickname", "guardian");
+    var slot =
+        request
+            .putArray("availableTimeSlots")
+            .addObject()
+            .put("startTime", start)
+            .put("endTime", end);
+    switch (day) {
+      case "omitted" -> slot.remove("dayOfWeek");
+      case "null" -> slot.putNull("dayOfWeek");
+      default -> slot.put("dayOfWeek", day);
+    }
+
+    assertRejectedProfileField(auth, request, "availableTimeSlots[0]." + field);
+  }
+
+  @Test
+  void patchStoresEndOfDayAndRejectsOverlappingTimeSlot() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("individual", "female", "searching").put("nickname", "guardian");
+    var slots = request.putArray("availableTimeSlots");
+    slots.addObject().put("dayOfWeek", "mon").put("startTime", "23:50").put("endTime", "24:00");
+    slots.addObject().put("dayOfWeek", "mon").put("startTime", "23:40").put("endTime", "23:50");
+    slots.addObject().put("dayOfWeek", "tue").put("startTime", "00:00").put("endTime", "00:10");
+
+    update(auth, request)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.availableTimeSlots[*].endTime", hasItem("24:00")));
+    mvc.perform(get(PATH).header(HttpHeaders.AUTHORIZATION, bearer(auth)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$.availableTimeSlots[*].endTime", containsInAnyOrder("24:00", "23:50", "00:10")));
+
+    ((ObjectNode) slots.get(1)).put("endTime", "24:00");
+    assertRejectedProfileField(auth, request, "availableTimeSlots");
+  }
+
+  @Test
+  void patchAcceptsTwentyOneTimeSlotsStartingAtMidnightAndRejectsTwentyTwo() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    ObjectNode request = profile("individual", "female", "searching").put("nickname", "guardian");
+    var slots = request.putArray("availableTimeSlots");
+    for (int index = 0; index < 22; index++) {
+      LocalTime start = LocalTime.MIDNIGHT.plusMinutes(index * 10L);
+      slots
+          .addObject()
+          .put("dayOfWeek", "mon")
+          .put("startTime", start.toString())
+          .put("endTime", start.plusMinutes(10).toString());
+    }
+
+    assertRejectedProfileField(auth, request, "availableTimeSlots");
+    slots.remove(21);
+    update(auth, request)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.availableTimeSlots.length()").value(21));
+    mvc.perform(get(PATH).header(HttpHeaders.AUTHORIZATION, bearer(auth)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.availableTimeSlots.length()").value(21))
+        .andExpect(jsonPath("$.availableTimeSlots[*].startTime", hasItem("00:00")));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"가1,가1", "Ab가12345678901234567,Ab가12345678901234567"})
+  void patchAcceptsNicknameAtLengthBoundaries(String nickname, String expected) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+
+    update(auth, profile("individual", "female", "paused").put("nickname", nickname))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.nickname").value(expected));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"가", "Ab가123456789012345678", "가!", "가 나", "ㄱ나"})
+  void patchRejectsNicknameOutsideLengthOrCharacterRules(String nickname) throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+
+    assertRejectedProfileField(
+        auth, profile("individual", "female", "paused").put("nickname", nickname), "nickname");
+  }
+
+  @Test
+  void patchRejectsNicknameContainingWhitespace() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+    for (String nickname : List.of(" 보호자", "보호자 ", "보 호자", "\t보호자", "보호자\n", "보호\u3000자")) {
+      assertRejectedProfileField(
+          auth, profile("individual", "female", "paused").put("nickname", nickname), "nickname");
+    }
+  }
+
+  @Test
+  void patchRejectsMissingNickname() throws Exception {
+    JsonNode auth = signup("guardian@example.com", "individual", "female");
+
+    assertRejectedProfileField(auth, profile("family", null, "paused"), "nickname");
+  }
+
+  @Test
+  @DisplayName("[M1-API-ME-04A] patchPreservesGuardianWhenUpdateValidationFails")
+  void patchPreservesGuardianWhenUpdateValidationFails() throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "individual", "female");
     Map<String, Object> before = snapshot(id(auth));
@@ -129,8 +469,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   }
 
   @Test
-  @DisplayName("[M1-API-ME-04B] preservesGuardianWhenUpdateDeserializationFails")
-  void preservesGuardianWhenUpdateDeserializationFails() throws Exception {
+  @DisplayName("[M1-API-ME-04B] patchPreservesGuardianWhenUpdateDeserializationFails")
+  void patchPreservesGuardianWhenUpdateDeserializationFails() throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "individual", "female");
     Map<String, Object> before = snapshot(id(auth));
@@ -138,6 +478,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     requests.add(profile("unknown", null, "searching"));
     requests.add(profile("individual", "unknown", "searching"));
     requests.add(profile("couple", null, "unknown"));
+    requests.add(profile("couple", null, "paused").put("nickname", 1234));
+    requests.add(profile("couple", null, "paused").put("nickname", true));
     for (String field : List.of("id", "email", "status")) {
       requests.add(profile("couple", null, "paused").put(field, "unexpected"));
     }
@@ -151,8 +493,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   }
 
   @Test
-  @DisplayName("[M1-API-ME-05] updatesOnlyAuthenticatedGuardian")
-  void updatesOnlyAuthenticatedGuardian() throws Exception {
+  @DisplayName("[M1-API-ME-05] patchUpdatesOnlyAuthenticatedGuardian")
+  void patchUpdatesOnlyAuthenticatedGuardian() throws Exception {
 
     JsonNode first = signup("first@example.com", "individual", "female");
     JsonNode other = signup("other@example.com", "individual", "male");
@@ -165,8 +507,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   }
 
   @Test
-  @DisplayName("[M1-API-ME-06] preservesFirstGenderForConcurrentUpdates")
-  void preservesFirstGenderForConcurrentUpdates() throws Exception {
+  @DisplayName("[M1-API-ME-06] patchPreservesFirstGenderForConcurrentUpdates")
+  void patchPreservesFirstGenderForConcurrentUpdates() throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "couple", null);
     CountDownLatch ready = new CountDownLatch(2);
@@ -211,20 +553,10 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     }
   }
 
-  private MvcResult concurrentUpdate(
-      JsonNode auth, String gender, CountDownLatch ready, CountDownLatch start) throws Exception {
-
-    ready.countDown();
-    if (!start.await(5, TimeUnit.SECONDS)) {
-      throw new AssertionError("Timed out waiting to start concurrent profile updates");
-    }
-    return update(auth, profile("individual", gender, "paused")).andReturn();
-  }
-
   @ParameterizedTest
   @CsvSource({"couple,female", "family,male"})
-  @DisplayName("[M1-API-ME-07] initializesGenderForFirstIndividualProfile")
-  void initializesGenderForFirstIndividualProfile(String initialType, String gender)
+  @DisplayName("[M1-API-ME-07] patchInitializesGenderForFirstIndividualProfile")
+  void patchInitializesGenderForFirstIndividualProfile(String initialType, String gender)
       throws Exception {
 
     JsonNode auth = signup("guardian@example.com", initialType, null);
@@ -243,8 +575,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
 
   @ParameterizedTest
   @CsvSource({"individual,female,male", "couple,female,male", "family,male,female"})
-  @DisplayName("[M1-API-ME-08] rejectsChangingPreviouslyStoredGender")
-  void rejectsChangingPreviouslyStoredGender(
+  @DisplayName("[M1-API-ME-08] patchRejectsChangingPreviouslyStoredGender")
+  void patchRejectsChangingPreviouslyStoredGender(
       String initialType, String storedGender, String requestedGender) throws Exception {
 
     JsonNode auth = signup("guardian@example.com", "individual", storedGender);
@@ -265,8 +597,8 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     "family,,couple,female",
     "couple,,family,male"
   })
-  @DisplayName("[M1-API-ME-09] ignoresGenderForNonIndividualUpdate")
-  void ignoresGenderForNonIndividualUpdate(
+  @DisplayName("[M1-API-ME-09] patchIgnoresGenderForNonIndividualUpdate")
+  void patchIgnoresGenderForNonIndividualUpdate(
       String initialType, String storedGender, String requestedType, String requestedGender)
       throws Exception {
     JsonNode auth = signup("guardian@example.com", initialType, storedGender);
@@ -285,6 +617,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(saved.get("status")).isEqualTo(before.get("status"));
   }
 
+  // POST /api/guardians/me/withdraw
   @Test
   @ExtendWith(OutputCaptureExtension.class)
   @DisplayName("[M1-API-WD-01] withdrawsCurrentGuardianAndRevokesTokens")
@@ -373,6 +706,28 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(tokens(id(auth))).isEqualTo(beforeTokens);
   }
 
+  // Test helpers
+  private void assertRejectedProfileField(JsonNode auth, ObjectNode request, String field)
+      throws Exception {
+    Map<String, Object> before = snapshot(id(auth));
+    mvc.perform(patchRequest(auth, request))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+        .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+        .andExpect(jsonPath("$.fieldErrors[0].field").value(field));
+    assertThat(snapshot(id(auth))).isEqualTo(before);
+  }
+
+  private MvcResult concurrentUpdate(
+      JsonNode auth, String gender, CountDownLatch ready, CountDownLatch start) throws Exception {
+
+    ready.countDown();
+    if (!start.await(5, TimeUnit.SECONDS)) {
+      throw new AssertionError("Timed out waiting to start concurrent profile updates");
+    }
+    return update(auth, profile("individual", gender, "paused")).andReturn();
+  }
+
   ResultActions withdraw(JsonNode auth) throws Exception {
     return mvc.perform(post(PATH + "/withdraw").header(HttpHeaders.AUTHORIZATION, bearer(auth)));
   }
@@ -408,6 +763,7 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
   private JsonNode signup(String email, String type, String gender) throws Exception {
     ObjectNode request =
         profile(type, gender, "searching").put("email", email).put("password", "StrongPass123!");
+    request.put("nickname", email.strip().split("@", 2)[0]);
     MvcResult result =
         mvc.perform(
                 post("/api/auth/signup")
@@ -422,15 +778,31 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     ObjectNode request =
         mapper.createObjectNode().put("profileType", type).put("discoveryStatus", discoveryStatus);
     if (gender != null) request.put("gender", gender);
+    if ("searching".equals(discoveryStatus)) {
+      request.putArray("activityRegionIds").add(IL_DONG_ID.toString());
+      request
+          .putArray("availableTimeSlots")
+          .addObject()
+          .put("dayOfWeek", "mon")
+          .put("startTime", "09:00")
+          .put("endTime", "10:30");
+    }
     return request;
   }
 
   private ResultActions update(JsonNode auth, ObjectNode request) throws Exception {
-    return mvc.perform(
-        patch(PATH)
-            .header(HttpHeaders.AUTHORIZATION, bearer(auth))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(mapper.writeValueAsBytes(request)));
+    if (!request.has("nickname")) {
+      request.put("nickname", auth.path("guardian").path("nickname").asText());
+    }
+    return mvc.perform(patchRequest(auth, request));
+  }
+
+  private MockHttpServletRequestBuilder patchRequest(JsonNode auth, ObjectNode request)
+      throws Exception {
+    return patch(PATH)
+        .header(HttpHeaders.AUTHORIZATION, bearer(auth))
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(mapper.writeValueAsBytes(request));
   }
 
   private String bearer(JsonNode auth) {
@@ -458,7 +830,17 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertRequestId(result);
     JsonNode body = mapper.readTree(result.getResponse().getContentAsString());
     List<String> expected =
-        List.of("id", "email", "profileType", "gender", "discoveryStatus", "status");
+        List.of(
+            "id",
+            "email",
+            "profileType",
+            "gender",
+            "discoveryStatus",
+            "status",
+            "nickname",
+            "photoUrl",
+            "activityRegions",
+            "availableTimeSlots");
     List<String> actual = new ArrayList<>();
     body.fieldNames().forEachRemaining(actual::add);
     assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
@@ -467,6 +849,11 @@ class GuardianControllerIntegrationTest extends PostgreSqlIntegrationTestSupport
     assertThat(body.path("profileType").asText()).isEqualTo(type);
     assertThat(body.path("discoveryStatus").asText()).isEqualTo(discoveryStatus);
     assertThat(body.path("status").asText()).isEqualTo(accountStatus);
+    assertThat(body.path("nickname").asText())
+        .isEqualToIgnoringCase(email.substring(0, email.indexOf("@")));
+    assertThat(body.path("photoUrl").isNull()).isTrue();
+    assertThat(body.path("activityRegions").isArray()).isTrue();
+    assertThat(body.path("availableTimeSlots").isArray()).isTrue();
     if (gender == null) {
       assertThat(body.path("gender").isNull()).isTrue();
     } else {

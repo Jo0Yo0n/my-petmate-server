@@ -2,6 +2,7 @@ package io.github.jo0yo0n.mypetmate.web.error;
 
 import io.github.jo0yo0n.mypetmate.error.BusinessException;
 import io.github.jo0yo0n.mypetmate.error.ErrorCode;
+import io.github.jo0yo0n.mypetmate.error.FieldValidationException;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
@@ -46,6 +47,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetailFactory.create(
             errorCode, ex.getDetail(), getRequestURI(request), getRequestId(request));
 
+    return new ResponseEntity<>(problemDetail, HttpHeaders.EMPTY, problemDetail.getStatus());
+  }
+
+  @ExceptionHandler(FieldValidationException.class)
+  public ResponseEntity<Object> handleFieldValidation(
+      FieldValidationException ex, WebRequest request) {
+    ProblemDetail problemDetail =
+        ProblemDetailFactory.create(
+            ex.getErrorCode(),
+            ex.getDetail(),
+            getRequestURI(request),
+            getRequestId(request),
+            ex.getFieldErrors().stream()
+                .map(error -> new ApiFieldError(error.field(), error.reason()))
+                .toList());
     return new ResponseEntity<>(problemDetail, HttpHeaders.EMPTY, problemDetail.getStatus());
   }
 

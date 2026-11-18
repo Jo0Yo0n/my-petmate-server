@@ -2,8 +2,8 @@ package io.github.jo0yo0n.mypetmate.config;
 
 import io.github.jo0yo0n.mypetmate.auth.exception.AccountStatusAuthenticationException;
 import io.github.jo0yo0n.mypetmate.guardian.domain.GuardianStatus;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.Guardian;
-import io.github.jo0yo0n.mypetmate.guardian.persistence.GuardianRepository;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.entity.Guardian;
+import io.github.jo0yo0n.mypetmate.guardian.persistence.repository.GuardianRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.context.annotation.Bean;
