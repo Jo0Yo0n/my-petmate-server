@@ -89,9 +89,9 @@ public class AuthServiceSignupRollbackTest extends PostgreSqlIntegrationTestSupp
             new GuardianResponse.ActivityRegion(
                 IL_DONG_ID,
                 List.of(
-                    new GuardianResponse.RegionPathSegment(RegionLevel.PROVINCE, "경기도"),
-                    new GuardianResponse.RegionPathSegment(RegionLevel.DISTRICT, "안산시 상록구"),
-                    new GuardianResponse.RegionPathSegment(RegionLevel.LOCALITY, "일동"))));
+                    new GuardianResponse.RegionPathSegment(RegionLevel.SIDO, "경기도"),
+                    new GuardianResponse.RegionPathSegment(RegionLevel.SGG, "안산시 상록구"),
+                    new GuardianResponse.RegionPathSegment(RegionLevel.UMD, "일동"))));
     assertThat(signupProfile.availableTimeSlots())
         .containsExactly(new GuardianResponse.AvailableTimeSlot(Weekday.MONDAY, "23:50", "24:00"));
     assertThat(authService.login(new LoginRequest(request.email(), request.password())).guardian())

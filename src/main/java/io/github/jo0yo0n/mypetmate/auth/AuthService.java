@@ -122,7 +122,7 @@ public class AuthService {
     List<Region> regions =
         requestedRegionIds.isEmpty()
             ? List.of()
-            : regionRepository.findSelectableLocalitiesByIdIn(requestedRegionIds);
+            : regionRepository.findSelectableUmdsByIdIn(requestedRegionIds);
 
     if (regions.size() != requestedRegionIds.size()) {
       throw new InvalidActivityRegionException(requestedRegionIds, regions);

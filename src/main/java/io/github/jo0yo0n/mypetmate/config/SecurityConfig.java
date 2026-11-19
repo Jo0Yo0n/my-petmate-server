@@ -50,6 +50,8 @@ public class SecurityConfig {
                         "/api/auth/refresh",
                         "/api/auth/logout")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/regions")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .exceptionHandling(

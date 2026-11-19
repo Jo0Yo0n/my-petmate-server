@@ -76,6 +76,8 @@ Gradle `bootRun`은 별도 프로파일 지정이 없으면 `local`을 사용한
 프로파일은 `SPRING_PROFILES_ACTIVE`로 지정할 수 있다. `JWT_SECRET`은 HS256 access token 서명·검증에 사용하는 비밀값으로 최소 32바이트여야 한다. `.env`는
 Git에서 제외되며, 실제 값을 application YAML이나 Git에 저장하지 않는다.
 
+서울·경기 법정동 초기 자료는 Flyway V5에서 자동 적재된다. 원본 XML 수집과 SQL 재적재는 [지역 적재 절차](../scripts/REGIONS.md)를 따른다.
+
 검증은 다음 명령으로 실행합니다.
 
 ```bash
@@ -88,7 +90,7 @@ Schemathesis 계약 검증은 `uvx`로 Python 3.12와 Schemathesis 4.32.1을 사
 `schemathesis.toml`에서 `contract_hooks.py` 인증 공급자를 로드합니다. 공급자는 회원가입 API로 고유 이메일의 검증용 계정을 만들고,
 응답의 access token을 테스트 요청에 적용합니다. 탈퇴 요청은 매번 별도 계정을 사용해 다른 테스트의 인증 상태를 훼손하지 않습니다.
 실행마다 계정이 DB에 추가되므로 개발 DB와 분리한 계약 검증 DB에서 실행합니다. 서버는 테스트 전에 별도로 실행해야 합니다.
-서버 시작 후 계약 검증 DB에 [안산 지역 fixture](../scripts/fixtures/ansan-regions.sql)를 적용합니다.
+빈 계약 검증 DB는 Flyway V5에서 지역 자료를 자동 적재합니다. 지역 데이터를 별도로 정리했다면 [안산 지역 fixture](../scripts/fixtures/ansan-regions.sql)를 적용합니다.
 가입·본인 정보 수정의 정상 생성 요청은 fixture의 읍·면·동 ID를 사용합니다.
 정상 생성 요청의 시간대가 역전·동일 시각·겹침 규칙을 위반하면 같은 개수의 유효한 슬롯으로 대체합니다.
 잘못된 시간대의 거부 동작은 `GuardianControllerIntegrationTest`에서 검증합니다.

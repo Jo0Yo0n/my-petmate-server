@@ -10,9 +10,9 @@ from schemathesis.generation.meta import TestPhase
 
 # Locality IDs loaded by scripts/fixtures/ansan-regions.sql.
 ACTIVITY_REGION_IDS = (
-    "1997243c-3379-4113-985f-12a306295669",
-    "c39f2f04-fcde-404c-a459-f4845cbf888e",
-    "137455a6-38b2-44af-ae72-cedbcffb1629",
+    "c6cd82c5-907c-50f8-b341-44c379916e78",
+    "e17a6e67-2cc5-58e9-be85-fd029ea4f53a",
+    "c6a667c5-fdf8-5558-a3f8-0eb7ea59e4db",
 )
 ACTIVITY_OPERATIONS = {
     ("POST", "/api/auth/signup"),
