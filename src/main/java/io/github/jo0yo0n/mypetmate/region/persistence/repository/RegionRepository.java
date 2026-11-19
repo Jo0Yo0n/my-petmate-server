@@ -11,6 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface RegionRepository extends JpaRepository<Region, UUID> {
 
+  List<Region> findAllByParentIsNullOrderByNameAscIdAsc();
+
+  List<Region> findAllByParentIdOrderByNameAscIdAsc(UUID parentId);
+
   @EntityGraph(attributePaths = {"parent", "parent.parent"})
   @Query(
       """

@@ -684,12 +684,13 @@ paths:
       parameters:
         - name: parentId
           in: query
+          description: 생략하면 시도 목록을 반환한다. 빈 값이나 UUID 형식 오류는 400, 미등록 UUID는 404다.
           schema:
             type: string
             format: uuid
       responses:
         '200':
-          description: 직계 하위 지역. 표시 순서대로 반환한다.
+          description: 직계 하위 지역. name 오름차순, 동명인 경우 id 오름차순으로 반환한다.
           content:
             application/json:
               schema:

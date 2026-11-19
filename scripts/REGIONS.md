@@ -11,7 +11,7 @@ Python 3 기본 라이브러리만 사용한다. 저장·변환 도구이며 서
 set -a
 source .env
 set +a
-python3 scripts/import_regions.py --output-dir data/regions
+python3 scripts/import_regions.py --output-dir "data/regions-$(date +%Y%m%d-%H%M%S)"
 ```
 
 서울·경기의 모든 페이지를 XML로 보관한다. `manifest.json`에는 출처·UTC 수집 시각·파일별 SHA-256을 기록한다.
