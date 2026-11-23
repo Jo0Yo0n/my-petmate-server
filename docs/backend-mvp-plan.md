@@ -30,6 +30,7 @@
 | 5    | M5. 채팅            | 예정    | 조회, 읽음 상태, 멱등 WebSocket 전송을 완성한다.                   |
 | 6    | M6. 약속과 평가     | 예정    | 약속 상태 전이와 종료 후 비공개 평가를 연결한다.                   |
 | 7    | M7. 안전 조치       | 예정    | 차단·신고와 추천·채팅 제외를 완성한다.                             |
+| 8    | M8. AWS 배포        | 예정    | 사진 저장소를 S3로 교체하고 AWS 환경에 배포한다.                   |
 
 현재 프로젝트는 **M1을 진행 중**이다. [M1 작업 목록](https://github.com/Jo0Yo0n/my-petmate-server/milestone/1)에서 선행 작업과 검증 상태를 확인한다.
 
@@ -56,7 +57,7 @@
 
 [GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/1) · 선행 조건은 M0 완료다.
 
-보호자 프로필·지역·사진의 F1 연동은 [상위 Issue #17](https://github.com/Jo0Yo0n/my-petmate-server/issues/17)에서 추적한다. [인증·오류·프론트 토큰 회귀 #25](https://github.com/Jo0Yo0n/my-petmate-server/issues/25)는 M1 전체 완료를 검증한다.
+보호자 프로필·지역의 F1 연동은 [상위 Issue #17](https://github.com/Jo0Yo0n/my-petmate-server/issues/17)에서 추적한다. [인증·오류·프론트 토큰 회귀 #25](https://github.com/Jo0Yo0n/my-petmate-server/issues/25)는 M1 전체 완료를 검증한다.
 
 #### API 범위
 
@@ -67,7 +68,6 @@
 - `POST /api/auth/logout`
 - `GET /api/guardians/me`
 - `PATCH /api/guardians/me`
-- `POST /api/guardians/me/photos`
 - `POST /api/guardians/me/withdraw`
 
 #### 구현 초점
@@ -89,8 +89,8 @@
 - [ ] 유형·찾기 상태 검증과 최초 성별 보존·변경 금지가 동작한다.
 - [ ] 보호된 API가 access token 누락·오류 요청을 거부한다.
 - [ ] validation, 인증, 권한, 리소스 없음, 충돌 오류가 공통 `ProblemDetail` 계약과 일치한다.
-- [ ] 지역 카탈로그와 프로필 저장·재조회 및 사진 등록·교체가 계약대로 동작한다. 새 마이그레이션과 fixture는 빈 개발 DB에서 검증한다.
-- [ ] 실제 서버로 F1 세션과 내 정보 화면을 검증하고, 현행 OpenAPI와 실행 응답 사이에 알려진 불일치가 없다.
+- [ ] 지역 카탈로그와 프로필 저장·재조회가 계약대로 동작한다. 새 마이그레이션과 fixture는 빈 개발 DB에서 검증한다.
+- [ ] 실제 서버로 F1 세션과 내 정보 화면을 검증하고, 위 API 범위의 `openapi.yaml` 계약과 실행 응답 사이에 알려진 불일치가 없다.
 - [ ] 서버 인증·보안 회귀와 프론트 토큰 갱신·Playwright 검증을 완료하고 관련 Issue에 결과를 연결한다.
 
 #### 핵심 검증
@@ -121,19 +121,22 @@
 - `GET /api/dogs/{dogId}`
 - `PATCH /api/dogs/{dogId}`
 - `POST /api/dogs/{dogId}/photos`
+- `POST /api/guardians/me/photos` ([Issue #23](https://github.com/Jo0Yo0n/my-petmate-server/issues/23))
 
 #### 구현 초점
 
 - 반려견 프로필 마이그레이션. 지역·시간은 소유 보호자에서 읽는다.
 - 한 보호자가 여러 반려견을 관리하는 소유권 모델
 - 프로필 JSON과 초기 사진을 받는 multipart 생성
-- AWS S3 비공개 객체 저장과 만료되는 조회 URL 반환
-- 사진 형식·크기·해상도 검증과 실패 시 객체 정리
+- 비공개 사진 저장과 만료되는 조회 URL 반환. 저장소는 좁은 인터페이스 뒤에 두고 M2는 로컬 구현을 사용하며 S3 구현은 [M8](#m8-aws-배포)에서 교체한다.
+- 사진 형식·크기·해상도 검증과 실패 시 저장한 파일 정리
+- 보호자 사진 등록·교체는 반려견 사진과 같은 저장소와 검증을 재사용한다.
 
 #### 완료 기준
 
 - [ ] 소유한 반려견의 생성·목록·조회·수정이 동작한다.
 - [ ] 생성 시 초기 사진을 올리고 이후 사진을 교체할 수 있다.
+- [ ] 보호자 본인의 사진을 등록·교체할 수 있다.
 - [ ] 다른 보호자의 반려견을 조회하거나 수정할 수 없다.
 - [ ] 견종, 나이, 안전·궁합 필드가 `openapi.yaml` 계약대로 검증된다.
 
@@ -141,7 +144,7 @@
 
 - 생성·목록·조회·수정 API 테스트
 - 사진 업로드·교체의 정상·실패·권한 테스트
-- DB 저장 실패 시 업로드 객체 정리 테스트
+- 교체나 DB 저장 실패 시 기존 사진 유지와 새로 저장한 파일 정리 테스트
 - 필수 필드, enum, 소유권 테스트
 
 ### M3. 추천
@@ -342,6 +345,28 @@ M6에 GET /api/appointment-proposals의 box=sent/received/accepted/canceled curs
 - 차단·신고 API와 멱등성 테스트
 - 신고 사유·설명·심각도 입력 금지 validation 테스트
 - 추천 제외와 차단 이후 채팅 접근 테스트
+
+### M8. AWS 배포
+
+[GitHub 마일스톤](https://github.com/Jo0Yo0n/my-petmate-server/milestone/8) · 선행 조건은 M7 완료다. 세부 Issue는 착수할 때 만든다.
+
+#### 구현 초점
+
+- M2의 사진 저장소 인터페이스에 S3 비공개 버킷 구현을 추가하고 설정으로 교체한다. 사진 API와 응답 계약은 바꾸지 않는다.
+- 만료되는 조회 URL을 S3 presigned URL로 제공한다.
+- AWS 환경에 서버를 배포한다.
+
+#### 완료 기준
+
+- [ ] S3 구현으로도 반려견·보호자 사진 등록·교체·조회가 M2와 같은 `openapi.yaml` 계약대로 동작한다.
+- [ ] 객체는 비공개이고 조회 URL이 만료 후 거부된다.
+- [ ] 교체 실패 시 기존 사진이 유지되고, DB 저장 실패 시 업로드한 객체가 정리된다.
+- [ ] 배포 환경에서 서버 기동과 사진 업로드·조회를 수동 API로 확인한다.
+
+#### 핵심 검증
+
+- M2의 사진 테스트를 S3 구현에도 적용한다.
+- 업로드 권한과 파일 검증, 객체 접근 정책 확인
 
 ## 상태 변경 절차
 
