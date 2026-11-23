@@ -39,8 +39,12 @@ out/
 ### VS Code ###
 .vscode/
 
-### Codex agents ###
+### AI agent settings ###
 /AGENTS.md
+/CLAUDE.md
+/CLAUDE.local.md
+/.claude/
+/.codex/
 .agents/
 /.codegraph
 
