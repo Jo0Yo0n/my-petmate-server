@@ -24,7 +24,7 @@ constraints:
     Pull Request는 저장소 템플릿의 Summary, Changes, Verification,
     Checklist 항목을 사용한다.
   - >
-    AI 에이전트는 코드나 빌드 설정을 바꾸기 전에 `AGENTS.md`와
+    AI 에이전트는 코드나 빌드 설정을 바꾸기 전에
     `docs/development-conventions.md`를 읽는다.
   - MVP의 주 데이터베이스로 PostgreSQL를 사용한다.
   - 모바일 앱은 Android·iOS 개발을 위해 React Native와 Expo를 사용한다.
